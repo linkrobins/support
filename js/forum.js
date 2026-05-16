@@ -37,6 +37,21 @@
         } catch (e) { return false; }
     }
 
+    // Tell flarum/tags to skip rendering its per-tag list in the
+    // IndexSidebar. The Tags extension reads `app.current.get('noTagsList')`
+    // at navItems() render time -- when it's true, the long per-tag list
+    // is omitted but the standalone "Tags" link is still added (so users
+    // can still jump to /tags). We call this from every support page's
+    // oninit; Flarum constructs a fresh PageState per navigation in
+    // Page.oninit() above, so this flag never leaks to non-support pages.
+    function suppressTagsList() {
+        try {
+            if (app.current && typeof app.current.set === 'function') {
+                app.current.set('noTagsList', true);
+            }
+        } catch (e) {}
+    }
+
     function supportAppealBanned() {
         try {
             return !!readForumAttribute('supportAppealBanned');
@@ -263,6 +278,14 @@
         return app.request({
             method: 'PATCH',
             url:    apiUrl() + '/linkrobins-support-tickets/' + encodeURIComponent(id),
+            // ?include matches what fetchTicket asks for so the response
+            // carries the updated assignedStaff user (plus category/owner)
+            // inside `included`. Without this, JSON:API spec lets the
+            // server omit related resources -- and Flarum does -- which
+            // means relatedAssignedStaff() returns null and the label
+            // renders as "Unassigned" until the page reloads, even though
+            // ticket.relationships.assignedStaff.data.id was updated.
+            params: { include: 'user,category,assignedStaff' },
             body:   { data: data },
         });
     }
@@ -272,7 +295,7 @@
     var STATUS_LABELS = {
         open:           'Open',
         in_progress:    'In progress',
-        awaiting_user:  'Awaiting your reply',
+        awaiting_user:  'Awaiting response',
         resolved:       'Resolved',
         closed:         'Closed',
     };
@@ -301,24 +324,47 @@
         var Button       = null;
         var LoadingIndicator = null;
         var PageStructure = null;
+        var IndexSidebar  = null;
+        var SelectDropdown = null;
+        var ItemListCtor   = null;
         try { Page             = flarum.reg.get('core', 'common/components/Page'); }             catch (e) {}
         try { LinkButton       = flarum.reg.get('core', 'common/components/LinkButton'); }       catch (e) {}
         try { Button           = flarum.reg.get('core', 'common/components/Button'); }           catch (e) {}
         try { LoadingIndicator = flarum.reg.get('core', 'common/components/LoadingIndicator'); } catch (e) {}
         try { PageStructure    = flarum.reg.get('core', 'forum/components/PageStructure'); }     catch (e) {}
+        try { IndexSidebar     = flarum.reg.get('core', 'forum/components/IndexSidebar'); }      catch (e) {}
+        try { SelectDropdown   = flarum.reg.get('core', 'common/components/SelectDropdown'); }   catch (e) {}
+        try { ItemListCtor     = flarum.reg.get('core', 'common/utils/ItemList'); }              catch (e) {}
 
         if (!Page) {
             console.error('[linkrobins/support] Page component not available; aborting.');
             return;
         }
 
-        var IndexPage   = makeIndexPage(Page, LoadingIndicator);
-        var ComposePage = makeComposePage(Page, LoadingIndicator);
-        var ShowPage    = makeShowPage(Page, LoadingIndicator);
+        // Build the support sidebar class first because the pages need it
+        // as a constructor argument. If any of the deps are missing we
+        // pass null and the pages render their content directly (no
+        // sidebar wrapper, no "New ticket" button accessible from the
+        // sidebar) -- this is a degraded layout but the page still
+        // works on a Flarum build that doesn't expose one of these
+        // components. Users in that fallback path can still reach the
+        // compose page via the route URL directly.
+        var SupportIndexSidebar = (IndexSidebar && LinkButton && SelectDropdown && ItemListCtor)
+            ? makeSupportIndexSidebar(IndexSidebar, LinkButton, Button, SelectDropdown, ItemListCtor)
+            : null;
 
-        app.routes['linkrobins-support.index']   = { path: BASE_PATH,            component: IndexPage };
-        app.routes['linkrobins-support.compose'] = { path: BASE_PATH + '/new',   component: ComposePage };
-        app.routes['linkrobins-support.show']    = { path: BASE_PATH + '/:id',   component: ShowPage };
+        var IndexPage   = makeIndexPage(Page, LoadingIndicator, PageStructure, SupportIndexSidebar);
+        var ComposePage = makeComposePage(Page, LoadingIndicator, PageStructure, SupportIndexSidebar);
+        var ShowPage    = makeShowPage(Page, LoadingIndicator, PageStructure, SupportIndexSidebar);
+
+        // Route ordering matters: static paths first, then `:status`,
+        // then the catch-all `:id`. Mithril matches in registration
+        // order, so /support/new and /support/status/open would otherwise
+        // be claimed by the wider /support/:id pattern.
+        app.routes['linkrobins-support.index']    = { path: BASE_PATH,                       component: IndexPage };
+        app.routes['linkrobins-support.compose']  = { path: BASE_PATH + '/new',              component: ComposePage };
+        app.routes['linkrobins-support.filtered'] = { path: BASE_PATH + '/status/:status',   component: IndexPage };
+        app.routes['linkrobins-support.show']     = { path: BASE_PATH + '/:id',              component: ShowPage };
 
         // Register a thin SupportTicket model so Flarum's store can
         // hydrate `notification.subject()` when it surfaces a
@@ -326,12 +372,21 @@
         // notification dropdown would render "Unknown notification type"
         // and the subject().attribute() lookups in our notification
         // components would fail.
+        //
+        // IMPORTANT: Flarum's Model is an ES6 class, and ES6 classes can
+        // only be subclassed with `class X extends Y` syntax. Using the
+        // old ES5 prototype-chain pattern here (Model.apply(this) +
+        // Object.create(Model.prototype)) throws
+        //   "Class constructor a cannot be invoked without 'new'"
+        // because V8 refuses to invoke a class constructor without `new`.
+        // That error blocks the entire notification pipeline -- when the
+        // notification dropdown tries to push a payload through the store
+        // and the store calls `new SupportTicketModel()`, construction
+        // fails synchronously, and the whole bell-dropdown never renders.
         try {
             var Model = flarum.reg.get('core', 'common/Model');
             if (Model && app.store && app.store.models && !app.store.models['linkrobins-support-tickets']) {
-                var SupportTicketModel = function () { Model.apply(this, arguments); };
-                SupportTicketModel.prototype = Object.create(Model.prototype);
-                SupportTicketModel.prototype.constructor = SupportTicketModel;
+                var SupportTicketModel = class extends Model {};
                 // Minimal attribute helpers; the raw payload is still
                 // accessible via attribute('subject') / attribute('status')
                 // on every Flarum Model so we don't need to wire each one
@@ -383,14 +438,19 @@
         }
 
         // Add a "Support" link to Flarum's main sidebar so the page is
-        // discoverable for everyone, not just people who already know the
-        // URL.
+        // discoverable for everyone. The link stays visible on support
+        // pages too -- earlier versions hid it there on the theory that
+        // the support's own sidebar would duplicate it, but the support
+        // sidebar's filter items ("My tickets", "All", "Open", ...) are
+        // a different thing from the generic entry-point link, and
+        // hiding "Support" only made it harder to navigate back to the
+        // default view from a filtered route.
         try {
-            var IndexSidebar = flarum.reg.get('core', 'forum/components/IndexSidebar');
-            var extMod       = flarum.reg.get('core', 'common/extend');
-            var extend       = extMod && extMod.extend;
-            if (IndexSidebar && LinkButton && typeof extend === 'function') {
-                extend(IndexSidebar.prototype, 'navItems', function (items) {
+            var IndexSidebar2 = flarum.reg.get('core', 'forum/components/IndexSidebar');
+            var extMod        = flarum.reg.get('core', 'common/extend');
+            var extend        = extMod && extMod.extend;
+            if (IndexSidebar2 && LinkButton && typeof extend === 'function') {
+                extend(IndexSidebar2.prototype, 'navItems', function (items) {
                     if (!app.session || !app.session.user) return;
                     var bp = basePath();
                     items.add('linkrobins-support', m(LinkButton, {
@@ -481,19 +541,226 @@
         };
     }
 
+    // --- Sidebar filter metadata ---------------------------------------
+
+    // Single source of truth for the sidebar's filter items and the
+    // index page's filter state. `id` doubles as the URL segment
+    // (/support/status/<id>) and the server-side filter[status] value
+    // for actual statuses. The non-status entries ('mine', 'all') are
+    // resolved specially in SupportIndexPage._load().
+    //
+    // Order here is the order shown in the sidebar.
+    var FILTER_OPTIONS = [
+        { id: 'mine',          label: 'My tickets',     icon: 'fas fa-user',          staffOnly: false },
+        { id: 'all',           label: 'All',            icon: 'fas fa-inbox',         staffOnly: true  },
+        { id: 'open',          label: 'Open',           icon: 'fas fa-circle',        staffOnly: true  },
+        { id: 'in_progress',   label: 'In progress',    icon: 'fas fa-spinner',       staffOnly: true  },
+        { id: 'awaiting_user', label: 'Awaiting response',  icon: 'fas fa-clock',         staffOnly: true  },
+        { id: 'resolved',      label: 'Resolved',       icon: 'fas fa-check-circle',  staffOnly: true  },
+        { id: 'closed',        label: 'Closed',         icon: 'fas fa-times-circle',  staffOnly: true  },
+    ];
+
+    function filterHrefFor(id) {
+        // 'mine' is the default index route, so it has no /status/... suffix.
+        // Everything else lives under /status/<id>.
+        var bp = basePath();
+        if (id === 'mine') return bp + BASE_PATH;
+        return bp + BASE_PATH + '/status/' + id;
+    }
+
+    // --- Support sidebar -----------------------------------------------
+
+    function makeSupportIndexSidebar(IndexSidebar, LinkButton, Button, SelectDropdown, ItemListCtor) {
+        return class SupportIndexSidebar extends IndexSidebar {
+            // The whole sidebar: a primary "New ticket" button, a
+            // SelectDropdown wrapping our nav items, then any items
+            // contributed by the parent IndexSidebar (so users still see
+            // "All Discussions", Tags, etc., when they're on a support
+            // page).
+            items() {
+                var items = new ItemListCtor();
+
+                // "New ticket" primary button -- mirrors the blog's
+                // "Compose" button placement.
+                if (Button && canCreateSupportTicket()) {
+                    var newHref = basePath() + BASE_PATH + '/new';
+                    items.add(
+                        'newTicket',
+                        m(Button, {
+                            icon:          'fas fa-plus',
+                            className:     'Button Button--primary LinkRobinsSupport-newTicketButton',
+                            itemClassName: 'App-primaryControl',
+                            'aria-label':  'New ticket',
+                            title:         'Open a new support ticket',
+                            onclick:       function (e) {
+                                safeNavigate(newHref, e);
+                            },
+                        }, 'New ticket'),
+                        110
+                    );
+                }
+
+                // Nav items dropdown -- exactly the same shape as the
+                // forum-side IndexSidebar uses for "All Discussions",
+                // "Tags", etc. Wrapping in SelectDropdown gives us the
+                // mobile-friendly collapsing behavior that Flarum's
+                // sidebars use everywhere else.
+                //
+                // defaultLabel is what SelectDropdown shows on the
+                // toggle button when no child item has `active: true`.
+                // Without it, the toggle would render with just the
+                // caret arrow and no text -- this is exactly what
+                // happens on ticket detail and compose pages, where we
+                // pass activeFilter: null (no filter is "active" because
+                // the user is viewing a specific ticket, not a filtered
+                // list). Falling back to "Support" gives the toggle a
+                // meaningful label in those contexts. On filter routes
+                // (/support, /support/status/open, etc) the active
+                // filter's label is used instead, which matches what
+                // Flarum's own /all and /tags pages do.
+                items.add(
+                    'nav',
+                    m(SelectDropdown, {
+                        buttonClassName: 'Button',
+                        className:       'App-titleControl',
+                        defaultLabel:    'Support',
+                    }, this.navItems().toArray()),
+                    90
+                );
+
+                return items;
+            }
+
+            navItems() {
+                // Start from the parent IndexSidebar's nav items so users
+                // still see "All Discussions" / Tags / etc when they're
+                // browsing tickets. Wrap in try/catch because some pages
+                // do not set up the parent state the way IndexSidebar
+                // expects.
+                var items;
+                try {
+                    items = super.navItems();
+                } catch (e) {
+                    console.warn('[linkrobins/support] super.navItems() threw, falling back:', e);
+                    items = new ItemListCtor();
+                }
+                if (!items) return new ItemListCtor();
+
+                // Defense in depth: even though we set noTagsList=true in
+                // every support page's oninit, if that didn't take effect
+                // for some reason (e.g. ordering), the tags extension's
+                // navItems contribution emits a `separator` item just
+                // before the tag list. Strip it so we don't see a lone
+                // horizontal rule between the inherited forum items and
+                // our support filter section.
+                try {
+                    if (typeof items.has === 'function' && items.has('separator')
+                        && typeof items.remove === 'function') {
+                        items.remove('separator');
+                    }
+                } catch (e) {}
+
+                var canHandle = canHandleSupportTickets();
+                // activeFilter can legitimately be null (on a ticket
+                // detail page or the compose page -- those aren't a
+                // filter view at all). When null, we don't want "My
+                // tickets" to highlight just because that's the default
+                // filter id; instead, no item is active. We only fall
+                // back to 'mine' when the caller passes undefined
+                // (which would mean "I didn't specify"), not when they
+                // explicitly pass null (which means "no filter").
+                var activeAttr = (this.attrs && Object.prototype.hasOwnProperty.call(this.attrs, 'activeFilter'))
+                    ? this.attrs.activeFilter
+                    : 'mine';
+                var currentFilter = activeAttr; // may be null (= nothing active)
+
+                // Section heading. -10 places it below the inherited
+                // forum items, separating "All Discussions / Tags" from
+                // the support filters visually.
+                items.add(
+                    'supportHeading',
+                    m('h4', { className: 'LinkRobinsSupport-sidebar-sectionHeading' }, 'Support'),
+                    -10
+                );
+
+                // Filter items. Non-staff users only see "My tickets"
+                // (the backend rejects any other filter for them anyway).
+                FILTER_OPTIONS.forEach(function (opt, i) {
+                    if (opt.staffOnly && !canHandle) return;
+                    items.add(
+                        'support-filter-' + opt.id,
+                        m(LinkButton, {
+                            href:   filterHrefFor(opt.id),
+                            icon:   opt.icon,
+                            // We pass active explicitly so it works both
+                            // for /support (mine, where m.route matches
+                            // the index path) and the /support/status/...
+                            // routes. LinkButton's auto-detection would
+                            // also work but this avoids edge cases when
+                            // we're on /support/<id> (a ticket detail).
+                            active: currentFilter === opt.id,
+                        }, opt.label),
+                        -11 - i
+                    );
+                });
+
+                return items;
+            }
+        };
+    }
+
     // --- Index page -----------------------------------------------------
 
-    function makeIndexPage(Page, LoadingIndicator) {
+    function makeIndexPage(Page, LoadingIndicator, PageStructure, SupportIndexSidebar) {
         return class SupportIndexPage extends Page {
             oninit(vnode) {
                 super.oninit(vnode);
+                suppressTagsList();
                 this.loading  = true;
                 this.error    = null;
                 this.tickets  = [];
                 this.included = [];
-                this.filter   = (this.attrs && this.attrs.status) || 'mine';
+                // The active filter comes from the route param (set by
+                // /support/status/:status) or defaults to 'mine' for
+                // /support. The sidebar links navigate between routes
+                // rather than mutating local state, so this stays in
+                // sync naturally on navigation.
+                this.filter = this._filterFromAttrs(this.attrs);
                 try { app.setTitle('Support'); } catch (e) {}
+                this._lastLoadedFilter = this.filter;
                 this._load();
+            }
+
+            // Mithril does NOT re-run oninit when only the route attrs
+            // change for the same component class. We detect a filter
+            // change here and re-load. (For comparison: when the user
+            // clicks "Open" while on /support, Mithril rebuilds with
+            // attrs.status='open' but the existing IndexPage instance
+            // is reused.)
+            onbeforeupdate(vnode) {
+                var nextFilter = this._filterFromAttrs(vnode.attrs);
+                if (nextFilter !== this._lastLoadedFilter) {
+                    this.filter = nextFilter;
+                    this._lastLoadedFilter = nextFilter;
+                    // Defer the actual load to a microtask so onbeforeupdate
+                    // doesn't run a fetch synchronously during a redraw.
+                    var self = this;
+                    Promise.resolve().then(function () { self._load(); });
+                }
+                return true;
+            }
+
+            // Translate route attrs into a filter id from FILTER_OPTIONS.
+            // Defaults to 'mine' when no status is given. Unknown values
+            // (e.g. a typo'd URL) also fall back to 'mine' so the page
+            // doesn't render against a filter the server would reject.
+            _filterFromAttrs(attrs) {
+                var s = attrs && attrs.status;
+                if (!s) return 'mine';
+                for (var i = 0; i < FILTER_OPTIONS.length; i++) {
+                    if (FILTER_OPTIONS[i].id === s) return s;
+                }
+                return 'mine';
             }
 
             _load() {
@@ -532,61 +799,70 @@
             }
 
             view(vnode) {
-                if (super.view) {
-                    // Keep the super-template wrapper but render our own
-                    // content. Page provides things like document scroll
-                    // restoration and the standard app chrome.
-                }
-                return m('div', { className: 'IndexPage LinkRobinsSupport-page' },
-                    m('div', { className: 'container LinkRobinsSupport-container' }, [
-                        this._renderHeader(),
-                        this._renderFilters(),
-                        this._renderList(),
-                    ])
-                );
-            }
-
-            _renderHeader() {
                 var self = this;
-                return m('header', { className: 'LinkRobinsSupport-header' }, [
-                    m('h1', { className: 'LinkRobinsSupport-title' }, [
-                        m('i', { className: 'fas fa-life-ring' }), ' Support',
-                    ]),
-                    canCreateSupportTicket() ? m('a', {
-                        href: basePath() + BASE_PATH + '/new',
-                        className: 'Button Button--primary LinkRobinsSupport-new',
-                        onclick: function (e) { safeNavigate(basePath() + BASE_PATH + '/new', e); },
-                    }, [m('i', { className: 'fas fa-plus' }), ' New ticket']) : null,
+                var content = m('div', { className: 'LinkRobinsSupport-container' }, [
+                    self._renderHeader(),
+                    self._renderList(),
+                ]);
+
+                // Render with PageStructure so the SupportIndexSidebar
+                // appears alongside the content (and collapses on mobile
+                // into the same SelectDropdown menu Flarum's other index
+                // pages use).
+                if (PageStructure && SupportIndexSidebar) {
+                    return m(PageStructure, {
+                        className: 'IndexPage LinkRobinsSupport-page',
+                        sidebar:   function () { return self._renderSidebar(); },
+                    }, content);
+                }
+
+                // Fallback when PageStructure isn't available -- render
+                // the content without a sidebar. Filter switching is
+                // only reachable via direct URL navigation in this path
+                // (no nav UI is rendered). This path should not trigger
+                // on Flarum 2 builds that expose PageStructure, which
+                // is virtually all of them.
+                return m('div', { className: 'IndexPage LinkRobinsSupport-page' }, [
+                    content,
                 ]);
             }
 
-            _renderFilters() {
-                var self = this;
-                if (!canHandleSupportTickets()) return null;
+            _renderSidebar() {
+                try {
+                    if (SupportIndexSidebar) {
+                        return m(SupportIndexSidebar, {
+                            className:    'LinkRobinsSupport-sidebar',
+                            activeFilter: this.filter,
+                        });
+                    }
+                } catch (e) {
+                    console.error('[linkrobins/support] sidebar render failed:', e);
+                }
+                return null;
+            }
 
-                var options = [
-                    { id: 'mine',           label: 'My tickets' },
-                    { id: 'all',            label: 'All' },
-                    { id: 'open',           label: 'Open' },
-                    { id: 'in_progress',    label: 'In progress' },
-                    { id: 'awaiting_user',  label: 'Awaiting user' },
-                    { id: 'resolved',       label: 'Resolved' },
-                    { id: 'closed',         label: 'Closed' },
-                ];
+            _renderHeader() {
+                // Header now only carries the page title. The "New
+                // ticket" button moved to the sidebar (mirrors the blog's
+                // Compose placement), and the filter pills are replaced
+                // by sidebar nav items.
+                var label = this._headingFor(this.filter);
+                return m('header', { className: 'LinkRobinsSupport-header' }, [
+                    m('h1', { className: 'LinkRobinsSupport-title' }, [
+                        m('i', { className: 'fas fa-life-ring' }), ' ', label,
+                    ]),
+                ]);
+            }
 
-                return m('div', { className: 'LinkRobinsSupport-filters' },
-                    options.map(function (opt) {
-                        return m('button', {
-                            type:      'button',
-                            className: 'LinkRobinsSupport-filter'
-                                + (self.filter === opt.id ? ' is-active' : ''),
-                            onclick:   function () {
-                                self.filter = opt.id;
-                                self._load();
-                            },
-                        }, opt.label);
-                    })
-                );
+            // Heading shown in the page header. Reflects which filter the
+            // user is currently viewing so the page title gives context
+            // beyond "Support".
+            _headingFor(filter) {
+                if (!filter || filter === 'mine') return 'Support';
+                for (var i = 0; i < FILTER_OPTIONS.length; i++) {
+                    if (FILTER_OPTIONS[i].id === filter) return FILTER_OPTIONS[i].label;
+                }
+                return 'Support';
             }
 
             _renderList() {
@@ -646,10 +922,11 @@
 
     // --- Compose page ---------------------------------------------------
 
-    function makeComposePage(Page, LoadingIndicator) {
+    function makeComposePage(Page, LoadingIndicator, PageStructure, SupportIndexSidebar) {
         return class SupportComposePage extends Page {
             oninit(vnode) {
                 super.oninit(vnode);
+                suppressTagsList();
                 this.loading    = true;
                 this.saving     = false;
                 this.error      = null;
@@ -695,12 +972,38 @@
                     });
             }
 
+            // Render `inner` (typically the container div) inside the
+            // support PageStructure so the sidebar (with My tickets /
+            // filters / New ticket button) appears alongside the form.
+            // Falls back to plain wrapping when PageStructure isn't
+            // available -- this keeps the page usable on Flarum builds
+            // that don't expose the component.
+            _wrap(inner) {
+                var self = this;
+                if (PageStructure && SupportIndexSidebar) {
+                    return m(PageStructure, {
+                        className: 'IndexPage LinkRobinsSupport-page',
+                        sidebar:   function () {
+                            return m(SupportIndexSidebar, {
+                                className:    'LinkRobinsSupport-sidebar',
+                                // No filter is "active" on the compose
+                                // page -- they're filing a new ticket,
+                                // not viewing a list. Pass null so all
+                                // sidebar items render as inactive.
+                                activeFilter: null,
+                            });
+                        },
+                    }, inner);
+                }
+                return m('div', { className: 'IndexPage LinkRobinsSupport-page' }, inner);
+            }
+
             view(vnode) {
                 var self = this;
 
                 if (supportAppealBanned() && isUserSuspended()) {
-                    return m('div', { className: 'IndexPage LinkRobinsSupport-page' },
-                        m('div', { className: 'container LinkRobinsSupport-container' }, [
+                    return self._wrap(
+                        m('div', { className: 'LinkRobinsSupport-container' }, [
                             m('header', { className: 'LinkRobinsSupport-header' },
                                 m('h1', { className: 'LinkRobinsSupport-title' }, 'Support')
                             ),
@@ -712,16 +1015,16 @@
                 }
 
                 if (self.loading) {
-                    return m('div', { className: 'IndexPage LinkRobinsSupport-page' },
-                        m('div', { className: 'container' },
+                    return self._wrap(
+                        m('div', { className: 'LinkRobinsSupport-container' },
                             LoadingIndicator ? m(LoadingIndicator) : 'Loading...'
                         )
                     );
                 }
 
                 if (self.categories.length === 0) {
-                    return m('div', { className: 'IndexPage LinkRobinsSupport-page' },
-                        m('div', { className: 'container LinkRobinsSupport-container' }, [
+                    return self._wrap(
+                        m('div', { className: 'LinkRobinsSupport-container' }, [
                             m('header', { className: 'LinkRobinsSupport-header' },
                                 m('h1', { className: 'LinkRobinsSupport-title' }, 'Support')
                             ),
@@ -739,8 +1042,8 @@
                     && self.body.trim() !== ''
                     && self.categoryId !== '';
 
-                return m('div', { className: 'IndexPage LinkRobinsSupport-page' },
-                    m('div', { className: 'container LinkRobinsSupport-container' }, [
+                return self._wrap(
+                    m('div', { className: 'LinkRobinsSupport-container' }, [
                         m('header', { className: 'LinkRobinsSupport-header' }, [
                             m('h1', { className: 'LinkRobinsSupport-title' },
                                 isUserSuspended() ? 'File an appeal' : 'New support ticket'),
@@ -871,10 +1174,11 @@
 
     // --- Show page ------------------------------------------------------
 
-    function makeShowPage(Page, LoadingIndicator) {
+    function makeShowPage(Page, LoadingIndicator, PageStructure, SupportIndexSidebar) {
         return class SupportShowPage extends Page {
             oninit(vnode) {
                 super.oninit(vnode);
+                suppressTagsList();
                 this.loading    = true;
                 this.error      = null;
                 this.ticket     = null;
@@ -931,18 +1235,42 @@
                 });
             }
 
+            // Render `inner` (typically the container div) inside the
+            // support PageStructure so the sidebar appears alongside the
+            // ticket detail. Falls back to plain wrapping when
+            // PageStructure isn't available.
+            //
+            // Active filter is null on a ticket detail page: the user
+            // navigated into a specific ticket, they're not viewing a
+            // filtered list. Nothing in the sidebar should highlight as
+            // "active" beyond the New-ticket button.
+            _wrap(inner) {
+                if (PageStructure && SupportIndexSidebar) {
+                    return m(PageStructure, {
+                        className: 'IndexPage LinkRobinsSupport-page',
+                        sidebar:   function () {
+                            return m(SupportIndexSidebar, {
+                                className:    'LinkRobinsSupport-sidebar',
+                                activeFilter: null,
+                            });
+                        },
+                    }, inner);
+                }
+                return m('div', { className: 'IndexPage LinkRobinsSupport-page' }, inner);
+            }
+
             view(vnode) {
                 var self = this;
                 if (self.loading) {
-                    return m('div', { className: 'IndexPage LinkRobinsSupport-page' },
-                        m('div', { className: 'container' },
+                    return self._wrap(
+                        m('div', { className: 'LinkRobinsSupport-container' },
                             LoadingIndicator ? m(LoadingIndicator) : 'Loading...'
                         )
                     );
                 }
                 if (self.error || !self.ticket) {
-                    return m('div', { className: 'IndexPage LinkRobinsSupport-page' },
-                        m('div', { className: 'container LinkRobinsSupport-container' }, [
+                    return self._wrap(
+                        m('div', { className: 'LinkRobinsSupport-container' }, [
                             m('header', { className: 'LinkRobinsSupport-header' }, [
                                 m('h1', { className: 'LinkRobinsSupport-title' }, 'Ticket'),
                                 m('a', {
@@ -962,15 +1290,18 @@
                 var creator  = relatedUser(self.ticket, self.included);
                 var category = relatedCategory(self.ticket, self.included);
 
-                return m('div', { className: 'IndexPage LinkRobinsSupport-page' },
-                    m('div', { className: 'container LinkRobinsSupport-container' }, [
+                return self._wrap(
+                    m('div', { className: 'LinkRobinsSupport-container' }, [
                         m('header', { className: 'LinkRobinsSupport-header LinkRobinsSupport-ticket-header' }, [
+                            // Title row: the ticket subject + status badge.
+                            // The "back" arrow that used to sit at the
+                            // start of this row was removed: the sidebar
+                            // now provides primary navigation (My tickets,
+                            // All, filtered status views), and the
+                            // browser back button covers the remaining
+                            // case. Keeping the back arrow here on top of
+                            // that just adds visual noise.
                             m('div', { className: 'LinkRobinsSupport-ticket-titleRow' }, [
-                                m('a', {
-                                    href: basePath() + BASE_PATH,
-                                    className: 'Button Button--text LinkRobinsSupport-back',
-                                    onclick: function (e) { safeNavigate(basePath() + BASE_PATH, e); },
-                                }, [m('i', { className: 'fas fa-arrow-left' })]),
                                 m('h1', { className: 'LinkRobinsSupport-title' }, attr.subject),
                                 statusBadge(attr.status),
                             ]),
@@ -1019,19 +1350,33 @@
                 }
                 var statuses = ['open', 'in_progress', 'awaiting_user', 'resolved', 'closed'];
 
+                // Status is now a select dropdown instead of a row of
+                // buttons. The dropdown's selected value tracks the
+                // current status, and onchange fires _setStatus() with
+                // the new value. We disable the select while an update
+                // is in flight so users can't queue a second change on
+                // top of the first.
                 return m('div', { className: 'LinkRobinsSupport-staffBar' }, [
-                    m('span', { className: 'LinkRobinsSupport-staffBar-label' }, 'Set status:'),
-                    m('div', { className: 'LinkRobinsSupport-staffBar-buttons' },
-                        statuses.map(function (s) {
-                            return m('button', {
-                                type:      'button',
-                                className: 'Button Button--default LinkRobinsSupport-staffBtn'
-                                    + (attr.status === s ? ' is-active' : ''),
-                                disabled:  self.updating || attr.status === s,
-                                onclick:   function () { self._setStatus(s); },
-                            }, STATUS_LABELS[s]);
-                        })
-                    ),
+                    m('label', { className: 'LinkRobinsSupport-staffBar-statusGroup' }, [
+                        m('span', { className: 'LinkRobinsSupport-staffBar-label' }, 'Set status:'),
+                        m('select', {
+                            className: 'FormControl LinkRobinsSupport-staffBar-statusSelect',
+                            value:     attr.status,
+                            disabled:  self.updating,
+                            onchange:  function (e) {
+                                var next = e.target.value;
+                                // No-op if the user picks the current
+                                // status; protects against accidental
+                                // change events triggering a needless
+                                // PATCH.
+                                if (next && next !== attr.status) {
+                                    self._setStatus(next);
+                                }
+                            },
+                        }, statuses.map(function (s) {
+                            return m('option', { value: s }, STATUS_LABELS[s]);
+                        })),
+                    ]),
                     this._renderAssignmentRow(true),
                 ]);
             }

@@ -6,11 +6,15 @@
 
 .LinkRobinsSupport-page {
     .LinkRobinsSupport-container {
-        // Inherit Flarum's standard .container width (768px tablet /
-        // 992px desktop / 1100px desktop-hd) rather than narrowing
-        // ourselves. We sit alongside the `container` class on the same
-        // element, so this is just for vertical padding -- the width
-        // is set by Flarum.
+        // Just for vertical padding. The width is set upstream by
+        // PageStructure's outer .Page-container.container -- our own
+        // div sits inside .Page-content and inherits the flex-1 width
+        // allotted there. We previously also applied Flarum's
+        // `.container` class on this same div, which forced a second
+        // fixed-width pass and made the content visibly too wide on
+        // desktop (the inner .container's fixed width didn't account
+        // for the 190px sidebar offset created by PageStructure). Now
+        // we leave width entirely to the wrapper.
         padding-top: 24px;
         padding-bottom: 48px;
     }
@@ -40,10 +44,6 @@
     i {
         color: var(--primary-color, #07adcc);
     }
-}
-
-.LinkRobinsSupport-new {
-    flex-shrink: 0;
 }
 
 // --- Status badges --------------------------------------------------
@@ -80,34 +80,25 @@
     }
 }
 
-// --- Filters --------------------------------------------------------
+// --- Sidebar --------------------------------------------------------
 
-.LinkRobinsSupport-filters {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 16px;
+// Section heading inside the sidebar nav -- visually separates the
+// inherited forum items ("All Discussions", Tags) from the support's
+// own filter list ("My tickets", "Open", "In progress", ...).
+.LinkRobinsSupport-sidebar-sectionHeading {
+    margin: 16px 12px 6px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted-color, #888);
 }
 
-.LinkRobinsSupport-filter {
-    background: transparent;
-    border: 1px solid var(--control-bg, rgba(0,0,0,0.08));
-    color: var(--text-color, inherit);
-    padding: 6px 14px;
-    border-radius: 999px;
-    font-size: 0.85rem;
-    cursor: pointer;
-    transition: background 0.12s, border-color 0.12s;
-
-    &:hover {
-        background: var(--control-bg, rgba(0,0,0,0.04));
-    }
-
-    &.is-active {
-        background: var(--primary-color, #07adcc);
-        border-color: var(--primary-color, #07adcc);
-        color: var(--primary-text-color, #fff);
-    }
+// "New ticket" primary button placement, mirroring the blog's
+// "Compose" button. itemClassName="App-primaryControl" already gives
+// it the prominent treatment; this is just for the layout class.
+.LinkRobinsSupport-newTicketButton {
+    width: 100%;
 }
 
 // --- List -----------------------------------------------------------
@@ -243,10 +234,6 @@
     }
 }
 
-.LinkRobinsSupport-back {
-    padding: 6px 10px !important;
-}
-
 .LinkRobinsSupport-ticket-meta {
     display: flex;
     flex-wrap: wrap;
@@ -295,10 +282,21 @@
     color: var(--muted-color, #888);
 }
 
-.LinkRobinsSupport-staffBar-buttons {
+// Status label + select pair. Keeps the label and dropdown
+// horizontally aligned so the bar reads as one row on desktop and
+// wraps naturally on narrow screens.
+.LinkRobinsSupport-staffBar-statusGroup {
     display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+}
+
+.LinkRobinsSupport-staffBar-statusSelect {
+    width: auto;
+    min-width: 160px;
+    font-size: 0.85rem;
+    padding: 4px 8px;
 }
 
 .LinkRobinsSupport-staffBar-assign {
@@ -311,14 +309,43 @@
     border-left: 1px solid rgba(127,127,127,0.18);
 }
 
+// Small staff-side button used for Claim / Unassign in the assignment
+// row. The status row no longer uses this (it's a select now), so this
+// class is exclusively for the assignment buttons.
 .LinkRobinsSupport-staffBtn {
     font-size: 0.8rem !important;
     padding: 5px 12px !important;
+}
 
-    &.is-active {
-        background: var(--primary-color, #07adcc) !important;
-        color: var(--primary-text-color, #fff) !important;
-        cursor: default;
+// On narrow screens, give status and assignment their own rows. The
+// `margin-left: auto` and `border-left` on the assignment block make
+// sense on desktop (visually separates the status setter on the left
+// from the assignment controls on the right) but on phones they
+// collapse into a single column and those treatments just look out of
+// place. Reset both, and let each group take the full width.
+@media (max-width: 767px) {
+    .LinkRobinsSupport-staffBar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .LinkRobinsSupport-staffBar-statusGroup {
+        width: 100%;
+        justify-content: space-between;
+    }
+    .LinkRobinsSupport-staffBar-statusSelect {
+        flex: 1;
+        min-width: 0;
+    }
+    .LinkRobinsSupport-staffBar-assign {
+        padding-left: 0;
+        margin-left: 0;
+        border-left: none;
+        // A subtle top divider replaces the desktop's left border so
+        // the rows still read as two distinct concerns rather than
+        // crowding together.
+        padding-top: 8px;
+        border-top: 1px solid rgba(127,127,127,0.18);
+        width: 100%;
     }
 }
 

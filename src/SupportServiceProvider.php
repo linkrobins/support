@@ -53,6 +53,27 @@ class SupportServiceProvider extends AbstractServiceProvider
                         $ticket->status = SupportTicket::STATUS_IN_PROGRESS;
                     }
                 }
+
+                // Auto-claim the ticket when a staff member replies on a
+                // currently-unassigned ticket. The replier becomes the
+                // assignee. We deliberately do NOT override an existing
+                // assignment -- if Alice is handling the ticket and Bob
+                // chimes in with a single reply, the ticket stays Alice's.
+                // That handles the "second pair of eyes" case where one
+                // staff member is the owner and another pitches in for one
+                // comment without taking it over.
+                //
+                // Internal notes also trigger auto-claim, on the theory
+                // that if you're posting an internal note about a
+                // currently-unowned ticket, you're effectively picking it
+                // up. (The status-bump logic above intentionally skips
+                // internal notes, but assignment is independent of status:
+                // the status reflects the user-visible state of the
+                // conversation, while assignment is staff routing.)
+                if ($isStaff && $reply->user_id && ! $ticket->assigned_staff_id) {
+                    $ticket->assigned_staff_id = $reply->user_id;
+                }
+
                 $ticket->save();
 
                 // Notifications: dispatched only for user-facing replies.

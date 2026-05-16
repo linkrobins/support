@@ -21,9 +21,10 @@ return [
     (new Extend\Frontend('forum'))
         ->js(__DIR__ . '/js/forum.js')
         ->css(__DIR__ . '/less/forum.less')
-        ->route('/support',          'linkrobins-support.index')
-        ->route('/support/new',      'linkrobins-support.compose')
-        ->route('/support/{id}',     'linkrobins-support.show'),
+        ->route('/support',                       'linkrobins-support.index')
+        ->route('/support/new',                   'linkrobins-support.compose')
+        ->route('/support/status/{status}',       'linkrobins-support.filtered')
+        ->route('/support/{id}',                  'linkrobins-support.show'),
 
     (new Extend\Frontend('admin'))
         ->js(__DIR__ . '/js/admin.js')
