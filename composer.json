@@ -1,0 +1,30 @@
+{
+    "name": "linkrobins/support",
+    "description": "Support ticket system for Flarum. Users open tickets, staff handle them in a private threaded view. Banned users can submit ban appeals with rate limits.",
+    "type": "flarum-extension",
+    "license": "MIT",
+    "keywords": ["flarum", "support", "tickets", "helpdesk", "appeals"],
+    "require": {
+        "php": "^8.2",
+        "flarum/core": "^2.0"
+    },
+    "suggest": {
+        "fof/upload": "For file attachments on tickets and replies. The support extension automatically renders an 'Attach files' button when this is installed."
+    },
+    "autoload": {
+        "psr-4": {
+            "LinkRobins\\Support\\": "src/"
+        }
+    },
+    "extra": {
+        "flarum-extension": {
+            "title": "Link Robins Support",
+            "category": "feature",
+            "icon": {
+                "name": "fas fa-life-ring",
+                "color": "#07adcc",
+                "backgroundColor": "#1a2535"
+            }
+        }
+    }
+}

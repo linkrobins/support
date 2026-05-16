@@ -1,0 +1,450 @@
+// Link Robins Support — forum styles
+//
+// Self-contained. The page renders inside Flarum's normal IndexPage
+// shell so we don't need to override the chrome, just style our own
+// containers.
+
+.LinkRobinsSupport-page {
+    .LinkRobinsSupport-container {
+        // Inherit Flarum's standard .container width (768px tablet /
+        // 992px desktop / 1100px desktop-hd) rather than narrowing
+        // ourselves. We sit alongside the `container` class on the same
+        // element, so this is just for vertical padding -- the width
+        // is set by Flarum.
+        padding-top: 24px;
+        padding-bottom: 48px;
+    }
+}
+
+// --- Header ----------------------------------------------------------
+
+.LinkRobinsSupport-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 24px;
+
+    > h1, > .LinkRobinsSupport-title {
+        flex: 1;
+    }
+}
+
+.LinkRobinsSupport-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    i {
+        color: var(--primary-color, #07adcc);
+    }
+}
+
+.LinkRobinsSupport-new {
+    flex-shrink: 0;
+}
+
+// --- Status badges --------------------------------------------------
+
+.LinkRobinsSupport-status {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+
+    &.is-open {
+        background: rgba(7, 173, 204, 0.15);
+        color: #07adcc;
+    }
+    &.is-progress {
+        background: rgba(243, 156, 18, 0.15);
+        color: #f39c12;
+    }
+    &.is-awaiting {
+        background: rgba(155, 89, 182, 0.15);
+        color: #9b59b6;
+    }
+    &.is-resolved {
+        background: rgba(46, 204, 113, 0.15);
+        color: #27ae60;
+    }
+    &.is-closed {
+        background: rgba(127, 140, 141, 0.15);
+        color: #7f8c8d;
+    }
+}
+
+// --- Filters --------------------------------------------------------
+
+.LinkRobinsSupport-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.LinkRobinsSupport-filter {
+    background: transparent;
+    border: 1px solid var(--control-bg, rgba(0,0,0,0.08));
+    color: var(--text-color, inherit);
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s;
+
+    &:hover {
+        background: var(--control-bg, rgba(0,0,0,0.04));
+    }
+
+    &.is-active {
+        background: var(--primary-color, #07adcc);
+        border-color: var(--primary-color, #07adcc);
+        color: var(--primary-text-color, #fff);
+    }
+}
+
+// --- List -----------------------------------------------------------
+
+.LinkRobinsSupport-list {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--control-bg, rgba(0,0,0,0.08));
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.LinkRobinsSupport-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--control-bg, rgba(0,0,0,0.06));
+    text-decoration: none;
+    color: inherit;
+    transition: background 0.12s;
+
+    &:hover {
+        background: var(--control-bg, rgba(0,0,0,0.03));
+        text-decoration: none;
+    }
+
+    &:last-child {
+        border-bottom: 0;
+    }
+}
+
+.LinkRobinsSupport-row-main {
+    flex: 1;
+    min-width: 0;
+}
+
+.LinkRobinsSupport-row-subject {
+    font-weight: 600;
+    margin-bottom: 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.LinkRobinsSupport-row-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    font-size: 0.8rem;
+    color: var(--muted-color, #888);
+}
+
+.LinkRobinsSupport-row-cat {
+    font-weight: 600;
+}
+
+.LinkRobinsSupport-row-user {}
+
+.LinkRobinsSupport-row-date {}
+
+.LinkRobinsSupport-row-status {
+    flex-shrink: 0;
+}
+
+// --- Empty state ----------------------------------------------------
+
+.LinkRobinsSupport-empty {
+    padding: 32px 24px;
+    text-align: center;
+    color: var(--muted-color, #888);
+    background: var(--control-bg, rgba(0,0,0,0.02));
+    border-radius: 8px;
+    line-height: 1.5;
+
+    &.LinkRobinsSupport-empty--blocked {
+        color: #c0392b;
+        background: rgba(192, 57, 43, 0.06);
+    }
+}
+
+// --- Compose form ---------------------------------------------------
+
+.LinkRobinsSupport-form {
+    background: var(--body-bg, transparent);
+
+    .Form-group {
+        margin-bottom: 20px;
+    }
+
+    label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 6px;
+    }
+}
+
+.LinkRobinsSupport-body {
+    font-family: inherit;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    width: 100%;
+    resize: vertical;
+}
+
+.LinkRobinsSupport-form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+// --- Ticket view ----------------------------------------------------
+
+.LinkRobinsSupport-ticket-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    margin-bottom: 32px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--control-bg, rgba(0,0,0,0.08));
+}
+
+.LinkRobinsSupport-ticket-titleRow {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+
+    .LinkRobinsSupport-title {
+        flex: 1;
+        font-size: 1.5rem;
+        margin: 0;
+    }
+}
+
+.LinkRobinsSupport-back {
+    padding: 6px 10px !important;
+}
+
+.LinkRobinsSupport-ticket-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    font-size: 0.85rem;
+    color: var(--muted-color, #888);
+}
+
+.LinkRobinsSupport-decision {
+    font-size: 0.9rem;
+    margin-top: 4px;
+
+    .LinkRobinsSupport-decision-pending {
+        color: #f39c12;
+        font-weight: 600;
+        text-transform: capitalize;
+    }
+    .LinkRobinsSupport-decision-accepted {
+        color: #27ae60;
+        font-weight: 600;
+        text-transform: capitalize;
+    }
+    .LinkRobinsSupport-decision-rejected {
+        color: #c0392b;
+        font-weight: 600;
+        text-transform: capitalize;
+    }
+}
+
+// --- Staff controls bar ---------------------------------------------
+
+.LinkRobinsSupport-staffBar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 24px;
+    padding: 12px 16px;
+    background: var(--control-bg, rgba(0,0,0,0.03));
+    border-radius: 8px;
+}
+
+.LinkRobinsSupport-staffBar-label {
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--muted-color, #888);
+}
+
+.LinkRobinsSupport-staffBar-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.LinkRobinsSupport-staffBar-assign {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding-left: 12px;
+    margin-left: auto;
+    border-left: 1px solid rgba(127,127,127,0.18);
+}
+
+.LinkRobinsSupport-staffBtn {
+    font-size: 0.8rem !important;
+    padding: 5px 12px !important;
+
+    &.is-active {
+        background: var(--primary-color, #07adcc) !important;
+        color: var(--primary-text-color, #fff) !important;
+        cursor: default;
+    }
+}
+
+// --- Replies --------------------------------------------------------
+
+.LinkRobinsSupport-replies {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.LinkRobinsSupport-reply {
+    background: var(--body-bg, transparent);
+    border: 1px solid var(--control-bg, rgba(0,0,0,0.08));
+    border-radius: 8px;
+    padding: 14px 18px;
+
+    &.is-internal {
+        background: rgba(243, 156, 18, 0.05);
+        border-color: rgba(243, 156, 18, 0.3);
+        border-left: 4px solid #f39c12;
+    }
+}
+
+.LinkRobinsSupport-reply-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+    font-size: 0.85rem;
+    color: var(--muted-color, #888);
+    flex-wrap: wrap;
+}
+
+.LinkRobinsSupport-reply-author {
+    font-weight: 600;
+    color: var(--text-color, inherit);
+}
+
+.LinkRobinsSupport-reply-date {}
+
+.LinkRobinsSupport-reply-internalBadge {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 10px;
+    background: rgba(243, 156, 18, 0.15);
+    color: #f39c12;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+
+    i { font-size: 0.85em; }
+}
+
+.LinkRobinsSupport-reply-body {
+    line-height: 1.6;
+    word-wrap: break-word;
+
+    > *:first-child { margin-top: 0; }
+    > *:last-child  { margin-bottom: 0; }
+}
+
+// --- Reply form -----------------------------------------------------
+
+.LinkRobinsSupport-replyForm {
+    background: var(--control-bg, rgba(0,0,0,0.02));
+    border: 1px solid var(--control-bg, rgba(0,0,0,0.08));
+    border-radius: 8px;
+    padding: 14px 18px;
+}
+
+.LinkRobinsSupport-replyForm-actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-top: 10px;
+}
+
+.LinkRobinsSupport-internalToggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    color: var(--muted-color, #888);
+    cursor: pointer;
+    user-select: none;
+    margin-right: auto;
+    margin-bottom: 0;
+}
+
+// --- File attachments -----------------------------------------------
+
+.LinkRobinsSupport-attachBtn {
+    // Render the label-wrapped file input as a button. The hidden
+    // <input type="file"> is inside this label so clicking the button
+    // opens the file picker.
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    margin-bottom: 0;
+    font-weight: normal;
+
+    i { opacity: 0.7; }
+
+    &[disabled],
+    &.disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+}
+
+.LinkRobinsSupport-uploadStatus {
+    margin-top: 8px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    background: var(--control-bg, rgba(0,0,0,0.04));
+    font-size: 0.85rem;
+    color: var(--muted-color, #888);
+}
+
+.LinkRobinsSupport-uploadAlert {
+    margin-top: 8px;
+}

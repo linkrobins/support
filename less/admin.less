@@ -1,0 +1,139 @@
+// Link Robins Support — admin extension page styles
+//
+// Mirrors the blog extension's admin chrome so the page reads as
+// "an extension admin page" rather than content stuck against the
+// chrome edges.
+
+.LinkRobinsSupportAdmin {
+    padding-top: 30px;
+    padding-bottom: 30px;
+}
+
+.LinkRobinsSupportAdmin-tabs {
+    display: flex;
+    gap: 4px;
+    border-bottom: 2px solid var(--control-bg, rgba(0,0,0,0.08));
+    margin-bottom: 24px;
+}
+
+.LinkRobinsSupportAdmin-tab {
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: 10px 18px;
+    margin-bottom: -2px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--muted-color, #888);
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+
+    &:hover {
+        color: var(--text-color, inherit);
+    }
+    &.is-active {
+        color: var(--primary-color, #07adcc);
+        border-bottom-color: var(--primary-color, #07adcc);
+    }
+}
+
+.LinkRobinsSupportAdmin-section {
+    margin-bottom: 32px;
+}
+
+.LinkRobinsSupportAdmin-sectionHeader {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 16px;
+
+    h3 {
+        margin: 0 0 4px;
+    }
+
+    .helpText {
+        margin: 0;
+        font-size: 0.85rem;
+        color: var(--muted-color, #888);
+        max-width: 600px;
+    }
+}
+
+.LinkRobinsSupportAdmin-empty {
+    padding: 24px;
+    text-align: center;
+    color: var(--muted-color, #888);
+    background: var(--control-bg, rgba(0,0,0,0.03));
+    border-radius: 8px;
+}
+
+// --- Categories table -----------------------------------------------
+
+.LinkRobinsSupportAdmin-catTable {
+    width: 100%;
+    border-collapse: collapse;
+
+    th, td {
+        padding: 10px 12px;
+        text-align: left;
+        border-bottom: 1px solid var(--control-bg, rgba(0,0,0,0.06));
+    }
+
+    th {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--muted-color, #888);
+        font-weight: 600;
+    }
+
+    tbody tr:hover {
+        background: var(--control-bg, rgba(0,0,0,0.02));
+    }
+}
+
+.LinkRobinsSupportAdmin-mono {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.85rem;
+    color: var(--muted-color, #888);
+}
+
+.LinkRobinsSupportAdmin-tag {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+
+    &.is-appeal {
+        background: rgba(192, 57, 43, 0.12);
+        color: #c0392b;
+    }
+}
+
+.LinkRobinsSupportAdmin-actions {
+    text-align: right;
+    white-space: nowrap;
+
+    .Button {
+        padding: 4px 8px !important;
+    }
+}
+
+.LinkRobinsSupportAdmin-danger {
+    color: #c0392b !important;
+}
+
+.LinkRobinsSupportAdmin-checkbox {
+    display: flex !important;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500 !important;
+
+    input[type="checkbox"] {
+        margin: 0;
+    }
+}
