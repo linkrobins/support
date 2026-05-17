@@ -6,9 +6,12 @@ use Flarum\Database\AbstractModel;
 use Flarum\User\User;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class SupportTicket extends AbstractModel
 {
+    use SoftDeletes;
+
     protected $table = 'linkrobins_support_tickets';
 
     public $timestamps = true;
@@ -48,6 +51,10 @@ class SupportTicket extends AbstractModel
 
     protected $casts = [
         'last_reply_at' => 'datetime',
+    ];
+
+    protected $dates = [
+        'deleted_at',
     ];
 
     public function category(): BelongsTo

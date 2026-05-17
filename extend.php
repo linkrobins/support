@@ -44,11 +44,6 @@ return [
     (new Extend\ServiceProvider())
         ->register(SupportServiceProvider::class),
 
-    // Register searchers + filters so Flarum's API Index endpoints
-    // accept `filter[status]=open`, `filter[mine]=1`, and friends.
-    // Flarum 2 enforces a strict allowlist on top-level query
-    // parameters and routes filter-shaped params through this
-    // infrastructure -- there is no shorter path.
     (new Extend\SearchDriver(DatabaseSearchDriver::class))
         ->addSearcher(SupportTicket::class, TicketSearcher::class)
         ->addFilter(TicketSearcher::class, Filters\StatusFilter::class)
@@ -57,22 +52,13 @@ return [
         ->addSearcher(SupportReply::class, ReplySearcher::class)
         ->addFilter(ReplySearcher::class, Filters\TicketIdFilter::class),
 
-    // Notifications. Both blueprints opt into alert + email by default
-    // so users get notified without needing to flip a switch. Each
-    // recipient can still toggle them off in their notification prefs.
     (new Extend\Notification())
         ->type(NewSupportReplyBlueprint::class,  ['alert', 'email'])
         ->type(NewSupportTicketBlueprint::class, ['alert', 'email']),
 
-    // Make the email view templates discoverable under the
-    // `linkrobins-support::` namespace so the Mailable interface's
-    // `getEmailViews()` resolves correctly.
     (new Extend\View())
         ->namespace('linkrobins-support', __DIR__ . '/views'),
 
-    // Expose support_appeal_banned on the User resource so the admin UI
-    // can read and toggle it. Writable only by admins -- this is a
-    // moderation action, not a self-service preference.
     (new Extend\ApiResource(\Flarum\Api\Resource\UserResource::class))
         ->fields(fn () => [
             \Flarum\Api\Schema\Boolean::make('supportAppealBanned')
@@ -81,18 +67,12 @@ return [
                     return $context->getActor()->isAdmin();
                 })
                 ->visible(function ($model, \Flarum\Api\Context $context) {
-                    // Only the user themselves or an admin can see this
-                    // field. Other users have no business knowing whether
-                    // someone else is appeal-banned.
                     $actor = $context->getActor();
                     if ($actor->isGuest()) return false;
                     return $actor->isAdmin() || (int) $actor->id === (int) $model->id;
                 }),
         ]),
 
-    // Forum-payload flags so the frontend knows what to render without
-    // probing the policy itself. All wrapped in try/catch so a broken
-    // policy can't 500 the entire forum payload.
     (new Extend\ApiResource(\Flarum\Api\Resource\ForumResource::class))
         ->fields(fn () => [
             \Flarum\Api\Schema\Boolean::make('canCreateSupportTicket')
@@ -123,8 +103,6 @@ return [
                     }
                 }),
 
-            // Expose the per-user appeal-ban flag so the frontend can hide
-            // the "file an appeal" affordance and explain why.
             \Flarum\Api\Schema\Boolean::make('supportAppealBanned')
                 ->get(function ($model, \Flarum\Api\Context $context) {
                     $actor = $context->getActor();
@@ -138,14 +116,6 @@ return [
                     }
                 }),
 
-            // Expose whether the actor is currently suspended (via the
-            // flarum/suspend extension). The frontend uses this to show
-            // only appeal categories on the compose page, since suspended
-            // users can't file general tickets.
-            //
-            // Naming caveat: we intentionally don't call this "isBanned"
-            // because Flarum doesn't have a built-in concept of banning.
-            // "Suspended" is what the column actually represents.
             \Flarum\Api\Schema\Boolean::make('supportSuspended')
                 ->get(function ($model, \Flarum\Api\Context $context) {
                     $actor = $context->getActor();
@@ -160,8 +130,6 @@ return [
                 }),
         ]),
 
-    // Default rate-limit settings; admins can override from the extension
-    // settings page (next session).
     (new Extend\Settings())
         ->default('linkrobins-support.appeal_limit_per_window',    '3')
         ->default('linkrobins-support.appeal_window_days',         '30')

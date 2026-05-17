@@ -4,6 +4,18 @@
     "type": "flarum-extension",
     "license": "MIT",
     "keywords": ["flarum", "support", "tickets", "helpdesk", "appeals"],
+    "homepage": "https://linkrobins.com",
+    "support": {
+        "issues": "https://linkrobins.com/support",
+        "source": "https://linkrobins.com"
+    },
+    "authors": [
+        {
+            "name": "Link Robins",
+            "homepage": "https://linkrobins.com",
+            "role": "Developer"
+        }
+    ],
     "require": {
         "php": "^8.2",
         "flarum/core": "^2.0"

@@ -37,13 +37,6 @@
         } catch (e) { return false; }
     }
 
-    // Tell flarum/tags to skip rendering its per-tag list in the
-    // IndexSidebar. The Tags extension reads `app.current.get('noTagsList')`
-    // at navItems() render time -- when it's true, the long per-tag list
-    // is omitted but the standalone "Tags" link is still added (so users
-    // can still jump to /tags). We call this from every support page's
-    // oninit; Flarum constructs a fresh PageState per navigation in
-    // Page.oninit() above, so this flag never leaks to non-support pages.
     function suppressTagsList() {
         try {
             if (app.current && typeof app.current.set === 'function') {
@@ -59,10 +52,6 @@
     }
 
     function isUserSuspended() {
-        // True when the actor's account is currently suspended via the
-        // flarum/suspend extension. The backend reports this via the
-        // `supportSuspended` attribute on the forum payload (NOT by
-        // group membership -- Flarum has no built-in "Banned" group).
         try {
             return !!readForumAttribute('supportSuspended');
         } catch (e) { return false; }
@@ -117,6 +106,22 @@
         return findIncluded(included, 'users', rel.id);
     }
 
+    function relatedEditedBy(reply, included) {
+        var rel = reply && reply.relationships && reply.relationships.editedBy && reply.relationships.editedBy.data;
+        if (!rel) return null;
+        return findIncluded(included, 'users', rel.id);
+    }
+
+    function showError(message) {
+        try {
+            if (app && app.alerts && typeof app.alerts.show === 'function') {
+                app.alerts.show({ type: 'error' }, message);
+                return;
+            }
+        } catch (e) {}
+        showError(message);
+    }
+
     // --- API helpers ----------------------------------------------------
 
     function apiUrl() {
@@ -151,7 +156,7 @@
                 sort:    'createdAt',
                 filter:  { ticketId: ticketId },
                 page:    { limit: 200 },
-                include: 'user',
+                include: 'user,editedBy',
             },
         });
     }
@@ -178,7 +183,6 @@
                 },
             },
         }).then(function (resp) {
-            // Post the initial body as the first reply.
             var ticket = resp.data;
             if (!ticket) return resp;
             return postReply(ticket.id, body, false).then(function () { return resp; });
@@ -204,15 +208,6 @@
         });
     }
 
-    /**
-     * Upload a FileList through fof/upload's API and append the returned
-     * BBCode markup to `target[bodyKey]`. Updates `uploadingCount` and
-     * `uploadError` on the target so views can render progress / errors.
-     *
-     * Pulled out of the compose/reply forms so both use one code path.
-     * If fof/upload isn't installed the upload affordance isn't rendered,
-     * so we never reach here in that case.
-     */
     function uploadFilesToBody(target, files, bodyKey) {
         target.uploadError    = null;
         target.uploadingCount = (target.uploadingCount || 0) + files.length;
@@ -234,9 +229,6 @@
             var inserted = '';
             data.forEach(function (file) {
                 var attrs = (file && file.attributes) || {};
-                // fof/upload returns `bbcode` for posts. If it's missing
-                // (older versions), build a minimal upl-file marker from
-                // the uuid + size as a safe fallback.
                 var bb = attrs.bbcode;
                 if (!bb && attrs.uuid) {
                     var name = attrs.base_name || attrs.uuid;
@@ -278,13 +270,6 @@
         return app.request({
             method: 'PATCH',
             url:    apiUrl() + '/linkrobins-support-tickets/' + encodeURIComponent(id),
-            // ?include matches what fetchTicket asks for so the response
-            // carries the updated assignedStaff user (plus category/owner)
-            // inside `included`. Without this, JSON:API spec lets the
-            // server omit related resources -- and Flarum does -- which
-            // means relatedAssignedStaff() returns null and the label
-            // renders as "Unassigned" until the page reloads, even though
-            // ticket.relationships.assignedStaff.data.id was updated.
             params: { include: 'user,category,assignedStaff' },
             body:   { data: data },
         });
@@ -327,6 +312,7 @@
         var IndexSidebar  = null;
         var SelectDropdown = null;
         var ItemListCtor   = null;
+        var Separator      = null;
         try { Page             = flarum.reg.get('core', 'common/components/Page'); }             catch (e) {}
         try { LinkButton       = flarum.reg.get('core', 'common/components/LinkButton'); }       catch (e) {}
         try { Button           = flarum.reg.get('core', 'common/components/Button'); }           catch (e) {}
@@ -335,72 +321,38 @@
         try { IndexSidebar     = flarum.reg.get('core', 'forum/components/IndexSidebar'); }      catch (e) {}
         try { SelectDropdown   = flarum.reg.get('core', 'common/components/SelectDropdown'); }   catch (e) {}
         try { ItemListCtor     = flarum.reg.get('core', 'common/utils/ItemList'); }              catch (e) {}
+        try { Separator        = flarum.reg.get('core', 'common/components/Separator'); }        catch (e) {}
+        var Dropdown = null;
+        try { Dropdown         = flarum.reg.get('core', 'common/components/Dropdown'); }         catch (e) {}
 
         if (!Page) {
             console.error('[linkrobins/support] Page component not available; aborting.');
             return;
         }
 
-        // Build the support sidebar class first because the pages need it
-        // as a constructor argument. If any of the deps are missing we
-        // pass null and the pages render their content directly (no
-        // sidebar wrapper, no "New ticket" button accessible from the
-        // sidebar) -- this is a degraded layout but the page still
-        // works on a Flarum build that doesn't expose one of these
-        // components. Users in that fallback path can still reach the
-        // compose page via the route URL directly.
         var SupportIndexSidebar = (IndexSidebar && LinkButton && SelectDropdown && ItemListCtor)
-            ? makeSupportIndexSidebar(IndexSidebar, LinkButton, Button, SelectDropdown, ItemListCtor)
+            ? makeSupportIndexSidebar(IndexSidebar, LinkButton, Button, SelectDropdown, ItemListCtor, Separator)
             : null;
 
         var IndexPage   = makeIndexPage(Page, LoadingIndicator, PageStructure, SupportIndexSidebar);
         var ComposePage = makeComposePage(Page, LoadingIndicator, PageStructure, SupportIndexSidebar);
-        var ShowPage    = makeShowPage(Page, LoadingIndicator, PageStructure, SupportIndexSidebar);
+        var ShowPage    = makeShowPage(Page, LoadingIndicator, PageStructure, SupportIndexSidebar, Button, Dropdown);
 
-        // Route ordering matters: static paths first, then `:status`,
-        // then the catch-all `:id`. Mithril matches in registration
-        // order, so /support/new and /support/status/open would otherwise
-        // be claimed by the wider /support/:id pattern.
         app.routes['linkrobins-support.index']    = { path: BASE_PATH,                       component: IndexPage };
         app.routes['linkrobins-support.compose']  = { path: BASE_PATH + '/new',              component: ComposePage };
         app.routes['linkrobins-support.filtered'] = { path: BASE_PATH + '/status/:status',   component: IndexPage };
         app.routes['linkrobins-support.show']     = { path: BASE_PATH + '/:id',              component: ShowPage };
 
-        // Register a thin SupportTicket model so Flarum's store can
-        // hydrate `notification.subject()` when it surfaces a
-        // linkrobins-support-tickets resource. Without this, the
-        // notification dropdown would render "Unknown notification type"
-        // and the subject().attribute() lookups in our notification
-        // components would fail.
-        //
-        // IMPORTANT: Flarum's Model is an ES6 class, and ES6 classes can
-        // only be subclassed with `class X extends Y` syntax. Using the
-        // old ES5 prototype-chain pattern here (Model.apply(this) +
-        // Object.create(Model.prototype)) throws
-        //   "Class constructor a cannot be invoked without 'new'"
-        // because V8 refuses to invoke a class constructor without `new`.
-        // That error blocks the entire notification pipeline -- when the
-        // notification dropdown tries to push a payload through the store
-        // and the store calls `new SupportTicketModel()`, construction
-        // fails synchronously, and the whole bell-dropdown never renders.
         try {
             var Model = flarum.reg.get('core', 'common/Model');
             if (Model && app.store && app.store.models && !app.store.models['linkrobins-support-tickets']) {
                 var SupportTicketModel = class extends Model {};
-                // Minimal attribute helpers; the raw payload is still
-                // accessible via attribute('subject') / attribute('status')
-                // on every Flarum Model so we don't need to wire each one
-                // unless a notification component needs it. The model
-                // existing is what unblocks store hydration.
                 app.store.models['linkrobins-support-tickets'] = SupportTicketModel;
             }
         } catch (e) {
             console.warn('[linkrobins/support] could not register ticket model on store:', e);
         }
 
-        // Register notification components so the bell-icon dropdown can
-        // render our notification types instead of falling back to the
-        // generic "Unknown notification type" message.
         try {
             var Notification = flarum.reg.get('core', 'forum/components/Notification');
             if (Notification && app.notificationComponents) {
@@ -413,23 +365,34 @@
             console.warn('[linkrobins/support] could not register notification components:', e);
         }
 
-        // Add the notification types to the user's preferences grid so
-        // they can opt in/out per driver (alert / email).
         try {
             var extMod0 = flarum.reg.get('core', 'common/extend');
             var extend0 = extMod0 && extMod0.extend;
             var NotificationGrid = flarum.reg.get('core', 'forum/components/NotificationGrid');
             if (NotificationGrid && typeof extend0 === 'function') {
+                var t = function (key, fallback) {
+                    try {
+                        var out = app.translator.trans(key);
+                        if (out && typeof out === 'string') return out;
+                    } catch (e) {}
+                    return fallback;
+                };
                 extend0(NotificationGrid.prototype, 'notificationTypes', function (items) {
                     items.add('linkrobinsSupportNewReply', {
                         name: 'linkrobinsSupportNewReply',
                         icon: 'fas fa-life-ring',
-                        label: 'Someone replies to your support ticket',
+                        label: t(
+                            'linkrobins-support.forum.settings.notify_new_reply_label',
+                            'Someone replies to your support ticket'
+                        ),
                     });
                     items.add('linkrobinsSupportNewTicket', {
                         name: 'linkrobinsSupportNewTicket',
                         icon: 'fas fa-ticket-alt',
-                        label: 'A new support ticket is opened',
+                        label: t(
+                            'linkrobins-support.forum.settings.notify_new_ticket_label',
+                            'A new support ticket is opened'
+                        ),
                     });
                 });
             }
@@ -437,14 +400,6 @@
             console.warn('[linkrobins/support] could not extend NotificationGrid:', e);
         }
 
-        // Add a "Support" link to Flarum's main sidebar so the page is
-        // discoverable for everyone. The link stays visible on support
-        // pages too -- earlier versions hid it there on the theory that
-        // the support's own sidebar would duplicate it, but the support
-        // sidebar's filter items ("My tickets", "All", "Open", ...) are
-        // a different thing from the generic entry-point link, and
-        // hiding "Support" only made it harder to navigate back to the
-        // default view from a filtered route.
         try {
             var IndexSidebar2 = flarum.reg.get('core', 'forum/components/IndexSidebar');
             var extMod        = flarum.reg.get('core', 'common/extend');
@@ -471,9 +426,6 @@
                 return 'fas fa-life-ring';
             }
             href() {
-                // The notification subject is the ticket. If for any
-                // reason it isn't hydrated, fall back to the support
-                // index so the user lands somewhere useful.
                 var subj = this.attrs && this.attrs.notification
                     ? this.attrs.notification.subject()
                     : null;
@@ -543,13 +495,6 @@
 
     // --- Sidebar filter metadata ---------------------------------------
 
-    // Single source of truth for the sidebar's filter items and the
-    // index page's filter state. `id` doubles as the URL segment
-    // (/support/status/<id>) and the server-side filter[status] value
-    // for actual statuses. The non-status entries ('mine', 'all') are
-    // resolved specially in SupportIndexPage._load().
-    //
-    // Order here is the order shown in the sidebar.
     var FILTER_OPTIONS = [
         { id: 'mine',          label: 'My tickets',     icon: 'fas fa-user',          staffOnly: false },
         { id: 'all',           label: 'All',            icon: 'fas fa-inbox',         staffOnly: true  },
@@ -561,22 +506,13 @@
     ];
 
     function filterHrefFor(id) {
-        // 'mine' is the default index route, so it has no /status/... suffix.
-        // Everything else lives under /status/<id>.
-        var bp = basePath();
-        if (id === 'mine') return bp + BASE_PATH;
-        return bp + BASE_PATH + '/status/' + id;
+        return basePath() + BASE_PATH + '/status/' + id;
     }
 
     // --- Support sidebar -----------------------------------------------
 
-    function makeSupportIndexSidebar(IndexSidebar, LinkButton, Button, SelectDropdown, ItemListCtor) {
+    function makeSupportIndexSidebar(IndexSidebar, LinkButton, Button, SelectDropdown, ItemListCtor, Separator) {
         return class SupportIndexSidebar extends IndexSidebar {
-            // The whole sidebar: a primary "New ticket" button, a
-            // SelectDropdown wrapping our nav items, then any items
-            // contributed by the parent IndexSidebar (so users still see
-            // "All Discussions", Tags, etc., when they're on a support
-            // page).
             items() {
                 var items = new ItemListCtor();
 
@@ -600,24 +536,6 @@
                     );
                 }
 
-                // Nav items dropdown -- exactly the same shape as the
-                // forum-side IndexSidebar uses for "All Discussions",
-                // "Tags", etc. Wrapping in SelectDropdown gives us the
-                // mobile-friendly collapsing behavior that Flarum's
-                // sidebars use everywhere else.
-                //
-                // defaultLabel is what SelectDropdown shows on the
-                // toggle button when no child item has `active: true`.
-                // Without it, the toggle would render with just the
-                // caret arrow and no text -- this is exactly what
-                // happens on ticket detail and compose pages, where we
-                // pass activeFilter: null (no filter is "active" because
-                // the user is viewing a specific ticket, not a filtered
-                // list). Falling back to "Support" gives the toggle a
-                // meaningful label in those contexts. On filter routes
-                // (/support, /support/status/open, etc) the active
-                // filter's label is used instead, which matches what
-                // Flarum's own /all and /tags pages do.
                 items.add(
                     'nav',
                     m(SelectDropdown, {
@@ -632,11 +550,7 @@
             }
 
             navItems() {
-                // Start from the parent IndexSidebar's nav items so users
-                // still see "All Discussions" / Tags / etc when they're
-                // browsing tickets. Wrap in try/catch because some pages
-                // do not set up the parent state the way IndexSidebar
-                // expects.
+
                 var items;
                 try {
                     items = super.navItems();
@@ -646,13 +560,6 @@
                 }
                 if (!items) return new ItemListCtor();
 
-                // Defense in depth: even though we set noTagsList=true in
-                // every support page's oninit, if that didn't take effect
-                // for some reason (e.g. ordering), the tags extension's
-                // navItems contribution emits a `separator` item just
-                // before the tag list. Strip it so we don't see a lone
-                // horizontal rule between the inherited forum items and
-                // our support filter section.
                 try {
                     if (typeof items.has === 'function' && items.has('separator')
                         && typeof items.remove === 'function') {
@@ -661,30 +568,19 @@
                 } catch (e) {}
 
                 var canHandle = canHandleSupportTickets();
-                // activeFilter can legitimately be null (on a ticket
-                // detail page or the compose page -- those aren't a
-                // filter view at all). When null, we don't want "My
-                // tickets" to highlight just because that's the default
-                // filter id; instead, no item is active. We only fall
-                // back to 'mine' when the caller passes undefined
-                // (which would mean "I didn't specify"), not when they
-                // explicitly pass null (which means "no filter").
                 var activeAttr = (this.attrs && Object.prototype.hasOwnProperty.call(this.attrs, 'activeFilter'))
                     ? this.attrs.activeFilter
                     : 'mine';
                 var currentFilter = activeAttr; // may be null (= nothing active)
 
-                // Section heading. -10 places it below the inherited
-                // forum items, separating "All Discussions / Tags" from
-                // the support filters visually.
-                items.add(
-                    'supportHeading',
-                    m('h4', { className: 'LinkRobinsSupport-sidebar-sectionHeading' }, 'Support'),
-                    -10
-                );
+                if (Separator) {
+                    items.add(
+                        'linkrobinsSupportSeparator',
+                        m(Separator),
+                        -11
+                    );
+                }
 
-                // Filter items. Non-staff users only see "My tickets"
-                // (the backend rejects any other filter for them anyway).
                 FILTER_OPTIONS.forEach(function (opt, i) {
                     if (opt.staffOnly && !canHandle) return;
                     items.add(
@@ -692,15 +588,9 @@
                         m(LinkButton, {
                             href:   filterHrefFor(opt.id),
                             icon:   opt.icon,
-                            // We pass active explicitly so it works both
-                            // for /support (mine, where m.route matches
-                            // the index path) and the /support/status/...
-                            // routes. LinkButton's auto-detection would
-                            // also work but this avoids edge cases when
-                            // we're on /support/<id> (a ticket detail).
                             active: currentFilter === opt.id,
                         }, opt.label),
-                        -11 - i
+                        -12 - i
                     );
                 });
 
@@ -720,47 +610,33 @@
                 this.error    = null;
                 this.tickets  = [];
                 this.included = [];
-                // The active filter comes from the route param (set by
-                // /support/status/:status) or defaults to 'mine' for
-                // /support. The sidebar links navigate between routes
-                // rather than mutating local state, so this stays in
-                // sync naturally on navigation.
                 this.filter = this._filterFromAttrs(this.attrs);
                 try { app.setTitle('Support'); } catch (e) {}
                 this._lastLoadedFilter = this.filter;
                 this._load();
             }
 
-            // Mithril does NOT re-run oninit when only the route attrs
-            // change for the same component class. We detect a filter
-            // change here and re-load. (For comparison: when the user
-            // clicks "Open" while on /support, Mithril rebuilds with
-            // attrs.status='open' but the existing IndexPage instance
-            // is reused.)
             onbeforeupdate(vnode) {
                 var nextFilter = this._filterFromAttrs(vnode.attrs);
                 if (nextFilter !== this._lastLoadedFilter) {
                     this.filter = nextFilter;
                     this._lastLoadedFilter = nextFilter;
-                    // Defer the actual load to a microtask so onbeforeupdate
-                    // doesn't run a fetch synchronously during a redraw.
+
                     var self = this;
                     Promise.resolve().then(function () { self._load(); });
                 }
                 return true;
             }
 
-            // Translate route attrs into a filter id from FILTER_OPTIONS.
-            // Defaults to 'mine' when no status is given. Unknown values
-            // (e.g. a typo'd URL) also fall back to 'mine' so the page
-            // doesn't render against a filter the server would reject.
+
             _filterFromAttrs(attrs) {
+                var defaultFilter = canHandleSupportTickets() ? 'open' : 'mine';
                 var s = attrs && attrs.status;
-                if (!s) return 'mine';
+                if (!s) return defaultFilter;
                 for (var i = 0; i < FILTER_OPTIONS.length; i++) {
                     if (FILTER_OPTIONS[i].id === s) return s;
                 }
-                return 'mine';
+                return defaultFilter;
             }
 
             _load() {
@@ -768,8 +644,6 @@
                 self.loading = true;
                 m.redraw();
 
-                // Filters must be sent as filter[name] (Flarum 2 rejects
-                // unknown top-level query parameters), so we nest them.
                 var filter = {};
                 if (canHandleSupportTickets() && self.filter !== 'mine') {
                     if (self.filter && self.filter !== 'all') {
@@ -805,10 +679,6 @@
                     self._renderList(),
                 ]);
 
-                // Render with PageStructure so the SupportIndexSidebar
-                // appears alongside the content (and collapses on mobile
-                // into the same SelectDropdown menu Flarum's other index
-                // pages use).
                 if (PageStructure && SupportIndexSidebar) {
                     return m(PageStructure, {
                         className: 'IndexPage LinkRobinsSupport-page',
@@ -816,12 +686,7 @@
                     }, content);
                 }
 
-                // Fallback when PageStructure isn't available -- render
-                // the content without a sidebar. Filter switching is
-                // only reachable via direct URL navigation in this path
-                // (no nav UI is rendered). This path should not trigger
-                // on Flarum 2 builds that expose PageStructure, which
-                // is virtually all of them.
+
                 return m('div', { className: 'IndexPage LinkRobinsSupport-page' }, [
                     content,
                 ]);
@@ -842,10 +707,7 @@
             }
 
             _renderHeader() {
-                // Header now only carries the page title. The "New
-                // ticket" button moved to the sidebar (mirrors the blog's
-                // Compose placement), and the filter pills are replaced
-                // by sidebar nav items.
+
                 var label = this._headingFor(this.filter);
                 return m('header', { className: 'LinkRobinsSupport-header' }, [
                     m('h1', { className: 'LinkRobinsSupport-title' }, [
@@ -854,9 +716,7 @@
                 ]);
             }
 
-            // Heading shown in the page header. Reflects which filter the
-            // user is currently viewing so the page title gives context
-            // beyond "Support".
+
             _headingFor(filter) {
                 if (!filter || filter === 'mine') return 'Support';
                 for (var i = 0; i < FILTER_OPTIONS.length; i++) {
@@ -972,12 +832,7 @@
                     });
             }
 
-            // Render `inner` (typically the container div) inside the
-            // support PageStructure so the sidebar (with My tickets /
-            // filters / New ticket button) appears alongside the form.
-            // Falls back to plain wrapping when PageStructure isn't
-            // available -- this keeps the page usable on Flarum builds
-            // that don't expose the component.
+
             _wrap(inner) {
                 var self = this;
                 if (PageStructure && SupportIndexSidebar) {
@@ -1045,13 +900,9 @@
                 return self._wrap(
                     m('div', { className: 'LinkRobinsSupport-container' }, [
                         m('header', { className: 'LinkRobinsSupport-header' }, [
+
                             m('h1', { className: 'LinkRobinsSupport-title' },
                                 isUserSuspended() ? 'File an appeal' : 'New support ticket'),
-                            m('a', {
-                                href:    basePath() + BASE_PATH,
-                                className: 'Button Button--text',
-                                onclick: function (e) { safeNavigate(basePath() + BASE_PATH, e); },
-                            }, [m('i', { className: 'fas fa-arrow-left' }), ' Back']),
                         ]),
 
                         self.error ? m('div', { className: 'Alert Alert--danger' }, [
@@ -1091,6 +942,15 @@
                                     disabled:    self.saving,
                                     placeholder: 'Describe the issue in detail. Markdown is supported.',
                                     oninput:     function (e) { self.body = e.target.value; },
+
+                                    onkeydown: function (e) {
+                                        var isSubmit = (e.key === 'Enter' || e.keyCode === 13)
+                                            && (e.ctrlKey || e.metaKey);
+                                        if (isSubmit && canSave) {
+                                            e.preventDefault();
+                                            self._submit();
+                                        }
+                                    },
                                 }),
                                 self.uploadError ? m('div', { className: 'Alert Alert--danger LinkRobinsSupport-uploadAlert' },
                                     self.uploadError) : null,
@@ -1099,16 +959,28 @@
                                     (self.uploadingCount === 1 ? '' : 's') + '…') : null,
                             ]),
                             m('div', { className: 'LinkRobinsSupport-form-actions' }, [
-                                (app.forum && app.forum.attribute('fof-upload.canUpload')) ? m('label', {
-                                    className: 'Button Button--default LinkRobinsSupport-attachBtn',
+
+                                (app.forum && app.forum.attribute('fof-upload.canUpload')) ? m('span', {
+                                    className: 'LinkRobinsSupport-attachBtnWrap',
                                 }, [
-                                    m('i', { className: 'fas fa-paperclip' }),
-                                    ' Attach files',
+                                    m('button', {
+                                        type:      'button',
+                                        className: 'Button Button--default LinkRobinsSupport-attachBtn',
+                                        disabled:  self.saving || self.uploadingCount > 0,
+                                        onclick:   function () {
+                                            if (self._composeFileInput) self._composeFileInput.click();
+                                        },
+                                    }, [
+                                        m('i', { className: 'fas fa-paperclip' }),
+                                        ' Attach files',
+                                    ]),
                                     m('input', {
                                         type:     'file',
                                         multiple: true,
                                         style:    'display:none;',
                                         disabled: self.saving || self.uploadingCount > 0,
+                                        oncreate: function (vnode) { self._composeFileInput = vnode.dom; },
+                                        onremove: function ()      { self._composeFileInput = null; },
                                         onchange: function (e) {
                                             var files = e.target.files;
                                             if (files && files.length) {
@@ -1174,7 +1046,7 @@
 
     // --- Show page ------------------------------------------------------
 
-    function makeShowPage(Page, LoadingIndicator, PageStructure, SupportIndexSidebar) {
+    function makeShowPage(Page, LoadingIndicator, PageStructure, SupportIndexSidebar, Button, Dropdown) {
         return class SupportShowPage extends Page {
             oninit(vnode) {
                 super.oninit(vnode);
@@ -1235,15 +1107,6 @@
                 });
             }
 
-            // Render `inner` (typically the container div) inside the
-            // support PageStructure so the sidebar appears alongside the
-            // ticket detail. Falls back to plain wrapping when
-            // PageStructure isn't available.
-            //
-            // Active filter is null on a ticket detail page: the user
-            // navigated into a specific ticket, they're not viewing a
-            // filtered list. Nothing in the sidebar should highlight as
-            // "active" beyond the New-ticket button.
             _wrap(inner) {
                 if (PageStructure && SupportIndexSidebar) {
                     return m(PageStructure, {
@@ -1289,21 +1152,22 @@
                 var attr     = self.ticket.attributes || {};
                 var creator  = relatedUser(self.ticket, self.included);
                 var category = relatedCategory(self.ticket, self.included);
+                var isDeleted = !!attr.isDeleted;
+                var canModerate = !!attr.canUpdate || !!attr.canDelete;
 
                 return self._wrap(
-                    m('div', { className: 'LinkRobinsSupport-container' }, [
+                    m('div', { className: 'LinkRobinsSupport-container'
+                        + (isDeleted ? ' LinkRobinsSupport-container--deleted' : '') }, [
                         m('header', { className: 'LinkRobinsSupport-header LinkRobinsSupport-ticket-header' }, [
-                            // Title row: the ticket subject + status badge.
-                            // The "back" arrow that used to sit at the
-                            // start of this row was removed: the sidebar
-                            // now provides primary navigation (My tickets,
-                            // All, filtered status views), and the
-                            // browser back button covers the remaining
-                            // case. Keeping the back arrow here on top of
-                            // that just adds visual noise.
+
                             m('div', { className: 'LinkRobinsSupport-ticket-titleRow' }, [
                                 m('h1', { className: 'LinkRobinsSupport-title' }, attr.subject),
                                 statusBadge(attr.status),
+                                isDeleted ? m('span', {
+                                    className: 'LinkRobinsSupport-reply-deletedBadge',
+                                }, [m('i', { className: 'fas fa-trash' }), ' Deleted']) : null,
+
+                                canModerate ? self._renderTicketActions(attr) : null,
                             ]),
                             m('div', { className: 'LinkRobinsSupport-ticket-meta' }, [
                                 category ? m('span', {
@@ -1350,12 +1214,7 @@
                 }
                 var statuses = ['open', 'in_progress', 'awaiting_user', 'resolved', 'closed'];
 
-                // Status is now a select dropdown instead of a row of
-                // buttons. The dropdown's selected value tracks the
-                // current status, and onchange fires _setStatus() with
-                // the new value. We disable the select while an update
-                // is in flight so users can't queue a second change on
-                // top of the first.
+
                 return m('div', { className: 'LinkRobinsSupport-staffBar' }, [
                     m('label', { className: 'LinkRobinsSupport-staffBar-statusGroup' }, [
                         m('span', { className: 'LinkRobinsSupport-staffBar-label' }, 'Set status:'),
@@ -1365,10 +1224,7 @@
                             disabled:  self.updating,
                             onchange:  function (e) {
                                 var next = e.target.value;
-                                // No-op if the user picks the current
-                                // status; protects against accidental
-                                // change events triggering a needless
-                                // PATCH.
+
                                 if (next && next !== attr.status) {
                                     self._setStatus(next);
                                 }
@@ -1434,8 +1290,7 @@
                     .then(function (resp) {
                         self.ticket = resp.data;
                         if (resp.included) {
-                            // Merge included so the new user appears in the
-                            // assignment label without a refetch.
+
                             self.included = (self.included || []).concat(resp.included);
                         }
                         self.updating = false;
@@ -1444,7 +1299,7 @@
                     .catch(function (err) {
                         self.updating = false;
                         console.error('[linkrobins/support] assignment update failed:', err);
-                        try { alert('Could not update assignment.'); } catch (e) {}
+                        showError('Could not update assignment.');
                         m.redraw();
                     });
             }
@@ -1462,7 +1317,7 @@
                     .catch(function (err) {
                         self.updating = false;
                         console.error('[linkrobins/support] status update failed:', err);
-                        try { alert('Could not update status.'); } catch (e) {}
+                        showError('Could not update status.');
                         m.redraw();
                     });
             }
@@ -1473,9 +1328,23 @@
                 var user  = relatedUser(reply, self.repliesIncluded);
                 var html  = attr.contentHtml || '';
                 var isInternal = !!attr.isInternalNote;
+                var isDeleted  = !!attr.isDeleted;
+                var canEdit    = !!attr.canEdit;
+                var canDelete  = !!attr.canDelete;
+                var editedAt   = attr.editedAt;
+                var editedBy   = relatedEditedBy(reply, self.repliesIncluded);
+
+                if (!self._replyEditState) self._replyEditState = {};
+                var state = self._replyEditState[reply.id] || null;
+                var editing = !!(state && state.editing);
+                var busy    = !!(state && state.busy);
+
+                var classes = 'LinkRobinsSupport-reply';
+                if (isInternal) classes += ' is-internal';
+                if (isDeleted)  classes += ' is-deleted';
 
                 return m('article', {
-                    className: 'LinkRobinsSupport-reply' + (isInternal ? ' is-internal' : ''),
+                    className: classes,
                     key:       'reply-' + reply.id,
                 }, [
                     m('header', { className: 'LinkRobinsSupport-reply-header' }, [
@@ -1483,16 +1352,422 @@
                             user.attributes.displayName || user.attributes.username) : null,
                         m('span', { className: 'LinkRobinsSupport-reply-date' },
                             formatDate(attr.createdAt)),
-                        isInternal ? m('span', { className: 'LinkRobinsSupport-reply-internalBadge' }, [
-                            m('i', { className: 'fas fa-lock' }), ' Internal note',
+
+                        editedAt ? m('span', {
+                            className: 'LinkRobinsSupport-reply-edited',
+                            title: 'Edited ' + formatDate(editedAt)
+                                + (editedBy ? ' by ' + (editedBy.attributes.displayName || editedBy.attributes.username) : ''),
+                        }, '(edited)') : null,
+
+                        isDeleted ? m('span', { className: 'LinkRobinsSupport-reply-deletedBadge' }, [
+                            m('i', { className: 'fas fa-trash' }), ' Deleted',
                         ]) : null,
+                        (canEdit || canDelete) ? self._renderReplyActions(reply, isDeleted, editing, busy) : null,
                     ]),
-                    m('div', {
-                        className: 'LinkRobinsSupport-reply-body',
-                        oncreate:  function (vnode) { try { vnode.dom.innerHTML = html; } catch (e) {} },
-                        onupdate:  function (vnode) { try { vnode.dom.innerHTML = html; } catch (e) {} },
-                    }),
+
+                    editing
+                        ? self._renderReplyEditor(reply, state)
+                        : (isDeleted
+                            ? m('div', {
+                                className: 'LinkRobinsSupport-reply-body LinkRobinsSupport-reply-body--deleted',
+                            }, 'This reply was deleted.')
+                            : m('div', {
+                                className: 'LinkRobinsSupport-reply-body',
+                                oncreate:  function (vnode) { try { vnode.dom.innerHTML = html; } catch (e) {} },
+                                onupdate:  function (vnode) { try { vnode.dom.innerHTML = html; } catch (e) {} },
+                            })),
                 ]);
+            }
+
+            _renderReplyActions(reply, isDeleted, editing, busy) {
+                var self = this;
+                var canEdit   = !!(reply.attributes && reply.attributes.canEdit);
+                var canDelete = !!(reply.attributes && reply.attributes.canDelete);
+
+                if (editing) {
+
+                    return null;
+
+                }
+
+
+                var items = [];
+                if (!isDeleted) {
+                    if (canEdit) {
+                        items.push(m(Button, {
+                            icon:     'fas fa-pencil-alt',
+                            disabled: busy,
+                            onclick:  function () { self._beginEditReply(reply); },
+                        }, 'Edit'));
+                    }
+                    if (canDelete) {
+                        items.push(m(Button, {
+                            icon:      'fas fa-trash',
+                            className: 'LinkRobinsSupport-reply-action--danger',
+                            disabled:  busy,
+                            onclick:   function () { self._softDeleteReply(reply); },
+                        }, 'Delete'));
+                    }
+                } else {
+                    if (canDelete) {
+                        items.push(m(Button, {
+                            icon:     'fas fa-undo',
+                            disabled: busy,
+                            onclick:  function () { self._restoreReply(reply); },
+                        }, 'Restore'));
+                        items.push(m(Button, {
+                            icon:      'fas fa-times',
+                            className: 'LinkRobinsSupport-reply-action--danger',
+                            disabled:  busy,
+                            onclick:   function () { self._forceDeleteReply(reply); },
+                        }, 'Delete forever'));
+                    }
+                }
+
+                if (items.length === 0) return null;
+
+                if (!Dropdown) {
+                    return m('span', { className: 'LinkRobinsSupport-reply-actions' }, items);
+                }
+
+                return m('span', { className: 'LinkRobinsSupport-reply-actions' },
+                    m(Dropdown, {
+                        menuClassName:    'Dropdown-menu--right',
+                        buttonClassName:  'Button Button--icon Button--flat LinkRobinsSupport-reply-actionsToggle',
+                        icon:             'fas fa-ellipsis-h',
+                        accessibleToggleLabel: 'Moderation actions',
+                    }, items)
+                );
+            }
+
+            _renderReplyEditor(reply, state) {
+                var self = this;
+                var canSave = !state.busy && state.draft.trim() !== '';
+
+                return m('div', { className: 'LinkRobinsSupport-reply-editor' }, [
+                    m('textarea', {
+                        className:   'FormControl LinkRobinsSupport-body',
+                        rows:        5,
+                        value:       state.draft,
+                        disabled:    state.busy,
+                        oninput:     function (e) { state.draft = e.target.value; },
+                        onkeydown:   function (e) {
+                            var isSubmit = (e.key === 'Enter' || e.keyCode === 13)
+                                && (e.ctrlKey || e.metaKey);
+                            if (!isSubmit) return;
+                            if (!state.busy && state.draft.trim() !== '') {
+                                e.preventDefault();
+                                self._saveEditReply(reply);
+                            }
+                        },
+                    }),
+                    m('div', { className: 'LinkRobinsSupport-reply-editor-actions' }, [
+                        m('button', {
+                            type:      'button',
+                            className: 'Button Button--default',
+                            disabled:  state.busy,
+                            onclick:   function () { self._cancelEditReply(reply); },
+                        }, 'Cancel'),
+                        m('button', {
+                            type:      'button',
+                            className: 'Button Button--primary',
+                            disabled:  !canSave,
+                            onclick:   function () { self._saveEditReply(reply); },
+                        }, state.busy ? 'Saving…' : 'Save changes'),
+                    ]),
+                ]);
+            }
+
+            _beginEditReply(reply) {
+                if (!this._replyEditState) this._replyEditState = {};
+                var attr = reply.attributes || {};
+                var draft = '';
+                if (typeof attr.contentHtml === 'string' && attr.contentHtml.length) {
+                    try {
+                        var parsed = new DOMParser().parseFromString(
+                            '<!doctype html><body>' + attr.contentHtml, 'text/html'
+                        );
+                        draft = ((parsed.body && parsed.body.textContent) || '').trim();
+                    } catch (e) {
+                        // DOMParser is universally available in modern
+                        // browsers; if it ever fails, fall back to a
+                        // regex strip which is dumber but still inert.
+                        draft = attr.contentHtml
+                            .replace(/<[^>]*>/g, '')
+                            .replace(/&nbsp;/g, ' ')
+                            .replace(/&amp;/g, '&')
+                            .replace(/&lt;/g, '<')
+                            .replace(/&gt;/g, '>')
+                            .trim();
+                    }
+                }
+                this._replyEditState[reply.id] = {
+                    editing: true,
+                    draft:   draft,
+                    busy:    false,
+                };
+                m.redraw();
+            }
+
+            _cancelEditReply(reply) {
+                if (this._replyEditState) delete this._replyEditState[reply.id];
+                m.redraw();
+            }
+
+            _saveEditReply(reply) {
+                var self = this;
+                var state = self._replyEditState && self._replyEditState[reply.id];
+                if (!state) return;
+                state.busy = true;
+                m.redraw();
+
+                var payload = {
+                    data: {
+                        type:       'linkrobins-support-replies',
+                        id:         String(reply.id),
+                        attributes: { content: state.draft },
+                    },
+                };
+                app.request({
+                    method: 'PATCH',
+                    url:    app.forum.attribute('apiUrl')
+                        + '/linkrobins-support-replies/' + reply.id
+                        + '?include=user,editedBy',
+                    body:   payload,
+                }).then(function (resp) {
+                    self._replaceReply(reply.id, resp);
+                    delete self._replyEditState[reply.id];
+                    m.redraw();
+                }).catch(function (err) {
+                    state.busy = false;
+                    console.error('[linkrobins/support] edit reply failed:', err);
+                    showError('Could not save the edit.');
+                    m.redraw();
+                });
+            }
+
+            _softDeleteReply(reply) {
+                var self = this;
+                try {
+                    if (!window.confirm('Soft-delete this reply? Staff can restore it later.')) return;
+                } catch (e) {}
+                self._patchReplyDeletedState(reply, true);
+            }
+
+            _restoreReply(reply) {
+                this._patchReplyDeletedState(reply, false);
+            }
+
+            _patchReplyDeletedState(reply, isDeleted) {
+                var self = this;
+                self._setReplyBusy(reply.id, true);
+
+                var payload = {
+                    data: {
+                        type:       'linkrobins-support-replies',
+                        id:         String(reply.id),
+                        attributes: { isDeleted: isDeleted },
+                    },
+                };
+                app.request({
+                    method: 'PATCH',
+                    url:    app.forum.attribute('apiUrl')
+                        + '/linkrobins-support-replies/' + reply.id
+                        + '?include=user,editedBy',
+                    body:   payload,
+                }).then(function (resp) {
+                    self._replaceReply(reply.id, resp);
+                    self._setReplyBusy(reply.id, false);
+                    m.redraw();
+                }).catch(function (err) {
+                    self._setReplyBusy(reply.id, false);
+                    console.error('[linkrobins/support] toggle delete failed:', err);
+                    showError(isDeleted ? 'Could not delete the reply.' : 'Could not restore the reply.');
+                    m.redraw();
+                });
+            }
+
+            _forceDeleteReply(reply) {
+                var self = this;
+                try {
+                    if (!window.confirm('Permanently delete this reply? This cannot be undone.')) return;
+                } catch (e) {}
+                self._setReplyBusy(reply.id, true);
+
+                app.request({
+                    method: 'DELETE',
+                    url:    app.forum.attribute('apiUrl')
+                        + '/linkrobins-support-replies/' + reply.id,
+                }).then(function () {
+                    // Remove from local replies list.
+                    self.replies = (self.replies || []).filter(function (r) {
+                        return String(r.id) !== String(reply.id);
+                    });
+                    if (self._replyEditState) delete self._replyEditState[reply.id];
+                    m.redraw();
+                }).catch(function (err) {
+                    self._setReplyBusy(reply.id, false);
+                    console.error('[linkrobins/support] force delete failed:', err);
+                    showError('Could not permanently delete the reply.');
+                    m.redraw();
+                });
+            }
+
+            _setReplyBusy(replyId, busy) {
+                if (!this._replyEditState) this._replyEditState = {};
+                var existing = this._replyEditState[replyId];
+                if (existing) {
+                    existing.busy = busy;
+                } else if (busy) {
+                    this._replyEditState[replyId] = { editing: false, draft: '', busy: true };
+                }
+                if (!busy && this._replyEditState[replyId]
+                    && !this._replyEditState[replyId].editing) {
+                    delete this._replyEditState[replyId];
+                }
+            }
+
+            _replaceReply(replyId, response) {
+                if (!response || !response.data) return;
+                this.replies = (this.replies || []).map(function (r) {
+                    return String(r.id) === String(replyId) ? response.data : r;
+                });
+                if (Array.isArray(response.included)) {
+                    var existing = this.repliesIncluded || [];
+                    // Index existing by type+id for de-dup.
+                    var key = function (r) { return r.type + ':' + r.id; };
+                    var byKey = {};
+                    existing.forEach(function (r) { byKey[key(r)] = r; });
+                    response.included.forEach(function (r) { byKey[key(r)] = r; });
+                    this.repliesIncluded = Object.keys(byKey).map(function (k) { return byKey[k]; });
+                }
+            }
+
+            // --- Ticket moderation -----------------------------------------
+
+            _renderTicketActions(attr) {
+                var self      = this;
+                var canUpdate = !!attr.canUpdate;
+                var canDelete = !!attr.canDelete;
+                var isDeleted = !!attr.isDeleted;
+                var busy      = !!self._ticketBusy;
+
+                var items = [];
+                if (!isDeleted) {
+                    if (canUpdate) {
+                        items.push(m(Button, {
+                            icon:      'fas fa-trash',
+                            className: 'LinkRobinsSupport-reply-action--danger',
+                            disabled:  busy,
+                            onclick:   function () { self._softDeleteTicket(); },
+                        }, 'Delete ticket'));
+                    }
+                } else {
+                    if (canUpdate) {
+                        items.push(m(Button, {
+                            icon:     'fas fa-undo',
+                            disabled: busy,
+                            onclick:  function () { self._restoreTicket(); },
+                        }, 'Restore ticket'));
+                    }
+
+                    if (canDelete) {
+                        items.push(m(Button, {
+                            icon:      'fas fa-times',
+                            className: 'LinkRobinsSupport-reply-action--danger',
+                            disabled:  busy,
+                            onclick:   function () { self._forceDeleteTicket(); },
+                        }, 'Delete forever'));
+                    }
+                }
+
+                if (items.length === 0) return null;
+
+                if (!Dropdown) {
+                    return m('span', { className: 'LinkRobinsSupport-ticket-actions' }, items);
+                }
+
+                return m('span', { className: 'LinkRobinsSupport-ticket-actions' },
+                    m(Dropdown, {
+                        menuClassName:    'Dropdown-menu--right',
+                        buttonClassName:  'Button Button--icon Button--flat LinkRobinsSupport-reply-actionsToggle',
+                        icon:             'fas fa-ellipsis-h',
+                        accessibleToggleLabel: 'Ticket moderation actions',
+                    }, items)
+                );
+            }
+
+            _softDeleteTicket() {
+                var self = this;
+                try {
+                    if (!window.confirm('Soft-delete this ticket? It will be hidden from the index and from the ticket owner; staff can restore it.')) return;
+                } catch (e) {}
+                self._patchTicketDeletedState(true);
+            }
+
+            _restoreTicket() {
+                this._patchTicketDeletedState(false);
+            }
+
+            _patchTicketDeletedState(isDeleted) {
+                var self = this;
+                if (!self.ticket) return;
+                self._ticketBusy = true;
+                m.redraw();
+
+                var payload = {
+                    data: {
+                        type:       'linkrobins-support-tickets',
+                        id:         String(self.ticket.id),
+                        attributes: { isDeleted: isDeleted },
+                    },
+                };
+                app.request({
+                    method: 'PATCH',
+                    url:    app.forum.attribute('apiUrl')
+                        + '/linkrobins-support-tickets/' + self.ticket.id
+                        + '?include=user,category,assignedStaff',
+                    body:   payload,
+                }).then(function (resp) {
+                    if (resp && resp.data) {
+                        self.ticket = resp.data;
+                        if (Array.isArray(resp.included)) self.included = resp.included;
+                    }
+                    self._ticketBusy = false;
+                    m.redraw();
+                }).catch(function (err) {
+                    self._ticketBusy = false;
+                    console.error('[linkrobins/support] ticket delete toggle failed:', err);
+                    showError(isDeleted ? 'Could not delete the ticket.' : 'Could not restore the ticket.');
+                    m.redraw();
+                });
+            }
+
+            _forceDeleteTicket() {
+                var self = this;
+                if (!self.ticket) return;
+                try {
+                    if (!window.confirm('Permanently delete this ticket and all its replies? This cannot be undone.')) return;
+                } catch (e) {}
+                self._ticketBusy = true;
+                m.redraw();
+
+                app.request({
+                    method: 'DELETE',
+                    url:    app.forum.attribute('apiUrl')
+                        + '/linkrobins-support-tickets/' + self.ticket.id,
+                }).then(function () {
+                    // After permanent deletion the ticket is gone --
+                    // navigate back to the support index so the user
+                    // isn't sitting on a stale page that 404s the
+                    // next time it tries to refetch.
+                    try { m.route.set(app.route('linkrobins-support.index')); } catch (e) {}
+                }).catch(function (err) {
+                    self._ticketBusy = false;
+                    console.error('[linkrobins/support] ticket force delete failed:', err);
+                    showError('Could not permanently delete the ticket.');
+                    m.redraw();
+                });
             }
 
             _renderReplyForm() {
@@ -1511,10 +1786,18 @@
                             ? 'Internal note (only staff will see this)…'
                             : 'Write a reply…',
                         oninput:     function (e) { self.replyText = e.target.value; },
+                        onkeydown: function (e) {
+                            var isSubmit = (e.key === 'Enter' || e.keyCode === 13)
+                                && (e.ctrlKey || e.metaKey);
+                            if (!isSubmit) return;
+                            var canNow = !self.posting && self.replyText.trim() !== '';
+                            if (canNow) {
+                                e.preventDefault();
+                                self._postReply();
+                            }
+                        },
                     }),
 
-                    // Upload status / errors (shown above the action row so
-                    // they're visible without scrolling).
                     self.uploadError ? m('div', { className: 'Alert Alert--danger LinkRobinsSupport-uploadAlert' },
                         self.uploadError) : null,
                     self.uploadingCount > 0 ? m('div', { className: 'LinkRobinsSupport-uploadStatus' },
@@ -1522,21 +1805,32 @@
                         (self.uploadingCount === 1 ? '' : 's') + '…') : null,
 
                     m('div', { className: 'LinkRobinsSupport-replyForm-actions' }, [
-                        canUpload ? m('label', { className: 'Button Button--default LinkRobinsSupport-attachBtn' }, [
-                            m('i', { className: 'fas fa-paperclip' }),
-                            ' Attach files',
+                        canUpload ? m('span', {
+                            className: 'LinkRobinsSupport-attachBtnWrap',
+                        }, [
+                            m('button', {
+                                type:      'button',
+                                className: 'Button Button--default LinkRobinsSupport-attachBtn',
+                                disabled:  self.posting || self.uploadingCount > 0,
+                                onclick:   function () {
+                                    if (self._replyFileInput) self._replyFileInput.click();
+                                },
+                            }, [
+                                m('i', { className: 'fas fa-paperclip' }),
+                                ' Attach files',
+                            ]),
                             m('input', {
                                 type:     'file',
                                 multiple: true,
                                 style:    'display:none;',
                                 disabled: self.posting || self.uploadingCount > 0,
+                                oncreate: function (vnode) { self._replyFileInput = vnode.dom; },
+                                onremove: function ()      { self._replyFileInput = null; },
                                 onchange: function (e) {
                                     var files = e.target.files;
                                     if (files && files.length) {
                                         self._uploadFiles(files);
                                     }
-                                    // Reset input so the same file can be
-                                    // selected again after a failed upload.
                                     try { e.target.value = ''; } catch (err) {}
                                 },
                             }),
@@ -1580,7 +1874,7 @@
                     .catch(function (err) {
                         self.posting = false;
                         console.error('[linkrobins/support] reply failed:', err);
-                        try { alert('Could not post reply.'); } catch (e) {}
+                        showError('Could not post reply.');
                         m.redraw();
                     });
             }

@@ -37,6 +37,13 @@ class SupportReplyResource extends AbstractDatabaseResource
      *
      * Mirrored in LinkRobins\Support\Search\ReplySearcher::getQuery for
      * Index endpoints. The two must stay in sync.
+     *
+     * Soft-deleted replies (deleted_at set) are hidden from non-staff
+     * entirely. Staff see them in the index with a redacted body so they
+     * can restore or force-delete. This is achieved by calling
+     * withTrashed() for staff and leaving the default Eloquent
+     * SoftDeletes scope (which excludes trashed rows) in place for
+     * non-staff.
      */
     public function scope(Builder $query, Context $context): void
     {
@@ -54,6 +61,12 @@ class SupportReplyResource extends AbstractDatabaseResource
                 $q->where('user_id', (int) $actor->id);
             });
             $query->where('is_internal_note', false);
+            // Non-staff don't see trashed replies (default SoftDeletes
+            // scope handles this -- no extra work needed).
+        } else {
+            // Staff see soft-deleted rows too so they can restore /
+            // force-delete them from the ticket detail page.
+            $query->withTrashed();
         }
     }
 
@@ -69,9 +82,22 @@ class SupportReplyResource extends AbstractDatabaseResource
                 ->paginate(50, 200),
             Endpoint\Create::make()
                 ->authenticated(),
-            // No Update / Delete for replies in v1. Editing a reply is
-            // historical record falsification on tickets; we'll add it
-            // later with proper audit trail if needed.
+            // Update: PATCH handles three distinct staff actions in
+            // one endpoint -- edit content, soft-delete (isDeleted=
+            // true), and restore (isDeleted=false). Which one runs
+            // depends on which attributes are in the request body.
+            // The updating() hook stamps edit metadata when content
+            // changes; the isDeleted setter handles the soft-delete
+            // state transitions.
+            Endpoint\Update::make()
+                ->authenticated(),
+            // Delete: permanent removal. The deleting() hook rejects
+            // the request unless the reply is already soft-deleted
+            // (deleted_at set), making accidental hard-delete on a
+            // live reply impossible. To "delete forever" from the
+            // UI: first PATCH isDeleted=true, then DELETE.
+            Endpoint\Delete::make()
+                ->authenticated(),
         ];
     }
 
@@ -144,7 +170,94 @@ class SupportReplyResource extends AbstractDatabaseResource
             Schema\DateTime::make('updatedAt')
                 ->property('updated_at'),
 
+            // When set, this reply was edited after creation. The
+            // frontend renders a small "(edited)" marker so other
+            // staff can see the content is no longer the original. We
+            // expose editedBy as well so the tooltip can name who did
+            // the edit.
+            Schema\DateTime::make('editedAt')
+                ->property('edited_at'),
+
+            // When set, this reply is soft-deleted. Non-staff can't
+            // see it at all (the scope filters them out). Staff see
+            // it with a redacted body and Restore / Delete-forever
+            // actions in the moderation menu. Exposing deletedAt to
+            // the API is what lets the frontend render the redacted
+            // treatment without a second roundtrip to check.
+            Schema\DateTime::make('deletedAt')
+                ->property('deleted_at'),
+
+            // Permission flags evaluated against the current actor.
+            // The frontend uses these to show/hide the moderation
+            // menu. Staff get true; non-staff get false. Computing
+            // them server-side keeps the trust boundary in one place
+            // (the API decides who can do what; the UI just reflects
+            // it).
+            Schema\Boolean::make('canEdit')
+                ->get(function (SupportReply $reply, FlarumContext $context) {
+                    $actor = $context->getActor();
+                    if ($actor->isGuest()) {
+                        return false;
+                    }
+                    return $actor->isAdmin()
+                        || $actor->hasPermission('linkrobins-support.handle_tickets');
+                }),
+            Schema\Boolean::make('canDelete')
+                ->get(function (SupportReply $reply, FlarumContext $context) {
+                    $actor = $context->getActor();
+                    if ($actor->isGuest()) {
+                        return false;
+                    }
+                    return $actor->isAdmin()
+                        || $actor->hasPermission('linkrobins-support.handle_tickets');
+                }),
+
+            // Writable boolean that maps to the soft-delete state.
+            // PATCH with isDeleted=true soft-deletes the reply; PATCH
+            // with isDeleted=false restores it. This is the same
+            // pattern Flarum core uses for hide/restore on posts: the
+            // moderation action is expressed as a state change in the
+            // update payload rather than a custom endpoint, which
+            // keeps the API surface uniform.
+            //
+            // Permanent deletion goes through DELETE, which the
+            // deleting() hook only permits on already-soft-deleted
+            // replies. Together this gives the four-state lifecycle
+            // Karl asked for: edit (PATCH content), soft-delete
+            // (PATCH isDeleted=true), restore (PATCH isDeleted=false),
+            // delete forever (DELETE).
+            Schema\Boolean::make('isDeleted')
+                ->get(fn (SupportReply $reply) => $reply->deleted_at !== null)
+                ->writable(function (SupportReply $reply, FlarumContext $context) {
+                    if (! $context->updating()) {
+                        return false;
+                    }
+                    $actor = $context->getActor();
+                    if ($actor->isGuest()) {
+                        return false;
+                    }
+                    return $actor->isAdmin()
+                        || $actor->hasPermission('linkrobins-support.handle_tickets');
+                })
+                ->set(function (SupportReply $reply, bool $value, FlarumContext $context) {
+                    if ($value && $reply->deleted_at === null) {
+                        // Soft delete: set deleted_at. We do this
+                        // directly here so the resource's save flow
+                        // commits it; calling $reply->delete() inside
+                        // a setter would short-circuit the save.
+                        $reply->deleted_at = \Carbon\Carbon::now();
+                    } elseif (! $value && $reply->deleted_at !== null) {
+                        $reply->deleted_at = null;
+                    }
+                }),
+
             Schema\Relationship\ToOne::make('user')
+                ->type('users')
+                ->includable(),
+
+            // The user who last edited this reply, when it was edited.
+            // Null for replies that have never been edited.
+            Schema\Relationship\ToOne::make('editedBy')
                 ->type('users')
                 ->includable(),
 
@@ -225,5 +338,126 @@ class SupportReplyResource extends AbstractDatabaseResource
         }
 
         return $model;
+    }
+
+    /**
+     * Authorize the edit and record edit metadata.
+     *
+     * Only staff (admin OR handle_tickets permission) may edit a
+     * reply. The author of a reply doesn't get to edit their own
+     * post -- this is a support ticket, not a forum thread; allowing
+     * the author to edit afterwards would let users rewrite history
+     * to make staff responses look out of context.
+     *
+     * The is_internal_note flag is intentionally not editable here.
+     * It's a sensitivity classification set at create time and
+     * flipping it post-hoc could leak earlier internal context to
+     * the ticket creator (if it goes from true to false). If staff
+     * need to declassify a note, they should soft-delete and repost.
+     */
+    public function updating(object $model, Context $context): ?object
+    {
+        $actor = $context->getActor();
+        if ($actor->isGuest()) {
+            throw new ForbiddenException('You must be logged in to edit a reply.');
+        }
+        $isStaff = $actor->isAdmin()
+            || $actor->hasPermission('linkrobins-support.handle_tickets');
+        if (! $isStaff) {
+            throw new ForbiddenException('You do not have permission to edit replies.');
+        }
+
+        // Reject empty/whitespace-only content, but only when the
+        // content is actually being changed by this request. Pure
+        // soft-delete / restore PATCHes (isDeleted toggle without
+        // a content key in the payload) leave the existing content
+        // intact and should not be rejected by this guard.
+        if ($model->isDirty('content')) {
+            $rawContent = $model->getAttribute('content');
+            if ($rawContent === null || $rawContent === '') {
+                throw new BadRequestException('Reply content is required.');
+            }
+            if (is_string($rawContent)) {
+                $textOnly = trim(strip_tags($rawContent));
+                if ($textOnly === '') {
+                    throw new BadRequestException('Reply content is required.');
+                }
+            }
+        }
+
+        // Stamp edit metadata only when the content actually changed.
+        // The same PATCH endpoint is used for content edits and for
+        // soft-delete / restore (isDeleted toggle); we don't want a
+        // soft-delete to falsely show as "(edited)" in the UI.
+        // isDirty('content') reports true precisely when the content
+        // attribute differs from what's in the DB.
+        if ($model->isDirty('content')) {
+            $model->edited_at         = \Carbon\Carbon::now();
+            $model->edited_by_user_id = (int) $actor->id;
+        }
+
+        // Don't let the API change ticket_id, user_id, is_internal_note,
+        // created_at, deleted_at, edited_at on update. The setter chain
+        // for `content` and `isInternalNote` runs regardless; we just
+        // reset what the setter may have applied for sensitive fields.
+        if ($model->isDirty('is_internal_note')) {
+            $model->is_internal_note = $model->getOriginal('is_internal_note');
+        }
+        if ($model->isDirty('user_id')) {
+            $model->user_id = $model->getOriginal('user_id');
+        }
+        if ($model->isDirty('ticket_id')) {
+            $model->ticket_id = $model->getOriginal('ticket_id');
+        }
+
+        return $model;
+    }
+
+    /**
+     * Authorize permanent deletion.
+     *
+     * Two layers: (a) staff only, and (b) the reply must already be
+     * soft-deleted (deleted_at set). The second check turns a stray
+     * DELETE into a no-op safety: if a moderator misclicks the
+     * "Delete forever" button on a live reply, we 400 instead of
+     * irreversibly wiping the row. The intended flow is always
+     * soft-delete first (PATCH isDeleted=true), then force-delete
+     * after review.
+     *
+     * Note: the actual delete that runs after this hook depends on
+     * what we do with the model. With SoftDeletes, calling delete()
+     * on an already-soft-deleted model is a no-op -- it sets
+     * deleted_at to a fresh timestamp but doesn't remove the row.
+     * To permanently delete, we need to call forceDelete(). We
+     * handle that by calling forceDelete() ourselves in this hook
+     * and then short-circuiting Flarum's normal delete path.
+     */
+    public function deleting(object $model, Context $context): void
+    {
+        $actor = $context->getActor();
+        if ($actor->isGuest()) {
+            throw new ForbiddenException('You must be logged in.');
+        }
+        $isStaff = $actor->isAdmin()
+            || $actor->hasPermission('linkrobins-support.handle_tickets');
+        if (! $isStaff) {
+            throw new ForbiddenException('You do not have permission to delete replies.');
+        }
+
+        // Only allow force-delete on already-soft-deleted replies.
+        if ($model->deleted_at === null) {
+            throw new BadRequestException(
+                'A reply must be soft-deleted before it can be permanently removed.'
+            );
+        }
+
+        // Force delete here so the row is actually gone after this
+        // hook returns. Flarum's downstream delete() call on a
+        // SoftDeletes model that's already trashed is a no-op, so
+        // without this, the route would 204 but leave the row in
+        // place. forceDelete also bypasses SoftDeletes scoping which
+        // is what we want -- the staff explicitly asked for this row
+        // to disappear.
+        $model->forceDelete();
     }
 }

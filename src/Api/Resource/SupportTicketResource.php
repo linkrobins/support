@@ -57,7 +57,14 @@ class SupportTicketResource extends AbstractDatabaseResource
             $query->whereRaw('1 = 0');
             return;
         }
-        if ($actor->isAdmin() || $actor->hasPermission('linkrobins-support.handle_tickets')) {
+        $isStaff = $actor->isAdmin()
+            || $actor->hasPermission('linkrobins-support.handle_tickets');
+        if ($isStaff) {
+            // Staff see soft-deleted tickets too so they can restore
+            // or force-delete from the ticket detail page. The default
+            // Eloquent SoftDeletes scope (which excludes trashed rows)
+            // applies for everyone else.
+            $query->withTrashed();
             return;
         }
         $query->where('linkrobins_support_tickets.user_id', (int) $actor->id);
@@ -205,6 +212,53 @@ class SupportTicketResource extends AbstractDatabaseResource
                     }
                 }),
 
+            // Whether the current actor is permitted to ever delete
+            // this ticket (admin only, per SupportTicketPolicy). The
+            // frontend uses this to show the moderation menu in the
+            // ticket header.
+            Schema\Boolean::make('canDelete')
+                ->get(function (SupportTicket $ticket, FlarumContext $context) {
+                    $actor = $context->getActor();
+                    if ($actor->isGuest()) {
+                        return false;
+                    }
+                    try {
+                        return $actor->can('delete', $ticket);
+                    } catch (\Throwable $e) {
+                        return false;
+                    }
+                }),
+
+            // Writable boolean toggling the ticket's soft-delete
+            // state. PATCH isDeleted=true soft-deletes (deleted_at
+            // set); PATCH isDeleted=false restores. Same pattern as
+            // SupportReplyResource. Gated by the update policy (any
+            // staff with handle_tickets can do this; the permanent
+            // DELETE is admin-only per the delete policy).
+            Schema\Boolean::make('isDeleted')
+                ->get(fn (SupportTicket $ticket) => $ticket->deleted_at !== null)
+                ->writable(function (SupportTicket $ticket, FlarumContext $context) {
+                    if (! $context->updating()) {
+                        return false;
+                    }
+                    $actor = $context->getActor();
+                    if ($actor->isGuest()) {
+                        return false;
+                    }
+                    return $actor->isAdmin()
+                        || $actor->hasPermission('linkrobins-support.handle_tickets');
+                })
+                ->set(function (SupportTicket $ticket, bool $value, FlarumContext $context) {
+                    if ($value && $ticket->deleted_at === null) {
+                        $ticket->deleted_at = \Carbon\Carbon::now();
+                    } elseif (! $value && $ticket->deleted_at !== null) {
+                        $ticket->deleted_at = null;
+                    }
+                }),
+
+            Schema\DateTime::make('deletedAt')
+                ->property('deleted_at'),
+
             Schema\Relationship\ToOne::make('user')
                 ->type('users')
                 ->includable(),
@@ -309,5 +363,33 @@ class SupportTicketResource extends AbstractDatabaseResource
             $model->user_id = $originalUserId;
         }
         return $model;
+    }
+
+    /**
+     * Authorize permanent deletion of a ticket.
+     *
+     * The delete policy already restricts this to admins. Here we add
+     * the soft-delete-first requirement: a ticket must already be
+     * soft-deleted (deleted_at set) before it can be force-deleted.
+     * That mirrors the reply moderation flow -- accidental DELETE on
+     * a live ticket returns 400 instead of irreversibly wiping the
+     * row plus all its replies (the FK cascade would otherwise
+     * detonate everything in one click).
+     */
+    public function deleting(object $model, Context $context): void
+    {
+        if ($model->deleted_at === null) {
+            throw new BadRequestException(
+                'A ticket must be soft-deleted before it can be permanently removed.'
+            );
+        }
+
+        // Force delete here so the row actually goes away. Without
+        // this, Flarum's downstream delete() on a SoftDeletes model
+        // that's already trashed is a no-op (it would just refresh
+        // deleted_at to the current time). forceDelete() bypasses the
+        // soft-delete scope and removes the row, which cascade-deletes
+        // replies via the FK constraint.
+        $model->forceDelete();
     }
 }

@@ -27,6 +27,11 @@ class ReplySearcher extends AbstractSearcher
             || $actor->hasPermission('linkrobins-support.handle_tickets');
 
         if ($isStaff) {
+            // Staff see soft-deleted replies in the index so they can
+            // restore or force-delete them from the ticket detail
+            // page. Non-staff get the default SoftDeletes scope which
+            // hides trashed rows.
+            $query->withTrashed();
             return $query;
         }
 

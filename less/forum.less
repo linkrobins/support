@@ -1,24 +1,4 @@
-// Link Robins Support — forum styles
-//
-// Self-contained. The page renders inside Flarum's normal IndexPage
-// shell so we don't need to override the chrome, just style our own
-// containers.
 
-.LinkRobinsSupport-page {
-    .LinkRobinsSupport-container {
-        // Just for vertical padding. The width is set upstream by
-        // PageStructure's outer .Page-container.container -- our own
-        // div sits inside .Page-content and inherits the flex-1 width
-        // allotted there. We previously also applied Flarum's
-        // `.container` class on this same div, which forced a second
-        // fixed-width pass and made the content visibly too wide on
-        // desktop (the inner .container's fixed width didn't account
-        // for the 190px sidebar offset created by PageStructure). Now
-        // we leave width entirely to the wrapper.
-        padding-top: 24px;
-        padding-bottom: 48px;
-    }
-}
 
 // --- Header ----------------------------------------------------------
 
@@ -82,21 +62,6 @@
 
 // --- Sidebar --------------------------------------------------------
 
-// Section heading inside the sidebar nav -- visually separates the
-// inherited forum items ("All Discussions", Tags) from the support's
-// own filter list ("My tickets", "Open", "In progress", ...).
-.LinkRobinsSupport-sidebar-sectionHeading {
-    margin: 16px 12px 6px;
-    font-size: 0.7rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--muted-color, #888);
-}
-
-// "New ticket" primary button placement, mirroring the blog's
-// "Compose" button. itemClassName="App-primaryControl" already gives
-// it the prominent treatment; this is just for the layout class.
 .LinkRobinsSupport-newTicketButton {
     width: 100%;
 }
@@ -234,6 +199,22 @@
     }
 }
 
+
+.LinkRobinsSupport-ticket-actions {
+    display: inline-flex;
+}
+
+.LinkRobinsSupport-container--deleted {
+    .LinkRobinsSupport-header,
+    .LinkRobinsSupport-replies,
+    .LinkRobinsSupport-staffBar {
+        opacity: 0.7;
+    }
+    .LinkRobinsSupport-ticket-actions {
+        opacity: 1;
+    }
+}
+
 .LinkRobinsSupport-ticket-meta {
     display: flex;
     flex-wrap: wrap;
@@ -282,9 +263,7 @@
     color: var(--muted-color, #888);
 }
 
-// Status label + select pair. Keeps the label and dropdown
-// horizontally aligned so the bar reads as one row on desktop and
-// wraps naturally on narrow screens.
+
 .LinkRobinsSupport-staffBar-statusGroup {
     display: flex;
     align-items: center;
@@ -294,9 +273,41 @@
 
 .LinkRobinsSupport-staffBar-statusSelect {
     width: auto;
-    min-width: 160px;
-    font-size: 0.85rem;
-    padding: 4px 8px;
+    min-width: 180px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    padding: 6px 28px 6px 12px;
+    border-radius: 4px;
+    border: 1px solid var(--control-bg, rgba(0,0,0,0.15));
+    background-color: var(--body-bg, #fff);
+    color: var(--text-color, inherit);
+    cursor: pointer;
+    transition: border-color 0.12s, box-shadow 0.12s, background-color 0.12s;
+
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+
+    &:hover:not(:disabled) {
+        border-color: var(--primary-color, #07adcc);
+        background-color: var(--control-bg, rgba(0,0,0,0.02));
+    }
+    &:focus {
+        outline: none;
+        border-color: var(--primary-color, #07adcc);
+        box-shadow: 0 0 0 2px fade(#07adcc, 25%);
+    }
+    &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+}
+
+.LinkRobinsSupport-staffBar-statusGroup .LinkRobinsSupport-staffBar-label {
+    font-weight: 600;
 }
 
 .LinkRobinsSupport-staffBar-assign {
@@ -309,20 +320,11 @@
     border-left: 1px solid rgba(127,127,127,0.18);
 }
 
-// Small staff-side button used for Claim / Unassign in the assignment
-// row. The status row no longer uses this (it's a select now), so this
-// class is exclusively for the assignment buttons.
 .LinkRobinsSupport-staffBtn {
     font-size: 0.8rem !important;
     padding: 5px 12px !important;
 }
 
-// On narrow screens, give status and assignment their own rows. The
-// `margin-left: auto` and `border-left` on the assignment block make
-// sense on desktop (visually separates the status setter on the left
-// from the assignment controls on the right) but on phones they
-// collapse into a single column and those treatments just look out of
-// place. Reset both, and let each group take the full width.
 @media (max-width: 767px) {
     .LinkRobinsSupport-staffBar {
         flex-direction: column;
@@ -340,9 +342,6 @@
         padding-left: 0;
         margin-left: 0;
         border-left: none;
-        // A subtle top divider replaces the desktop's left border so
-        // the rows still read as two distinct concerns rather than
-        // crowding together.
         padding-top: 8px;
         border-top: 1px solid rgba(127,127,127,0.18);
         width: 100%;
@@ -369,6 +368,17 @@
         border-color: rgba(243, 156, 18, 0.3);
         border-left: 4px solid #f39c12;
     }
+
+    &.is-deleted {
+        opacity: 0.6;
+        background: var(--control-bg, rgba(0,0,0,0.02));
+        border-style: dashed;
+    }
+}
+
+.LinkRobinsSupport-reply-body--deleted {
+    font-style: italic;
+    color: var(--muted-color, #888);
 }
 
 .LinkRobinsSupport-reply-header {
@@ -388,14 +398,28 @@
 
 .LinkRobinsSupport-reply-date {}
 
-.LinkRobinsSupport-reply-internalBadge {
-    margin-left: auto;
+.LinkRobinsSupport-reply-body {
+    line-height: 1.6;
+    word-wrap: break-word;
+
+    > *:first-child { margin-top: 0; }
+    > *:last-child  { margin-bottom: 0; }
+}
+
+.LinkRobinsSupport-reply-edited {
+    font-size: 0.75rem;
+    color: var(--muted-color, #888);
+    font-style: italic;
+    cursor: help;
+}
+
+.LinkRobinsSupport-reply-deletedBadge {
     display: inline-flex;
     align-items: center;
     gap: 4px;
     padding: 2px 10px;
-    background: rgba(243, 156, 18, 0.15);
-    color: #f39c12;
+    background: rgba(220, 53, 69, 0.15);
+    color: #c0392b;
     border-radius: 999px;
     font-size: 0.7rem;
     font-weight: 700;
@@ -405,28 +429,54 @@
     i { font-size: 0.85em; }
 }
 
-.LinkRobinsSupport-reply-body {
-    line-height: 1.6;
-    word-wrap: break-word;
+.LinkRobinsSupport-reply-actions {
+    margin-left: auto;
+}
 
-    > *:first-child { margin-top: 0; }
-    > *:last-child  { margin-bottom: 0; }
+.LinkRobinsSupport-reply-actionsToggle {
+    width: 28px !important;
+    padding: 4px 0 !important;
+    font-size: 14px !important;
+    color: var(--muted-color, #888);
+
+    &:hover, &:focus {
+        color: var(--text-color, inherit);
+    }
+}
+
+.LinkRobinsSupport-reply-action--danger {
+    &, &:hover, &:focus {
+        color: #c0392b !important;
+    }
+    &:hover:not(:disabled) {
+        background: rgba(220, 53, 69, 0.06) !important;
+    }
+}
+
+.LinkRobinsSupport-reply-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.LinkRobinsSupport-reply-editor-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
 }
 
 // --- Reply form -----------------------------------------------------
 
 .LinkRobinsSupport-replyForm {
-    background: var(--control-bg, rgba(0,0,0,0.02));
-    border: 1px solid var(--control-bg, rgba(0,0,0,0.08));
-    border-radius: 8px;
-    padding: 14px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
 .LinkRobinsSupport-replyForm-actions {
     display: flex;
     align-items: center;
     gap: 16px;
-    margin-top: 10px;
 }
 
 .LinkRobinsSupport-internalToggle {
@@ -443,24 +493,13 @@
 
 // --- File attachments -----------------------------------------------
 
-.LinkRobinsSupport-attachBtn {
-    // Render the label-wrapped file input as a button. The hidden
-    // <input type="file"> is inside this label so clicking the button
-    // opens the file picker.
+.LinkRobinsSupport-attachBtnWrap {
     display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    cursor: pointer;
-    margin-bottom: 0;
+    align-items: stretch;
+}
+
+.LinkRobinsSupport-attachBtn {
     font-weight: normal;
-
-    i { opacity: 0.7; }
-
-    &[disabled],
-    &.disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-    }
 }
 
 .LinkRobinsSupport-uploadStatus {

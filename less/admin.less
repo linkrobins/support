@@ -1,8 +1,4 @@
-// Link Robins Support — admin extension page styles
-//
-// Mirrors the blog extension's admin chrome so the page reads as
-// "an extension admin page" rather than content stuck against the
-// chrome edges.
+
 
 .LinkRobinsSupportAdmin {
     padding-top: 30px;
@@ -39,6 +35,15 @@
 
 .LinkRobinsSupportAdmin-section {
     margin-bottom: 32px;
+
+    > .Form-group {
+        margin-bottom: 24px;
+
+        // Last group is the submit button -- don't pad after it.
+        &:last-of-type {
+            margin-bottom: 0;
+        }
+    }
 }
 
 .LinkRobinsSupportAdmin-sectionHeader {

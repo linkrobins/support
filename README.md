@@ -19,7 +19,18 @@ forum-wide moderation actions (suspensions, bans) honest.
   are filtered out at the database level for non-staff users -- the
   ticket owner doesn't see them in their list, can't fetch them
   directly, and the replyCount on the ticket reflects only what they
-  can see.
+  can see. Visually, internal notes get a subtle background tint on
+  the reply card for staff.
+- **Reply moderation.** Staff can edit, soft-delete, restore, and
+  permanently delete any reply via a `⋯` menu in the reply header.
+  Edits stamp `edited_at` and `edited_by_user_id` so other staff can
+  see the audit info; permanent deletion requires the reply to be
+  soft-deleted first (no accidental single-click destruction).
+- **Ticket moderation.** Staff can soft-delete tickets via a `⋯`
+  menu in the ticket title row. Soft-deleted tickets are hidden from
+  the index for both the owner and staff but remain reachable via
+  direct URL for staff to restore. Permanent deletion is admin-only
+  and cascades to all replies.
 - **Rate limits.** Per-user, configurable. Defaults:
   - 3 appeals per 30 days
   - 1 concurrent open appeal at a time
@@ -108,9 +119,11 @@ Three tables:
 - `linkrobins_support_categories` -- name, slug, description, color,
   icon, position, is_appeal.
 - `linkrobins_support_tickets` -- category_id, user_id,
-  assigned_staff_id, subject, status, decision, last_reply_at.
+  assigned_staff_id, subject, status, decision, last_reply_at,
+  deleted_at.
 - `linkrobins_support_replies` -- ticket_id, user_id, content
-  (parsed-source XML), is_internal_note.
+  (parsed-source XML), is_internal_note, deleted_at, edited_at,
+  edited_by_user_id.
 
 One column added to the existing `users` table:
 
@@ -149,7 +162,7 @@ In practice, for the support-desk use case, the risk is small:
 attachments tend to be screenshots and logs from the ticket-opener
 themselves, who is also the only non-staff party with the URL.
 
-
+## Security notes
 
 - The `creating()` hooks on both tickets and replies overwrite
   `user_id` with the authenticated actor's id. Even if the client
@@ -166,6 +179,13 @@ themselves, who is also the only non-staff party with the URL.
   to `SupportTicketPolicy::update`. Field setters add a second layer
   of defense: even if the gate ever loosened, status / decision /
   assignment changes wouldn't take effect for a non-staff actor.
+- Soft-deleted rows are hidden from non-staff at the DB query level
+  (Eloquent's default SoftDeletes scope). Staff see them via
+  `withTrashed()` in the resource scope, but Index/Searcher
+  queries deliberately stay on the active set so the staff index
+  isn't cluttered. Force-delete on a live (non-trashed) row is
+  rejected by the `deleting()` hook -- a soft-delete must come
+  first.
 
 ## API summary
 
@@ -176,9 +196,22 @@ themselves, who is also the only non-staff party with the URL.
 | `/api/linkrobins-support-categories/:id` | PATCH/DELETE | admin |
 | `/api/linkrobins-support-tickets` | GET | authenticated |
 | `/api/linkrobins-support-tickets` | POST | authenticated |
-| `/api/linkrobins-support-tickets/:id` | GET/PATCH/DELETE | per-policy |
+| `/api/linkrobins-support-tickets/:id` | GET | per-policy |
+| `/api/linkrobins-support-tickets/:id` | PATCH | staff (handle_tickets) |
+| `/api/linkrobins-support-tickets/:id` | DELETE | admin, soft-deleted only |
 | `/api/linkrobins-support-replies` | GET | authenticated |
 | `/api/linkrobins-support-replies` | POST | authenticated |
+| `/api/linkrobins-support-replies/:id` | PATCH | staff (handle_tickets) |
+| `/api/linkrobins-support-replies/:id` | DELETE | staff, soft-deleted only |
+
+Moderation patterns:
+
+- PATCH a ticket or reply with `{ attributes: { content: "..." } }` to
+  edit (replies only). Stamps `edited_at` + `edited_by_user_id`.
+- PATCH with `{ attributes: { isDeleted: true } }` to soft-delete.
+  PATCH with `{ isDeleted: false }` to restore.
+- DELETE permanently removes -- but only if the row is already
+  soft-deleted; otherwise returns 400.
 
 Supported filters (use `filter[name]=value` shape; Flarum 2 rejects
 unrecognized top-level params):

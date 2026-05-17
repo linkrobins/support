@@ -158,6 +158,15 @@ class RateLimiter
     // These intentionally do exactly one thing each (a single count query)
     // so test subclasses can stub them with hardcoded return values without
     // having to spin up Eloquent.
+    //
+    // Note on soft-deleted tickets: SupportTicket uses the SoftDeletes
+    // trait, so these count queries implicitly exclude trashed rows.
+    // If staff soft-deletes a user's earlier ticket, it stops counting
+    // toward that user's rate-limit quota. That's the intended behavior
+    // -- soft-deleting typically means "this ticket shouldn't count"
+    // (e.g. spam, duplicate, posted in wrong category), so it should
+    // free up the slot. If you ever want to count trashed tickets too,
+    // chain `->withTrashed()` onto these queries.
 
     protected function countOpenAppealsForUser(User $actor): int
     {

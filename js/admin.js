@@ -8,6 +8,16 @@
         return app.forum.attribute('apiUrl');
     }
 
+    function showError(message) {
+        try {
+            if (app && app.alerts && typeof app.alerts.show === 'function') {
+                app.alerts.show({ type: 'error' }, message);
+                return;
+            }
+        } catch (e) {}
+        try { alert(message); } catch (e) {}
+    }
+
     function settingsGet(key, fallback) {
         try {
             var v = app.data && app.data.settings && app.data.settings[key];
@@ -105,9 +115,6 @@
             .for('linkrobins-support')
             .registerPage(SupportAdminPage);
 
-        // Register the staff permission so admins can grant it from
-        // Admin → Permissions. We treat it as a "moderate"-level
-        // permission since staff are moderating user support requests.
         try {
             if (typeof app.registry.registerPermission === 'function') {
                 app.registry.registerPermission({
@@ -274,7 +281,7 @@
                     .then(function () { self._loadCategories(); })
                     .catch(function (err) {
                         console.error('[linkrobins/support] delete category failed:', err);
-                        try { alert('Could not delete the category.'); } catch (e) {}
+                        showError('Could not delete the category.');
                     });
             }
 
@@ -494,12 +501,6 @@
                 self.bannedLoading = true;
                 self.bannedUsers   = [];
                 m.redraw();
-                // Flarum's user list doesn't expose a filter for
-                // support_appeal_banned. Easiest approach: fetch a
-                // bounded page of all users and filter client-side.
-                // For installations with thousands of users we'd need a
-                // dedicated server endpoint, but at the audience size
-                // typical for self-hosted forums this is fine.
                 app.request({
                     method: 'GET',
                     url:    apiUrl() + '/users',
@@ -553,8 +554,7 @@
                 }).catch(function (err) {
                     user._pending = false;
                     console.error('[linkrobins/support] toggle ban failed:', err);
-                    alert('Could not change appeal-ban status. ' +
-                          'See console for details.');
+                    showError('Could not change appeal-ban status. See console for details.');
                     m.redraw();
                 });
             }
