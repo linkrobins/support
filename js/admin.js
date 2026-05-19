@@ -2,6 +2,29 @@
 
 (function () {
 
+    // --- i18n helpers ---------------------------------------------------
+    //
+    // See forum.js for the rationale. t() returns whatever the translator
+    // returns (vdom or string); tx() always returns a plain string for
+    // attributes, alerts, and confirms.
+    function t(key, params) {
+        try {
+            if (app && app.translator && typeof app.translator.trans === 'function') {
+                return app.translator.trans(key, params || {});
+            }
+        } catch (e) {}
+        return key;
+    }
+
+    function tx(key, params) {
+        try {
+            if (app && app.translator && typeof app.translator.trans === 'function') {
+                return app.translator.trans(key, params || {}, true);
+            }
+        } catch (e) {}
+        return key;
+    }
+
     // --- Helpers --------------------------------------------------------
 
     function apiUrl() {
@@ -120,7 +143,7 @@
                 app.registry.registerPermission({
                     permission: 'linkrobins-support.handle_tickets',
                     icon:       'fas fa-life-ring',
-                    label:      'Handle support tickets',
+                    label:      tx('linkrobins-support.admin.permissions.handle_tickets'),
                 }, 'moderate', 95);
             }
         } catch (e) {
@@ -172,18 +195,18 @@
             _renderTabs() {
                 var self = this;
                 var tabs = [
-                    { id: 'categories', label: 'Categories' },
-                    { id: 'settings',   label: 'Rate limits' },
-                    { id: 'appealBans', label: 'Appeal bans' },
+                    { id: 'categories', labelKey: 'linkrobins-support.admin.nav.categories' },
+                    { id: 'settings',   labelKey: 'linkrobins-support.admin.nav.rate_limits' },
+                    { id: 'appealBans', labelKey: 'linkrobins-support.admin.nav.appeal_bans' },
                 ];
                 return m('div', { className: 'LinkRobinsSupportAdmin-tabs' },
-                    tabs.map(function (t) {
+                    tabs.map(function (tab) {
                         return m('button', {
                             type:      'button',
                             className: 'LinkRobinsSupportAdmin-tab'
-                                + (self.activeTab === t.id ? ' is-active' : ''),
-                            onclick:   function () { self.activeTab = t.id; },
-                        }, t.label);
+                                + (self.activeTab === tab.id ? ' is-active' : ''),
+                            onclick:   function () { self.activeTab = tab.id; },
+                        }, tx(tab.labelKey));
                     })
                 );
             }
@@ -193,30 +216,30 @@
                 return m('div', { className: 'LinkRobinsSupportAdmin-section' }, [
                     m('div', { className: 'LinkRobinsSupportAdmin-sectionHeader' }, [
                         m('div', null, [
-                            m('h3', null, 'Categories'),
+                            m('h3', null, tx('linkrobins-support.admin.categories.heading')),
                             m('p', { className: 'helpText' },
-                                'Ticket categories users can pick from. Mark a category as "appeal" to apply the strict per-user appeal rate limits and let banned users file tickets in it.'),
+                                tx('linkrobins-support.admin.categories.intro')),
                         ]),
                         m('button', {
                             type:      'button',
                             className: 'Button Button--primary',
                             onclick:   function () { self._openEditor(null); },
-                        }, [m('i', { className: 'fas fa-plus' }), ' New category']),
+                        }, [m('i', { className: 'fas fa-plus' }), ' ' + tx('linkrobins-support.admin.categories.new_button')]),
                     ]),
                     self.catError ? m('div', { className: 'Alert Alert--danger' },
-                        'Could not load categories.') : null,
+                        tx('linkrobins-support.admin.category_editor.error_load')) : null,
                     self.loadingCats ? (
-                        LoadingIndicator ? m(LoadingIndicator) : m('div', null, 'Loading...')
+                        LoadingIndicator ? m(LoadingIndicator) : m('div', null, tx('linkrobins-support.admin.common.loading'))
                     ) : (
                         self.categories.length === 0
                             ? m('div', { className: 'LinkRobinsSupportAdmin-empty' },
-                                'No categories yet. Create one to let users file tickets.')
+                                tx('linkrobins-support.admin.categories.empty'))
                             : m('table', { className: 'LinkRobinsSupportAdmin-catTable' }, [
                                 m('thead', null, m('tr', null, [
-                                    m('th', null, 'Name'),
-                                    m('th', null, 'Slug'),
-                                    m('th', null, 'Type'),
-                                    m('th', null, 'Tickets'),
+                                    m('th', null, tx('linkrobins-support.admin.categories.column_name')),
+                                    m('th', null, tx('linkrobins-support.admin.categories.column_slug')),
+                                    m('th', null, tx('linkrobins-support.admin.categories.column_type')),
+                                    m('th', null, tx('linkrobins-support.admin.categories.column_tickets')),
                                     m('th', null, ''),
                                 ])),
                                 m('tbody', null, self.categories.map(function (c) {
@@ -233,19 +256,19 @@
                                         m('td', { className: 'LinkRobinsSupportAdmin-mono' }, attr.slug),
                                         m('td', null, attr.isAppeal ? m('span', {
                                             className: 'LinkRobinsSupportAdmin-tag is-appeal',
-                                        }, 'Appeal') : 'General'),
+                                        }, tx('linkrobins-support.admin.categories.appeal_badge')) : tx('linkrobins-support.admin.categories.general_badge')),
                                         m('td', null, attr.ticketCount || 0),
                                         m('td', { className: 'LinkRobinsSupportAdmin-actions' }, [
                                             m('button', {
                                                 type:      'button',
                                                 className: 'Button Button--icon',
-                                                title:     'Edit',
+                                                title:     tx('linkrobins-support.admin.categories.edit_button'),
                                                 onclick:   function () { self._openEditor(c); },
                                             }, m('i', { className: 'fas fa-pencil-alt' })),
                                             m('button', {
                                                 type:      'button',
                                                 className: 'Button Button--icon LinkRobinsSupportAdmin-danger',
-                                                title:     'Delete',
+                                                title:     tx('linkrobins-support.admin.categories.delete_button'),
                                                 onclick:   function () { self._deleteCategory(c); },
                                             }, m('i', { className: 'fas fa-trash' })),
                                         ]),
@@ -268,11 +291,11 @@
             _deleteCategory(cat) {
                 var self = this;
                 var attr = cat.attributes || {};
-                var name = attr.name || 'this category';
+                var name = attr.name || tx('linkrobins-support.admin.categories.this_category');
                 var count = attr.ticketCount || 0;
                 var warning = count > 0
-                    ? 'This category has ' + count + ' tickets. The tickets will remain but will lose their category. Continue?'
-                    : 'Delete "' + name + '"?';
+                    ? tx('linkrobins-support.admin.categories.delete_confirm_with_tickets', { count: count })
+                    : tx('linkrobins-support.admin.categories.delete_confirm_named', { name: name });
                 try {
                     if (!window.confirm(warning)) return;
                 } catch (e) {}
@@ -281,7 +304,7 @@
                     .then(function () { self._loadCategories(); })
                     .catch(function (err) {
                         console.error('[linkrobins/support] delete category failed:', err);
-                        showError('Could not delete the category.');
+                        showError(tx('linkrobins-support.admin.category_editor.error_delete'));
                     });
             }
 
@@ -292,36 +315,36 @@
                 var fields = [
                     {
                         key:   'linkrobins-support.appeal_limit_per_window',
-                        label: 'Max appeals per window',
-                        help:  'Maximum number of appeal tickets a user can file in the appeal window.',
+                        labelKey: 'linkrobins-support.admin.rate_limits.max_appeals_per_window',
+                        helpKey:  'linkrobins-support.admin.rate_limits.max_appeals_per_window_help',
                         type:  'number', min: 1,
                         defaultValue: '3',
                     },
                     {
                         key:   'linkrobins-support.appeal_window_days',
-                        label: 'Appeal window (days)',
-                        help:  'The rolling time window for the "max appeals per window" limit.',
+                        labelKey: 'linkrobins-support.admin.rate_limits.appeal_window_days',
+                        helpKey:  'linkrobins-support.admin.rate_limits.appeal_window_days_help',
                         type:  'number', min: 1,
                         defaultValue: '30',
                     },
                     {
                         key:   'linkrobins-support.appeal_max_concurrent_open',
-                        label: 'Concurrent open appeals per user',
-                        help:  'How many appeals a user can have open at once before being blocked from filing more.',
+                        labelKey: 'linkrobins-support.admin.rate_limits.max_concurrent_appeals',
+                        helpKey:  'linkrobins-support.admin.rate_limits.max_concurrent_appeals_help',
                         type:  'number', min: 0,
                         defaultValue: '1',
                     },
                     {
                         key:   'linkrobins-support.general_limit_per_window',
-                        label: 'Max general tickets per window',
-                        help:  'Anti-flood limit for non-appeal tickets. Set high enough to not constrain real usage.',
+                        labelKey: 'linkrobins-support.admin.rate_limits.max_general_per_window',
+                        helpKey:  'linkrobins-support.admin.rate_limits.max_general_per_window_help',
                         type:  'number', min: 1,
                         defaultValue: '10',
                     },
                     {
                         key:   'linkrobins-support.general_window_hours',
-                        label: 'General window (hours)',
-                        help:  'The rolling time window for the "max general tickets per window" limit.',
+                        labelKey: 'linkrobins-support.admin.rate_limits.general_window_hours',
+                        helpKey:  'linkrobins-support.admin.rate_limits.general_window_hours_help',
                         type:  'number', min: 1,
                         defaultValue: '24',
                     },
@@ -330,14 +353,14 @@
                 return m('div', { className: 'LinkRobinsSupportAdmin-section' }, [
                     m('div', { className: 'LinkRobinsSupportAdmin-sectionHeader' },
                         m('div', null, [
-                            m('h3', null, 'Rate limits'),
+                            m('h3', null, tx('linkrobins-support.admin.rate_limits.heading')),
                             m('p', { className: 'helpText' },
-                                'Defaults are sensible for most communities. Set a limit to 0 to disable it entirely.'),
+                                tx('linkrobins-support.admin.rate_limits.intro')),
                         ])
                     ),
                     fields.map(function (f) {
                         return m('div', { className: 'Form-group', key: f.key }, [
-                            m('label', null, f.label),
+                            m('label', null, tx(f.labelKey)),
                             m('input', {
                                 type:      f.type,
                                 className: 'FormControl',
@@ -348,7 +371,7 @@
                                     self.setting(f.key)(v);
                                 },
                             }),
-                            m('div', { className: 'helpText' }, f.help),
+                            m('div', { className: 'helpText' }, tx(f.helpKey)),
                         ]);
                     }),
                     m('div', { className: 'Form-group' },
@@ -371,19 +394,19 @@
                 return m('div', { className: 'LinkRobinsSupportAdmin-section' }, [
                     m('div', { className: 'LinkRobinsSupportAdmin-sectionHeader' },
                         m('div', null, [
-                            m('h3', null, 'Permanent appeal bans'),
+                            m('h3', null, tx('linkrobins-support.admin.appeal_bans.heading_alt')),
                             m('p', { className: 'helpText' },
-                                'Users on this list cannot file new appeal tickets. Their existing tickets remain visible and they can still file general tickets (unless suspended).'),
+                                tx('linkrobins-support.admin.appeal_bans.intro')),
                         ])
                     ),
 
                     m('div', { className: 'Form-group LinkRobinsSupportAdmin-userSearch' }, [
-                        m('label', null, 'Find a user to ban from appeals'),
+                        m('label', null, tx('linkrobins-support.admin.appeal_bans.search_heading')),
                         m('div', { style: 'display:flex; gap:8px;' }, [
                             m('input', {
                                 type:        'text',
                                 className:   'FormControl',
-                                placeholder: 'Username or email...',
+                                placeholder: tx('linkrobins-support.admin.appeal_bans.search_placeholder'),
                                 value:       this.appealQuery,
                                 oninput:     function (e) { self.appealQuery = e.target.value; },
                                 onkeydown:   function (e) {
@@ -397,34 +420,34 @@
                                 type:      'button',
                                 className: 'Button',
                                 onclick:   function () { self._searchUsers(); },
-                            }, 'Search'),
+                            }, tx('linkrobins-support.admin.appeal_bans.search_button')),
                         ]),
                         m('div', { className: 'helpText' },
-                            'Matches against username or email. Results show users not currently banned.'),
+                            tx('linkrobins-support.admin.appeal_bans.search_help')),
                     ]),
 
                     this.appealError ? m('div', { className: 'Alert Alert--danger' },
-                        'Search failed. Check the console.') : null,
+                        tx('linkrobins-support.admin.appeal_bans.search_error')) : null,
 
                     this.appealLoading
-                        ? (LoadingIndicator ? m(LoadingIndicator) : m('div', null, 'Loading...'))
+                        ? (LoadingIndicator ? m(LoadingIndicator) : m('div', null, tx('linkrobins-support.admin.common.loading')))
                         : null,
 
                     !this.appealLoading && this.appealResults.length > 0
                         ? m('div', { className: 'LinkRobinsSupportAdmin-section', style: 'margin-top:18px;' }, [
-                            m('h4', null, 'Search results'),
+                            m('h4', null, tx('linkrobins-support.admin.appeal_bans.search_results_heading')),
                             this._renderUsersTable(this.appealResults, false),
                         ])
                         : null,
 
                     m('div', { className: 'LinkRobinsSupportAdmin-section', style: 'margin-top:24px;' }, [
-                        m('h4', null, 'Currently banned'),
+                        m('h4', null, tx('linkrobins-support.admin.appeal_bans.banned_heading')),
                         this.bannedLoading
-                            ? (LoadingIndicator ? m(LoadingIndicator) : m('div', null, 'Loading...'))
+                            ? (LoadingIndicator ? m(LoadingIndicator) : m('div', null, tx('linkrobins-support.admin.common.loading')))
                             : (this.bannedUsers && this.bannedUsers.length > 0
                                 ? this._renderUsersTable(this.bannedUsers, true)
                                 : m('div', { className: 'LinkRobinsSupportAdmin-empty' },
-                                    'Nobody is appeal-banned right now.')),
+                                    tx('linkrobins-support.admin.appeal_bans.banned_empty'))),
                     ]),
                 ]);
             }
@@ -433,9 +456,9 @@
                 var self = this;
                 return m('table', { className: 'LinkRobinsSupportAdmin-catTable' }, [
                     m('thead', null, m('tr', null, [
-                        m('th', null, 'Username'),
-                        m('th', null, 'Email'),
-                        m('th', { style: 'text-align:right;' }, 'Action'),
+                        m('th', null, tx('linkrobins-support.admin.appeal_bans.column_username')),
+                        m('th', null, tx('linkrobins-support.admin.appeal_bans.column_email')),
+                        m('th', { style: 'text-align:right;' }, tx('linkrobins-support.admin.appeal_bans.column_action')),
                     ])),
                     m('tbody', null,
                         users.map(function (u) {
@@ -453,8 +476,10 @@
                                             self._toggleBan(u, !banned);
                                         },
                                     }, u._pending
-                                        ? 'Saving...'
-                                        : (banned ? 'Unban from appeals' : 'Ban from appeals'))),
+                                        ? tx('linkrobins-support.admin.appeal_bans.saving')
+                                        : (banned
+                                            ? tx('linkrobins-support.admin.appeal_bans.unban_button')
+                                            : tx('linkrobins-support.admin.appeal_bans.ban_button')))),
                             ]);
                         })
                     ),
@@ -475,17 +500,15 @@
                     method: 'GET',
                     url:    apiUrl() + '/users',
                     params: {
-                        filter: { q: q },
+                        // Combine free-text search with the appeal-ban
+                        // filter so already-banned users never appear in
+                        // the results -- they're listed separately in the
+                        // "currently banned" panel below.
+                        filter: { q: q, supportAppealBanned: 0 },
                         page:   { limit: 25 },
                     },
                 }).then(function (resp) {
-                    var data = (resp && resp.data) || [];
-                    // Filter out users we already show in "currently banned"
-                    // so the result list is actionable.
-                    self.appealResults = data.filter(function (u) {
-                        var a = u.attributes || {};
-                        return !a.supportAppealBanned;
-                    });
+                    self.appealResults = (resp && resp.data) || [];
                     self.appealLoading = false;
                     m.redraw();
                 }).catch(function (err) {
@@ -501,15 +524,22 @@
                 self.bannedLoading = true;
                 self.bannedUsers   = [];
                 m.redraw();
+                // Server-side filter, registered by LinkRobins\Support\
+                // Search\Filter\AppealBannedFilter. This returns *all*
+                // appeal-banned users in one paginated response, rather
+                // than fetching 200 random recent users and filtering
+                // client-side (which would miss anyone who joined more
+                // than 200 recent users ago).
                 app.request({
                     method: 'GET',
                     url:    apiUrl() + '/users',
-                    params: { page: { limit: 200 }, sort: '-joinedAt' },
+                    params: {
+                        filter: { supportAppealBanned: 1 },
+                        page:   { limit: 50 },
+                        sort:   'username',
+                    },
                 }).then(function (resp) {
-                    var data = (resp && resp.data) || [];
-                    self.bannedUsers = data.filter(function (u) {
-                        return !!(u.attributes && u.attributes.supportAppealBanned);
-                    });
+                    self.bannedUsers   = (resp && resp.data) || [];
                     self.bannedLoading = false;
                     m.redraw();
                 }).catch(function (err) {
@@ -554,7 +584,7 @@
                 }).catch(function (err) {
                     user._pending = false;
                     console.error('[linkrobins/support] toggle ban failed:', err);
-                    showError('Could not change appeal-ban status. See console for details.');
+                    showError(tx('linkrobins-support.admin.appeal_bans.error_toggle'));
                     m.redraw();
                 });
             }
@@ -586,7 +616,9 @@
             }
 
             title() {
-                return this.editId ? 'Edit category' : 'New category';
+                return this.editId
+                    ? tx('linkrobins-support.admin.category_editor.title_edit')
+                    : tx('linkrobins-support.admin.category_editor.title_new');
             }
 
             content() {
@@ -596,7 +628,7 @@
                         self._errorMessage()) : null,
 
                     m('div', { className: 'Form-group' }, [
-                        m('label', null, 'Name'),
+                        m('label', null, tx('linkrobins-support.admin.category_editor.field_name')),
                         m('input', {
                             type:      'text',
                             className: 'FormControl',
@@ -607,21 +639,21 @@
                     ]),
 
                     m('div', { className: 'Form-group' }, [
-                        m('label', null, 'Slug'),
+                        m('label', null, tx('linkrobins-support.admin.category_editor.field_slug')),
                         m('input', {
                             type:        'text',
                             className:   'FormControl',
                             value:       self.slug,
-                            placeholder: 'auto-generated from name',
+                            placeholder: tx('linkrobins-support.admin.category_editor.field_slug_placeholder'),
                             disabled:    self.saving,
                             oninput:     function (e) { self.slug = e.target.value; },
                         }),
                         m('div', { className: 'helpText' },
-                            'URL-friendly identifier. Leave blank to auto-generate from the name.'),
+                            tx('linkrobins-support.admin.category_editor.field_slug_help')),
                     ]),
 
                     m('div', { className: 'Form-group' }, [
-                        m('label', null, 'Description'),
+                        m('label', null, tx('linkrobins-support.admin.category_editor.field_description')),
                         m('textarea', {
                             className: 'FormControl',
                             rows:      3,
@@ -632,7 +664,7 @@
                     ]),
 
                     m('div', { className: 'Form-group' }, [
-                        m('label', null, 'Color'),
+                        m('label', null, tx('linkrobins-support.admin.category_editor.field_color')),
                         m('input', {
                             type:      'text',
                             className: 'FormControl',
@@ -641,11 +673,11 @@
                             placeholder: '#07adcc',
                             oninput:   function (e) { self.color = e.target.value; },
                         }),
-                        m('div', { className: 'helpText' }, 'Hex color (e.g. #07adcc) for the category tag.'),
+                        m('div', { className: 'helpText' }, tx('linkrobins-support.admin.category_editor.field_color_help')),
                     ]),
 
                     m('div', { className: 'Form-group' }, [
-                        m('label', null, 'Icon'),
+                        m('label', null, tx('linkrobins-support.admin.category_editor.field_icon')),
                         m('input', {
                             type:      'text',
                             className: 'FormControl',
@@ -654,11 +686,11 @@
                             placeholder: 'fas fa-folder',
                             oninput:   function (e) { self.icon = e.target.value; },
                         }),
-                        m('div', { className: 'helpText' }, 'Font Awesome class (lowercase letters/digits/spaces/dashes).'),
+                        m('div', { className: 'helpText' }, tx('linkrobins-support.admin.category_editor.field_icon_help')),
                     ]),
 
                     m('div', { className: 'Form-group' }, [
-                        m('label', null, 'Position'),
+                        m('label', null, tx('linkrobins-support.admin.category_editor.field_position')),
                         m('input', {
                             type:      'number',
                             className: 'FormControl',
@@ -666,7 +698,7 @@
                             disabled:  self.saving,
                             oninput:   function (e) { self.position = parseInt(e.target.value, 10) || 0; },
                         }),
-                        m('div', { className: 'helpText' }, 'Lower numbers appear first.'),
+                        m('div', { className: 'helpText' }, tx('linkrobins-support.admin.category_editor.field_position_help')),
                     ]),
 
                     m('div', { className: 'Form-group' }, [
@@ -677,10 +709,10 @@
                                 disabled: self.saving,
                                 onchange: function (e) { self.isAppeal = !!e.target.checked; },
                             }),
-                            ' Appeal category',
+                            ' ' + tx('linkrobins-support.admin.category_editor.field_is_appeal'),
                         ]),
                         m('div', { className: 'helpText' },
-                            'Banned users can file tickets in this category. Appeal-specific rate limits apply.'),
+                            tx('linkrobins-support.admin.category_editor.field_is_appeal_help')),
                     ]),
 
                     m('div', { className: 'Form-group' }, [
@@ -689,21 +721,25 @@
                             className: 'Button Button--primary',
                             disabled:  self.saving || !self.name.trim(),
                             onclick:   function () { self._save(); },
-                        }, self.saving ? 'Saving…' : (self.editId ? 'Update category' : 'Create category')),
+                        }, self.saving
+                            ? tx('linkrobins-support.admin.category_editor.saving')
+                            : (self.editId
+                                ? tx('linkrobins-support.admin.category_editor.submit_update')
+                                : tx('linkrobins-support.admin.category_editor.submit_create'))),
                     ]),
                 ]);
             }
 
             _errorMessage() {
                 var err = this.error;
-                if (!err) return 'Unknown error.';
+                if (!err) return tx('linkrobins-support.admin.common.unknown_error');
                 try {
                     var errors = err.response && err.response.errors;
                     if (errors && errors[0]) {
-                        return errors[0].detail || errors[0].title || 'Could not save.';
+                        return errors[0].detail || errors[0].title || tx('linkrobins-support.admin.rate_limits.error_save');
                     }
                 } catch (e) {}
-                return 'Could not save the category.';
+                return tx('linkrobins-support.admin.category_editor.error_save');
             }
 
             _save() {
