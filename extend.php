@@ -84,7 +84,7 @@ return [
                     try {
                         return $actor->can('createTicket');
                     } catch (\Throwable $e) {
-                        error_log('[linkrobins/support] canCreateSupportTicket probe failed: ' . $e->getMessage());
+                        resolve(\Psr\Log\LoggerInterface::class)->warning('[linkrobins/support] canCreateSupportTicket probe failed', ['exception' => $e]);
                         return false;
                     }
                 }),
@@ -98,7 +98,7 @@ return [
                     try {
                         return $actor->can('handleTickets');
                     } catch (\Throwable $e) {
-                        error_log('[linkrobins/support] canHandleSupportTickets probe failed: ' . $e->getMessage());
+                        resolve(\Psr\Log\LoggerInterface::class)->warning('[linkrobins/support] canHandleSupportTickets probe failed', ['exception' => $e]);
                         return false;
                     }
                 }),

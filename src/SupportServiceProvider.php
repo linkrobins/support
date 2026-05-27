@@ -83,7 +83,7 @@ class SupportServiceProvider extends AbstractServiceProvider
                     static::dispatchReplyNotification($reply, $ticket, $isStaff);
                 }
             } catch (\Throwable $e) {
-                error_log('[linkrobins/support] reply post-save hook failed: ' . $e->getMessage());
+                resolve(\Psr\Log\LoggerInterface::class)->warning('[linkrobins/support] reply post-save hook failed', ['exception' => $e]);
             }
         });
 
@@ -94,7 +94,7 @@ class SupportServiceProvider extends AbstractServiceProvider
             try {
                 static::dispatchTicketNotification($ticket);
             } catch (\Throwable $e) {
-                error_log('[linkrobins/support] ticket post-save hook failed: ' . $e->getMessage());
+                resolve(\Psr\Log\LoggerInterface::class)->warning('[linkrobins/support] ticket post-save hook failed', ['exception' => $e]);
             }
         });
     }
@@ -185,9 +185,9 @@ class SupportServiceProvider extends AbstractServiceProvider
                 || stripos($msg, 'mail server') !== false
             );
             if ($isMailerError) {
-                error_log('[linkrobins/support] alert ' . $kind . ' notification stored OK, but email send failed: ' . $msg);
+                resolve(\Psr\Log\LoggerInterface::class)->warning('[linkrobins/support] ' . $kind . ' notification stored, but email send failed: ' . $msg);
             } else {
-                error_log('[linkrobins/support] ' . $kind . ' notification sync failed: ' . $msg);
+                resolve(\Psr\Log\LoggerInterface::class)->warning('[linkrobins/support] ' . $kind . ' notification sync failed: ' . $msg);
             }
         }
     }
@@ -205,6 +205,10 @@ class SupportServiceProvider extends AbstractServiceProvider
         try {
             return resolve(NotificationSyncer::class);
         } catch (\Throwable $e) {
+            // The container (and thus the logger) may be unavailable here --
+            // this catch exists precisely for non-runtime contexts like
+            // migrations -- so fall back to error_log rather than risk a
+            // second resolve() failure.
             error_log('[linkrobins/support] could not resolve NotificationSyncer: ' . $e->getMessage());
             return null;
         }
@@ -246,7 +250,7 @@ class SupportServiceProvider extends AbstractServiceProvider
 
             return $query->distinct()->get()->all();
         } catch (\Throwable $e) {
-            error_log('[linkrobins/support] staffRecipients failed: ' . $e->getMessage());
+            resolve(\Psr\Log\LoggerInterface::class)->warning('[linkrobins/support] staffRecipients failed', ['exception' => $e]);
             return [];
         }
     }

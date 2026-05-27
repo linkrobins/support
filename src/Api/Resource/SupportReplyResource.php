@@ -140,7 +140,7 @@ class SupportReplyResource extends AbstractDatabaseResource
                     try {
                         return $reply->formatContent($context->request);
                     } catch (\Throwable $e) {
-                        error_log('[linkrobins/support] formatContent failed: ' . $e->getMessage());
+                        resolve(\Psr\Log\LoggerInterface::class)->warning('[linkrobins/support] formatContent failed', ['exception' => $e]);
                         return '';
                     }
                 }),
