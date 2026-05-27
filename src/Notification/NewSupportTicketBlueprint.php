@@ -54,8 +54,10 @@ class NewSupportTicketBlueprint implements BlueprintInterface, AlertableInterfac
 
     public function getEmailSubject(TranslatorInterface $translator): string
     {
-        $prefix = $this->ticket->isAppeal() ? '[Support / Appeal]' : '[Support]';
-        return $prefix . ' New ticket: ' . $this->ticket->subject;
+        $key = $this->ticket->isAppeal()
+            ? 'linkrobins-support.email.new_appeal_subject'
+            : 'linkrobins-support.email.new_ticket_subject';
+        return $translator->trans($key, ['subject' => $this->ticket->subject]);
     }
 
     public static function getType(): string

@@ -61,8 +61,8 @@ class NewSupportReplyBlueprint implements BlueprintInterface, AlertableInterface
     public function getEmailSubject(TranslatorInterface $translator): string
     {
         $ticket = $this->reply->ticket;
-        $subject = $ticket ? $ticket->subject : 'your support ticket';
-        return '[Support] New reply on: ' . $subject;
+        $subject = $ticket ? $ticket->subject : $translator->trans('linkrobins-support.email.fallback_ticket');
+        return $translator->trans('linkrobins-support.email.new_reply_subject', ['subject' => $subject]);
     }
 
     public static function getType(): string

@@ -98,3 +98,10 @@ linkrobins-support:
     settings:
       notify_new_reply_label: "Someone replies to my support ticket"
       notify_new_ticket_label: "A new support ticket is opened (staff)"
+
+  # Subjects for notification emails (rendered server-side).
+  email:
+    new_reply_subject: "[Support] New reply on: {subject}"
+    new_ticket_subject: "[Support] New ticket: {subject}"
+    new_appeal_subject: "[Support / Appeal] New ticket: {subject}"
+    fallback_ticket: "your support ticket"

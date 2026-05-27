@@ -52,6 +52,13 @@ class SupportTicketResource extends AbstractDatabaseResource
      */
     public function scope(Builder $query, Context $context): void
     {
+        // Eager-load reply counts (see TicketSearcher) so the replyCount field
+        // reads a column instead of issuing a COUNT() per ticket.
+        $query->withCount([
+            'replies as reply_count_all',
+            'replies as reply_count_public' => fn ($q) => $q->where('is_internal_note', false),
+        ]);
+
         $actor = $context->getActor();
         if ($actor->isGuest()) {
             $query->whereRaw('1 = 0');
@@ -166,6 +173,12 @@ class SupportTicketResource extends AbstractDatabaseResource
                     $actor = $context->getActor();
                     $isStaff = ! $actor->isGuest()
                         && ($actor->isAdmin() || $actor->hasPermission('linkrobins-support.handle_tickets'));
+                    // Prefer the eager-loaded counts (see TicketSearcher / scope).
+                    $col = $isStaff ? 'reply_count_all' : 'reply_count_public';
+                    if (isset($ticket->$col)) {
+                        return (int) $ticket->$col;
+                    }
+                    // Fallback for any path that didn't eager-load them.
                     $q = $ticket->replies();
                     if (! $isStaff) {
                         $q->where('is_internal_note', false);

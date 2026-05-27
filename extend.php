@@ -135,10 +135,8 @@ return [
         ->default('linkrobins-support.appeal_window_days',         '30')
         ->default('linkrobins-support.appeal_max_concurrent_open', '1')
         ->default('linkrobins-support.general_limit_per_window',   '10')
-        ->default('linkrobins-support.general_window_hours',       '24')
-        ->serializeToForum('linkrobinsSupportAppealLimitPerWindow',    'linkrobins-support.appeal_limit_per_window')
-        ->serializeToForum('linkrobinsSupportAppealWindowDays',        'linkrobins-support.appeal_window_days')
-        ->serializeToForum('linkrobinsSupportAppealMaxConcurrentOpen', 'linkrobins-support.appeal_max_concurrent_open')
-        ->serializeToForum('linkrobinsSupportGeneralLimitPerWindow',   'linkrobins-support.general_limit_per_window')
-        ->serializeToForum('linkrobinsSupportGeneralWindowHours',      'linkrobins-support.general_window_hours'),
+        ->default('linkrobins-support.general_window_hours',       '24'),
+        // Note: these settings are consumed server-side by RateLimiter; they
+        // are intentionally NOT serialized to the forum frontend (the JS never
+        // reads them).
 ];

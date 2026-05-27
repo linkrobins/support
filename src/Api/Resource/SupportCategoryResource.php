@@ -26,7 +26,9 @@ class SupportCategoryResource extends AbstractDatabaseResource
 
     public function scope(Builder $query, Context $context): void
     {
-        $query->orderBy('position')->orderBy('id');
+        // Eager-load the ticket count so the ticketCount field doesn't issue a
+        // COUNT() per category (N+1 on the category list).
+        $query->withCount('tickets')->orderBy('position')->orderBy('id');
     }
 
     public function find(string $id, Context $context): ?object
@@ -134,7 +136,7 @@ class SupportCategoryResource extends AbstractDatabaseResource
                 ->writable(),
 
             Schema\Integer::make('ticketCount')
-                ->get(fn (SupportCategory $cat) => $cat->tickets()->count()),
+                ->get(fn (SupportCategory $cat) => (int) ($cat->tickets_count ?? $cat->tickets()->count())),
 
             Schema\DateTime::make('createdAt')
                 ->property('created_at'),

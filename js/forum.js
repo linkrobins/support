@@ -119,7 +119,10 @@
                 return;
             }
         } catch (e) {}
-        showError(message);
+        // Fallback when the alert system isn't available. Must NOT call
+        // showError again (that recurses infinitely and overflows the stack);
+        // log to the console instead.
+        try { console.error('[linkrobins/support] ' + message); } catch (e) {}
     }
 
     // --- API helpers ----------------------------------------------------
@@ -1481,26 +1484,10 @@
             _beginEditReply(reply) {
                 if (!this._replyEditState) this._replyEditState = {};
                 var attr = reply.attributes || {};
-                var draft = '';
-                if (typeof attr.contentHtml === 'string' && attr.contentHtml.length) {
-                    try {
-                        var parsed = new DOMParser().parseFromString(
-                            '<!doctype html><body>' + attr.contentHtml, 'text/html'
-                        );
-                        draft = ((parsed.body && parsed.body.textContent) || '').trim();
-                    } catch (e) {
-                        // DOMParser is universally available in modern
-                        // browsers; if it ever fails, fall back to a
-                        // regex strip which is dumber but still inert.
-                        draft = attr.contentHtml
-                            .replace(/<[^>]*>/g, '')
-                            .replace(/&nbsp;/g, ' ')
-                            .replace(/&amp;/g, '&')
-                            .replace(/&lt;/g, '<')
-                            .replace(/&gt;/g, '>')
-                            .trim();
-                    }
-                }
+                // Pre-fill the editor with the original markdown source so
+                // editing preserves formatting. (Previously this stripped the
+                // rendered HTML, which silently discarded all markdown.)
+                var draft = typeof attr.content === 'string' ? attr.content : '';
                 this._replyEditState[reply.id] = {
                     editing: true,
                     draft:   draft,

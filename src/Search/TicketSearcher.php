@@ -18,6 +18,15 @@ class TicketSearcher extends AbstractSearcher
     {
         $query = SupportTicket::query()->select('linkrobins_support_tickets.*');
 
+        // Eager-load reply counts so the replyCount field doesn't fire a
+        // COUNT() per ticket (N+1 on the list). Two variants: the full count
+        // for staff, and the public count (excluding internal notes) shown to
+        // everyone else.
+        $query->withCount([
+            'replies as reply_count_all',
+            'replies as reply_count_public' => fn ($q) => $q->where('is_internal_note', false),
+        ]);
+
         if ($actor->isGuest()) {
             // Defense in depth -- endpoints require authentication, but
             // if a guest ever reaches here, return nothing.
