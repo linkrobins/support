@@ -2,6 +2,7 @@
 
 use Flarum\Extend;
 use Flarum\Search\Database\DatabaseSearchDriver;
+use Flarum\User\Search\UserSearcher;
 use Flarum\User\User;
 use LinkRobins\Support\Access;
 use LinkRobins\Support\Api\Resource\SupportCategoryResource;
@@ -19,7 +20,7 @@ use LinkRobins\Support\SupportTicket;
 
 return [
     (new Extend\Frontend('forum'))
-        ->js(__DIR__ . '/js/forum.js')
+        ->js(__DIR__ . '/js/dist/forum.js')
         ->css(__DIR__ . '/less/forum.less')
         ->route('/support',                       'linkrobins-support.index')
         ->route('/support/new',                   'linkrobins-support.compose')
@@ -27,7 +28,7 @@ return [
         ->route('/support/{id}',                  'linkrobins-support.show'),
 
     (new Extend\Frontend('admin'))
-        ->js(__DIR__ . '/js/admin.js')
+        ->js(__DIR__ . '/js/dist/admin.js')
         ->css(__DIR__ . '/less/admin.less'),
 
     new Extend\Locales(__DIR__ . '/locale'),
@@ -38,6 +39,7 @@ return [
 
     (new Extend\Policy())
         ->modelPolicy(SupportTicket::class,   Access\SupportTicketPolicy::class)
+        ->modelPolicy(SupportReply::class,    Access\SupportReplyPolicy::class)
         ->modelPolicy(SupportCategory::class, Access\SupportCategoryPolicy::class)
         ->globalPolicy(Access\GlobalPolicy::class),
 
@@ -50,7 +52,11 @@ return [
         ->addFilter(TicketSearcher::class, Filters\CategoryIdFilter::class)
         ->addFilter(TicketSearcher::class, Filters\MineFilter::class)
         ->addSearcher(SupportReply::class, ReplySearcher::class)
-        ->addFilter(ReplySearcher::class, Filters\TicketIdFilter::class),
+        ->addFilter(ReplySearcher::class, Filters\TicketIdFilter::class)
+        // Enables filter[supportAppealBanned]=1 on the core user list (powers
+        // the read-only admin appeal-bans list). Without this the filter was
+        // ignored and every user was returned.
+        ->addFilter(UserSearcher::class, Filters\AppealBannedFilter::class),
 
     (new Extend\Notification())
         ->type(NewSupportReplyBlueprint::class,  ['alert', 'email'])
@@ -64,17 +70,28 @@ return [
             \Flarum\Api\Schema\Boolean::make('supportAppealBanned')
                 ->property('support_appeal_banned')
                 ->writable(function ($model, \Flarum\Api\Context $context) {
-                    return $context->getActor()->isAdmin();
+                    // Moderators with the permission (and admins, who have all
+                    // permissions) can toggle a user's appeal-ban from the
+                    // user's profile controls.
+                    return $context->getActor()->hasPermission('linkrobins-support.manage_appeal_bans');
                 })
                 ->visible(function ($model, \Flarum\Api\Context $context) {
                     $actor = $context->getActor();
                     if ($actor->isGuest()) return false;
-                    return $actor->isAdmin() || (int) $actor->id === (int) $model->id;
+                    return $actor->hasPermission('linkrobins-support.manage_appeal_bans')
+                        || (int) $actor->id === (int) $model->id;
                 }),
         ]),
 
     (new Extend\ApiResource(\Flarum\Api\Resource\ForumResource::class))
         ->fields(fn () => [
+            // Whether the current user may toggle appeal-bans (shown as a
+            // control in the user's profile dropdown). Admins always pass.
+            \Flarum\Api\Schema\Boolean::make('canManageSupportAppealBans')
+                ->get(fn ($model, \Flarum\Api\Context $context) =>
+                    ! $context->getActor()->isGuest()
+                    && $context->getActor()->hasPermission('linkrobins-support.manage_appeal_bans')),
+
             \Flarum\Api\Schema\Boolean::make('canCreateSupportTicket')
                 ->get(function ($model, \Flarum\Api\Context $context) {
                     $actor = $context->getActor();

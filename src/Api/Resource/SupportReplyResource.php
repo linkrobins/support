@@ -81,7 +81,8 @@ class SupportReplyResource extends AbstractDatabaseResource
                 ->defaultInclude(['user'])
                 ->paginate(50, 200),
             Endpoint\Create::make()
-                ->authenticated(),
+                ->authenticated()
+                ->defaultInclude(['user']),
             // Update: PATCH handles three distinct staff actions in
             // one endpoint -- edit content, soft-delete (isDeleted=
             // true), and restore (isDeleted=false). Which one runs
@@ -90,14 +91,16 @@ class SupportReplyResource extends AbstractDatabaseResource
             // changes; the isDeleted setter handles the soft-delete
             // state transitions.
             Endpoint\Update::make()
-                ->authenticated(),
+                ->authenticated()
+                ->can('update'),
             // Delete: permanent removal. The deleting() hook rejects
             // the request unless the reply is already soft-deleted
             // (deleted_at set), making accidental hard-delete on a
             // live reply impossible. To "delete forever" from the
             // UI: first PATCH isDeleted=true, then DELETE.
             Endpoint\Delete::make()
-                ->authenticated(),
+                ->authenticated()
+                ->can('delete'),
         ];
     }
 

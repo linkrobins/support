@@ -111,12 +111,18 @@
     function init() {
         var ExtensionPage = null;
         var Modal         = null;
+        var FormModal     = null;
+        var Form          = null;
         var Button        = null;
+        var ColorPreviewInput = null;
         var Switch        = null;
         var LoadingIndicator = null;
         try { ExtensionPage    = flarum.reg.get('core', 'admin/components/ExtensionPage'); } catch (e) {}
         try { Modal            = flarum.reg.get('core', 'common/components/Modal'); }         catch (e) {}
+        try { FormModal        = flarum.reg.get('core', 'common/components/FormModal'); }     catch (e) {}
+        try { Form             = flarum.reg.get('core', 'common/components/Form'); }          catch (e) {}
         try { Button           = flarum.reg.get('core', 'common/components/Button'); }        catch (e) {}
+        try { ColorPreviewInput = flarum.reg.get('core', 'common/components/ColorPreviewInput'); } catch (e) {}
         try { Switch           = flarum.reg.get('core', 'common/components/Switch'); }        catch (e) {}
         try { LoadingIndicator = flarum.reg.get('core', 'common/components/LoadingIndicator'); } catch (e) {}
 
@@ -125,7 +131,14 @@
             return;
         }
 
-        var CategoryEditorModal = Modal ? makeCategoryEditorModal(Modal) : null;
+        // Build the category editor on Flarum's FormModal so it matches core
+        // modals (e.g. Tags' "New Tag"): a real <form>, Form-wrapped fields and
+        // a Form-controls submit/delete row. Fall back to the plain Modal base
+        // only if FormModal isn't available.
+        var CategoryModalBase = FormModal || Modal;
+        var CategoryEditorModal = CategoryModalBase
+            ? makeCategoryEditorModal(CategoryModalBase, Form, Button, ColorPreviewInput)
+            : null;
         window.LinkRobinsSupportCategoryEditorModal = CategoryEditorModal;
 
         var SupportAdminPage = makeSupportAdminPage(ExtensionPage, LoadingIndicator);
@@ -145,6 +158,11 @@
                     icon:       'fas fa-life-ring',
                     label:      tx('linkrobins-support.admin.permissions.handle_tickets'),
                 }, 'moderate', 95);
+                app.registry.registerPermission({
+                    permission: 'linkrobins-support.manage_appeal_bans',
+                    icon:       'fas fa-ban',
+                    label:      tx('linkrobins-support.admin.permissions.manage_appeal_bans'),
+                }, 'moderate', 94);
             }
         } catch (e) {
             console.warn('[linkrobins/support] could not register permission:', e);
@@ -381,13 +399,9 @@
             }
 
             _renderAppealBansTab() {
-                var self = this;
-                if (this.appealQuery === undefined) {
-                    this.appealQuery   = '';
-                    this.appealResults = [];
-                    this.appealLoading = false;
-                    this.appealError   = null;
-                    // Load currently-banned users on first paint.
+                if (this.bannedUsers === undefined) {
+                    this.bannedUsers   = [];
+                    this.bannedLoading = false;
                     this._loadBannedUsers();
                 }
 
@@ -400,124 +414,43 @@
                         ])
                     ),
 
-                    m('div', { className: 'Form-group LinkRobinsSupportAdmin-userSearch' }, [
-                        m('label', null, tx('linkrobins-support.admin.appeal_bans.search_heading')),
-                        m('div', { style: 'display:flex; gap:8px;' }, [
-                            m('input', {
-                                type:        'text',
-                                className:   'FormControl',
-                                placeholder: tx('linkrobins-support.admin.appeal_bans.search_placeholder'),
-                                value:       this.appealQuery,
-                                oninput:     function (e) { self.appealQuery = e.target.value; },
-                                onkeydown:   function (e) {
-                                    if (e.key === 'Enter') {
-                                        e.preventDefault();
-                                        self._searchUsers();
-                                    }
-                                },
-                            }),
-                            m('button', {
-                                type:      'button',
-                                className: 'Button',
-                                onclick:   function () { self._searchUsers(); },
-                            }, tx('linkrobins-support.admin.appeal_bans.search_button')),
-                        ]),
-                        m('div', { className: 'helpText' },
-                            tx('linkrobins-support.admin.appeal_bans.search_help')),
-                    ]),
-
-                    this.appealError ? m('div', { className: 'Alert Alert--danger' },
-                        tx('linkrobins-support.admin.appeal_bans.search_error')) : null,
-
-                    this.appealLoading
-                        ? (LoadingIndicator ? m(LoadingIndicator) : m('div', null, tx('linkrobins-support.admin.common.loading')))
-                        : null,
-
-                    !this.appealLoading && this.appealResults.length > 0
-                        ? m('div', { className: 'LinkRobinsSupportAdmin-section', style: 'margin-top:18px;' }, [
-                            m('h4', null, tx('linkrobins-support.admin.appeal_bans.search_results_heading')),
-                            this._renderUsersTable(this.appealResults, false),
-                        ])
-                        : null,
-
-                    m('div', { className: 'LinkRobinsSupportAdmin-section', style: 'margin-top:24px;' }, [
+                    m('div', { className: 'LinkRobinsSupportAdmin-section', style: 'margin-top:18px;' }, [
                         m('h4', null, tx('linkrobins-support.admin.appeal_bans.banned_heading')),
                         this.bannedLoading
                             ? (LoadingIndicator ? m(LoadingIndicator) : m('div', null, tx('linkrobins-support.admin.common.loading')))
                             : (this.bannedUsers && this.bannedUsers.length > 0
-                                ? this._renderUsersTable(this.bannedUsers, true)
+                                ? this._renderBannedTable(this.bannedUsers)
                                 : m('div', { className: 'LinkRobinsSupportAdmin-empty' },
                                     tx('linkrobins-support.admin.appeal_bans.banned_empty'))),
                     ]),
                 ]);
             }
 
-            _renderUsersTable(users, banned) {
-                var self = this;
+            // Read-only list of currently appeal-banned users. To change a
+            // user's status, open their profile (the username links there)
+            // and use the moderation-controls dropdown.
+            _renderBannedTable(users) {
+                var base = (app.forum && app.forum.attribute && app.forum.attribute('baseUrl')) || '';
                 return m('table', { className: 'LinkRobinsSupportAdmin-catTable' }, [
                     m('thead', null, m('tr', null, [
                         m('th', null, tx('linkrobins-support.admin.appeal_bans.column_username')),
                         m('th', null, tx('linkrobins-support.admin.appeal_bans.column_email')),
-                        m('th', { style: 'text-align:right;' }, tx('linkrobins-support.admin.appeal_bans.column_action')),
                     ])),
                     m('tbody', null,
                         users.map(function (u) {
                             var attr = u.attributes || {};
                             return m('tr', { key: u.id }, [
-                                m('td', null, attr.username || '?'),
-                                m('td', { className: 'LinkRobinsSupportAdmin-mono' },
-                                    attr.email || '—'),
-                                m('td', { style: 'text-align:right;' },
-                                    m('button', {
-                                        type:      'button',
-                                        className: 'Button ' + (banned ? '' : 'Button--primary'),
-                                        disabled:  !!u._pending,
-                                        onclick:   function () {
-                                            self._toggleBan(u, !banned);
-                                        },
-                                    }, u._pending
-                                        ? tx('linkrobins-support.admin.appeal_bans.saving')
-                                        : (banned
-                                            ? tx('linkrobins-support.admin.appeal_bans.unban_button')
-                                            : tx('linkrobins-support.admin.appeal_bans.ban_button')))),
+                                m('td', null, m('a', {
+                                    href:   base + '/u/' + encodeURIComponent(attr.username || ''),
+                                    target: '_blank',
+                                }, attr.username || '?')),
+                                m('td', { className: 'LinkRobinsSupportAdmin-mono' }, attr.email || '—'),
                             ]);
                         })
                     ),
                 ]);
             }
 
-            _searchUsers() {
-                var self = this;
-                var q = (this.appealQuery || '').trim();
-                if (!q) {
-                    this.appealResults = [];
-                    return;
-                }
-                self.appealLoading = true;
-                self.appealError   = null;
-                m.redraw();
-                app.request({
-                    method: 'GET',
-                    url:    apiUrl() + '/users',
-                    params: {
-                        // Combine free-text search with the appeal-ban
-                        // filter so already-banned users never appear in
-                        // the results -- they're listed separately in the
-                        // "currently banned" panel below.
-                        filter: { q: q, supportAppealBanned: 0 },
-                        page:   { limit: 25 },
-                    },
-                }).then(function (resp) {
-                    self.appealResults = (resp && resp.data) || [];
-                    self.appealLoading = false;
-                    m.redraw();
-                }).catch(function (err) {
-                    self.appealError   = err;
-                    self.appealLoading = false;
-                    console.error('[linkrobins/support] user search failed:', err);
-                    m.redraw();
-                });
-            }
 
             _loadBannedUsers() {
                 var self = this;
@@ -549,52 +482,13 @@
                 });
             }
 
-            _toggleBan(user, ban) {
-                var self = this;
-                user._pending = true;
-                m.redraw();
-                app.request({
-                    method: 'PATCH',
-                    url:    apiUrl() + '/users/' + encodeURIComponent(user.id),
-                    body:   {
-                        data: {
-                            type:       'users',
-                            id:         user.id,
-                            attributes: { supportAppealBanned: ban },
-                        },
-                    },
-                }).then(function () {
-                    user._pending = false;
-                    // Move the user between the two lists.
-                    if (ban) {
-                        // Add to banned list, remove from search results.
-                        if (!user.attributes) user.attributes = {};
-                        user.attributes.supportAppealBanned = true;
-                        self.bannedUsers = (self.bannedUsers || []).concat([user]);
-                        self.appealResults = (self.appealResults || []).filter(function (u) {
-                            return u.id !== user.id;
-                        });
-                    } else {
-                        user.attributes.supportAppealBanned = false;
-                        self.bannedUsers = (self.bannedUsers || []).filter(function (u) {
-                            return u.id !== user.id;
-                        });
-                    }
-                    m.redraw();
-                }).catch(function (err) {
-                    user._pending = false;
-                    console.error('[linkrobins/support] toggle ban failed:', err);
-                    showError(tx('linkrobins-support.admin.appeal_bans.error_toggle'));
-                    m.redraw();
-                });
-            }
         };
     }
 
     // --- Category editor modal ------------------------------------------
 
-    function makeCategoryEditorModal(Modal) {
-        return class CategoryEditorModal extends Modal {
+    function makeCategoryEditorModal(ModalBase, Form, Button, ColorPreviewInput) {
+        return class CategoryEditorModal extends ModalBase {
             oninit(vnode) {
                 super.oninit(vnode);
                 var category = this.attrs && this.attrs.category;
@@ -612,7 +506,7 @@
             }
 
             className() {
-                return 'LinkRobinsSupportCategoryEditorModal Modal--medium';
+                return 'LinkRobinsSupportCategoryEditorModal Modal--small';
             }
 
             title() {
@@ -623,10 +517,29 @@
 
             content() {
                 var self = this;
-                return m('div', { className: 'Modal-body' }, [
-                    self.error ? m('div', { className: 'Alert Alert--danger' },
-                        self._errorMessage()) : null,
 
+                // Colour field: prefer core's ColorPreviewInput (hex field with
+                // a live swatch) so it matches the Tags "New Tag" modal; fall
+                // back to a plain text input if the component isn't available.
+                var colorField = ColorPreviewInput
+                    ? m(ColorPreviewInput, {
+                        className:   'FormControl',
+                        placeholder: '#07adcc',
+                        value:       self.color,
+                        disabled:    self.saving,
+                        oninput:     function (e) { self.color = e.target.value; },
+                        onchange:    function (e) { self.color = e.target.value; },
+                    })
+                    : m('input', {
+                        type:        'text',
+                        className:   'FormControl',
+                        value:       self.color,
+                        disabled:    self.saving,
+                        placeholder: '#07adcc',
+                        oninput:     function (e) { self.color = e.target.value; },
+                    });
+
+                var groups = [
                     m('div', { className: 'Form-group' }, [
                         m('label', null, tx('linkrobins-support.admin.category_editor.field_name')),
                         m('input', {
@@ -665,14 +578,7 @@
 
                     m('div', { className: 'Form-group' }, [
                         m('label', null, tx('linkrobins-support.admin.category_editor.field_color')),
-                        m('input', {
-                            type:      'text',
-                            className: 'FormControl',
-                            value:     self.color,
-                            disabled:  self.saving,
-                            placeholder: '#07adcc',
-                            oninput:   function (e) { self.color = e.target.value; },
-                        }),
+                        colorField,
                         m('div', { className: 'helpText' }, tx('linkrobins-support.admin.category_editor.field_color_help')),
                     ]),
 
@@ -702,32 +608,50 @@
                     ]),
 
                     m('div', { className: 'Form-group' }, [
-                        m('label', { className: 'LinkRobinsSupportAdmin-checkbox' }, [
-                            m('input', {
-                                type:    'checkbox',
-                                checked: self.isAppeal,
-                                disabled: self.saving,
-                                onchange: function (e) { self.isAppeal = !!e.target.checked; },
-                            }),
-                            ' ' + tx('linkrobins-support.admin.category_editor.field_is_appeal'),
-                        ]),
+                        m('div', null,
+                            m('label', { className: 'checkbox' }, [
+                                m('input', {
+                                    type:    'checkbox',
+                                    checked: self.isAppeal,
+                                    disabled: self.saving,
+                                    onchange: function (e) { self.isAppeal = !!e.target.checked; },
+                                }),
+                                ' ' + tx('linkrobins-support.admin.category_editor.field_is_appeal'),
+                            ])),
                         m('div', { className: 'helpText' },
                             tx('linkrobins-support.admin.category_editor.field_is_appeal_help')),
                     ]),
 
-                    m('div', { className: 'Form-group' }, [
-                        m('button', {
-                            type:      'button',
+                    m('div', { className: 'Form-group Form-controls' }, [
+                        m(Button, {
+                            type:      'submit',
                             className: 'Button Button--primary',
-                            disabled:  self.saving || !self.name.trim(),
-                            onclick:   function () { self._save(); },
-                        }, self.saving
-                            ? tx('linkrobins-support.admin.category_editor.saving')
-                            : (self.editId
-                                ? tx('linkrobins-support.admin.category_editor.submit_update')
-                                : tx('linkrobins-support.admin.category_editor.submit_create'))),
+                            loading:   self.saving,
+                            disabled:  !self.name.trim(),
+                        }, self.editId
+                            ? tx('linkrobins-support.admin.category_editor.submit_update')
+                            : tx('linkrobins-support.admin.category_editor.submit_create')),
+
+                        self.editId ? m('button', {
+                            type:      'button',
+                            className: 'Button LinkRobinsSupportCategoryEditorModal-delete',
+                            disabled:  self.saving,
+                            onclick:   function () { self._delete(); },
+                        }, tx('linkrobins-support.admin.categories.delete_button')) : null,
                     ]),
+                ];
+
+                return m('div', { className: 'Modal-body' }, [
+                    self.error ? m('div', { className: 'Alert Alert--danger' },
+                        self._errorMessage()) : null,
+                    Form ? m(Form, null, groups) : groups,
                 ]);
+            }
+
+            onsubmit(e) {
+                if (e && e.preventDefault) e.preventDefault();
+                if (this.saving || !this.name.trim()) return;
+                this._save();
             }
 
             _errorMessage() {
@@ -772,6 +696,40 @@
                     self.saving = false;
                     self.error  = err;
                     console.error('[linkrobins/support] save category failed:', err);
+                    m.redraw();
+                });
+            }
+
+            // Delete from within the editor (parity with the Tags "New Tag"
+            // modal, which offers delete while editing). The table's row action
+            // does the same thing; here we also close the modal on success.
+            _delete() {
+                var self = this;
+                var category = self.attrs && self.attrs.category;
+                if (!category || !self.editId) return;
+
+                var attr = category.attributes || {};
+                var name = attr.name || tx('linkrobins-support.admin.categories.this_category');
+                var count = attr.ticketCount || 0;
+                var warning = count > 0
+                    ? tx('linkrobins-support.admin.categories.delete_confirm_with_tickets', { count: count })
+                    : tx('linkrobins-support.admin.categories.delete_confirm_named', { name: name });
+                try {
+                    if (!window.confirm(warning)) return;
+                } catch (e) {}
+
+                self.saving = true;
+                self.error  = null;
+                m.redraw();
+
+                deleteCategoryRequest(self.editId).then(function () {
+                    self.saving = false;
+                    try { if (self.attrs.onSaved) self.attrs.onSaved(); } catch (e) {}
+                    try { app.modal.close(); } catch (e) {}
+                }).catch(function (err) {
+                    self.saving = false;
+                    self.error  = err;
+                    console.error('[linkrobins/support] delete category failed:', err);
                     m.redraw();
                 });
             }

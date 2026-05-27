@@ -397,12 +397,14 @@ class SupportTicketResource extends AbstractDatabaseResource
             );
         }
 
-        // Force delete here so the row actually goes away. Without
-        // this, Flarum's downstream delete() on a SoftDeletes model
-        // that's already trashed is a no-op (it would just refresh
-        // deleted_at to the current time). forceDelete() bypasses the
-        // soft-delete scope and removes the row, which cascade-deletes
-        // replies via the FK constraint.
+        // Force-delete the row here so it actually goes away. A plain
+        // delete() on an already-trashed SoftDeletes model just refreshes
+        // deleted_at, so the row would survive. forceDelete() bypasses the
+        // soft-delete scope and removes it (cascade-deleting replies via the
+        // FK constraint). After this the model's `exists` flag is false, so
+        // the framework's subsequent delete() call is a documented Eloquent
+        // no-op (delete() returns early when the model doesn't exist) -- this
+        // is well-defined behaviour, not a reliance on internals.
         $model->forceDelete();
     }
 }

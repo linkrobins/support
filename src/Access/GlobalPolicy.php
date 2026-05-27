@@ -40,9 +40,4 @@ class GlobalPolicy extends AbstractPolicy
     {
         return $actor->isAdmin();
     }
-
-    public function manageAppealBan(User $actor): bool
-    {
-        return $actor->isAdmin();
-    }
 }

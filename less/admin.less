@@ -73,6 +73,14 @@
     border-radius: 8px;
 }
 
+// Category editor modal: built on Flarum's FormModal and Form components, so
+// it inherits the exact field/label/helpText spacing of core modals (e.g. the
+// Tags "New Tag" modal) with no overrides. Only the delete button needs a nudge
+// to the right of the submit row, mirroring EditTagModal.
+.LinkRobinsSupportCategoryEditorModal-delete {
+    margin-left: auto;
+}
+
 // --- Categories table -----------------------------------------------
 
 .LinkRobinsSupportAdmin-catTable {
@@ -132,13 +140,3 @@
     color: #c0392b !important;
 }
 
-.LinkRobinsSupportAdmin-checkbox {
-    display: flex !important;
-    align-items: center;
-    gap: 8px;
-    font-weight: 500 !important;
-
-    input[type="checkbox"] {
-        margin: 0;
-    }
-}

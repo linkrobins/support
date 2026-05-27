@@ -5,15 +5,15 @@ namespace LinkRobins\Support;
 use Carbon\Carbon;
 use Flarum\Foundation\AbstractServiceProvider;
 use Flarum\Formatter\Formatter;
-use Flarum\Group\Group;
-use Flarum\Notification\NotificationSyncer;
 use Flarum\User\User;
-use LinkRobins\Support\Notification\NewSupportReplyBlueprint;
-use LinkRobins\Support\Notification\NewSupportTicketBlueprint;
+use Illuminate\Contracts\Bus\Dispatcher;
+use LinkRobins\Support\Job\NotifyNewReply;
+use LinkRobins\Support\Job\NotifyNewTicket;
+use Psr\Log\LoggerInterface;
 
 class SupportServiceProvider extends AbstractServiceProvider
 {
-    public function boot(Formatter $formatter): void
+    public function boot(Formatter $formatter, Dispatcher $bus, LoggerInterface $log): void
     {
         // Plug Flarum's formatter into the reply model so calling
         // setContentAttribute() runs Markdown/BBCode through the same
@@ -34,7 +34,7 @@ class SupportServiceProvider extends AbstractServiceProvider
         //   - If anyone replies to a `resolved` ticket, reopen it to
         //     `in_progress`. Closed tickets reject replies at the policy
         //     level, so we never see them here.
-        SupportReply::created(function (SupportReply $reply) {
+        SupportReply::created(function (SupportReply $reply) use ($bus, $log) {
             try {
                 $ticket = $reply->ticket;
                 if (! $ticket) {
@@ -80,179 +80,23 @@ class SupportServiceProvider extends AbstractServiceProvider
                 // Internal notes are staff coordination -- the ticket
                 // owner shouldn't see they exist.
                 if (! $reply->is_internal_note) {
-                    static::dispatchReplyNotification($reply, $ticket, $isStaff);
+                    $bus->dispatch(new NotifyNewReply($reply->id));
                 }
             } catch (\Throwable $e) {
-                resolve(\Psr\Log\LoggerInterface::class)->warning('[linkrobins/support] reply post-save hook failed', ['exception' => $e]);
+                $log->warning('[linkrobins/support] reply post-save hook failed', ['exception' => $e]);
             }
         });
 
         // When a ticket is opened, notify staff so they can pick it up.
         // The actor themselves is excluded so a staff member filing a
         // ticket doesn't get notified about their own ticket.
-        SupportTicket::created(function (SupportTicket $ticket) {
+        SupportTicket::created(function (SupportTicket $ticket) use ($bus, $log) {
             try {
-                static::dispatchTicketNotification($ticket);
+                $bus->dispatch(new NotifyNewTicket($ticket->id));
             } catch (\Throwable $e) {
-                resolve(\Psr\Log\LoggerInterface::class)->warning('[linkrobins/support] ticket post-save hook failed', ['exception' => $e]);
+                $log->warning('[linkrobins/support] ticket post-save hook failed', ['exception' => $e]);
             }
         });
-    }
-
-    /**
-     * Send a new-reply notification.
-     *
-     *   - Staff replies on a user-owned ticket  → notify the owner only
-     *   - User replies on their own ticket      → notify all staff
-     *   - Edge case: staff reply on a ticket they themselves opened
-     *     (admin testing) → notify other staff, not themselves
-     */
-    protected static function dispatchReplyNotification(SupportReply $reply, SupportTicket $ticket, bool $authorIsStaff): void
-    {
-        $syncer = static::tryResolveSyncer();
-        if (! $syncer) {
-            return;
-        }
-        $blueprint = new NewSupportReplyBlueprint($reply);
-
-        if (! $authorIsStaff) {
-            // Owner replied. Notify staff (minus the owner if they
-            // somehow also count as staff -- defense in depth).
-            $recipients = static::staffRecipients(exceptId: $reply->user_id);
-        } elseif ($ticket->user) {
-            // Staff replied. Notify the ticket owner unless the
-            // owner *is* the replying staff member.
-            if ((int) $ticket->user_id === (int) $reply->user_id) {
-                $recipients = static::staffRecipients(exceptId: $reply->user_id);
-            } else {
-                $recipients = [$ticket->user];
-            }
-        } else {
-            // No owner (deleted user) -- notify staff.
-            $recipients = static::staffRecipients(exceptId: $reply->user_id);
-        }
-
-        if (! empty($recipients)) {
-            static::trySyncNotification($syncer, $blueprint, $recipients, 'reply');
-        }
-    }
-
-    /**
-     * Send a new-ticket notification to all staff. The submitter is
-     * excluded -- a staff member filing a ticket doesn't need to be
-     * notified about it.
-     */
-    protected static function dispatchTicketNotification(SupportTicket $ticket): void
-    {
-        $syncer = static::tryResolveSyncer();
-        if (! $syncer) {
-            return;
-        }
-        $recipients = static::staffRecipients(exceptId: $ticket->user_id);
-        if (empty($recipients)) {
-            return;
-        }
-        static::trySyncNotification($syncer, new NewSupportTicketBlueprint($ticket), $recipients, 'ticket');
-    }
-
-    /**
-     * Run the syncer with isolated error handling so an email-send
-     * failure (broken mailer, full disk, transient SMTP issue) doesn't
-     * bubble up and pollute the data-save logs.
-     *
-     * `NotificationSyncer::sync()` writes alert rows BEFORE attempting
-     * to send emails -- if the email send fails partway through, the
-     * alerts have already landed and the user will still see them in
-     * the bell-icon dropdown. The right log message is "email failed",
-     * not "notification failed" (which would imply the alerts didn't
-     * make it either).
-     */
-    protected static function trySyncNotification(NotificationSyncer $syncer, $blueprint, array $recipients, string $kind): void
-    {
-        try {
-            $syncer->sync($blueprint, $recipients);
-        } catch (\Throwable $e) {
-            // Distinguish mailer failures from genuine sync bugs. A
-            // mailer error from Symfony Mailer / Swift / Laravel mail
-            // typically contains "sendmail", "SMTP", "stream", or
-            // "Connection". Anything else we log as a real bug so it
-            // gets surfaced.
-            $msg = $e->getMessage();
-            $isMailerError = (
-                stripos($msg, 'sendmail') !== false
-                || stripos($msg, 'smtp')   !== false
-                || stripos($msg, 'mailer') !== false
-                || stripos($msg, 'mail server') !== false
-            );
-            if ($isMailerError) {
-                resolve(\Psr\Log\LoggerInterface::class)->warning('[linkrobins/support] ' . $kind . ' notification stored, but email send failed: ' . $msg);
-            } else {
-                resolve(\Psr\Log\LoggerInterface::class)->warning('[linkrobins/support] ' . $kind . ' notification sync failed: ' . $msg);
-            }
-        }
-    }
-
-    /**
-     * Resolve NotificationSyncer from the container.
-     *
-     * Wrapped in try/catch because container is only available at
-     * runtime, not during e.g. migrations or some test contexts. A
-     * failure here is non-fatal -- the data is still saved, just
-     * without notifications.
-     */
-    protected static function tryResolveSyncer(): ?NotificationSyncer
-    {
-        try {
-            return resolve(NotificationSyncer::class);
-        } catch (\Throwable $e) {
-            // The container (and thus the logger) may be unavailable here --
-            // this catch exists precisely for non-runtime contexts like
-            // migrations -- so fall back to error_log rather than risk a
-            // second resolve() failure.
-            error_log('[linkrobins/support] could not resolve NotificationSyncer: ' . $e->getMessage());
-            return null;
-        }
-    }
-
-    /**
-     * Build the list of staff users who should receive notifications.
-     *
-     * "Staff" = admin group (id=1) members + users with the
-     * `linkrobins-support.handle_tickets` permission.
-     *
-     * @param int|null $exceptId Optional user id to exclude (typically the actor).
-     * @return User[]
-     */
-    protected static function staffRecipients(?int $exceptId = null): array
-    {
-        try {
-            // Users who are either admins or hold the
-            // `linkrobins-support.handle_tickets` permission via any
-            // of their groups.
-            $permGroups = function ($q) {
-                $q->whereIn('groups.id', function ($sub) {
-                    $sub->select('group_id')
-                        ->from('group_permission')
-                        ->where('permission', 'linkrobins-support.handle_tickets');
-                });
-            };
-
-            $query = User::query()
-                ->where(function ($q) use ($permGroups) {
-                    $q->whereHas('groups', function ($q) {
-                        $q->where('groups.id', Group::ADMINISTRATOR_ID);
-                    })->orWhereHas('groups', $permGroups);
-                });
-
-            if ($exceptId !== null) {
-                $query->where('id', '!=', $exceptId);
-            }
-
-            return $query->distinct()->get()->all();
-        } catch (\Throwable $e) {
-            resolve(\Psr\Log\LoggerInterface::class)->warning('[linkrobins/support] staffRecipients failed', ['exception' => $e]);
-            return [];
-        }
     }
 
     /**

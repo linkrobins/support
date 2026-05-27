@@ -6,6 +6,35 @@
 
     // --- Helpers ---------------------------------------------------------
 
+    // Translate a key under this extension's forum namespace. Strings live in
+    // locale/en.yml (linkrobins-support.forum.*) so they're translatable; an
+    // optional English fallback keeps the UI sensible if a key is ever missing.
+    function tr(key, fallback, params) {
+        try {
+            var out = app.translator.trans('linkrobins-support.forum.' + key, params || {});
+            if (typeof out === 'string' && out.indexOf('linkrobins-support.') !== 0) {
+                return out;
+            }
+            if (out != null && typeof out !== 'string') {
+                return out; // rich (vdom) translation
+            }
+        } catch (e) {}
+        return fallback != null ? fallback : key;
+    }
+
+    // Render a username as a link to the user's profile. Accepts a raw API
+    // user object (with .attributes); falls back to plain text if no username.
+    function userLink(userObj) {
+        var attrs = userObj && userObj.attributes ? userObj.attributes : null;
+        if (!attrs) return '';
+        var label = attrs.displayName || attrs.username || '';
+        if (!attrs.username) return label;
+        var href = basePath() + '/u/' + encodeURIComponent(attrs.username);
+        var LinkC = null;
+        try { LinkC = flarum.reg.get('core', 'common/components/Link'); } catch (e) {}
+        return LinkC ? LinkC.component({ href: href }, label) : m('a', { href: href }, label);
+    }
+
     function readForumAttribute(key) {
         try {
             if (app.forum && typeof app.forum.attribute === 'function') {
@@ -245,12 +274,12 @@
                 var sep = existing && !existing.endsWith('\n') ? '\n' : '';
                 target[bodyKey] = existing + sep + inserted + '\n';
             } else {
-                target.uploadError = 'Upload returned no files. Please try again.';
+                target.uploadError = tr('errors.upload_no_files', 'Upload returned no files. Please try again.');
             }
             m.redraw();
         }).catch(function (err) {
             target.uploadingCount = Math.max(0, target.uploadingCount - files.length);
-            var msg = 'Could not upload file.';
+            var msg = tr('errors.upload', 'Could not upload file.');
             try {
                 var resp = err && err.response;
                 if (resp && resp.errors && resp.errors[0]) {
@@ -282,8 +311,8 @@
 
     var STATUS_LABELS = {
         open:           'Open',
-        in_progress:    'In progress',
-        awaiting_user:  'Awaiting response',
+        in_progress:    tr('status.in_progress', 'In progress'),
+        awaiting_user:  tr('status.awaiting_response', 'Awaiting response'),
         resolved:       'Resolved',
         closed:         'Closed',
     };
@@ -371,8 +400,7 @@
         try {
             var extMod0 = flarum.reg.get('core', 'common/extend');
             var extend0 = extMod0 && extMod0.extend;
-            var NotificationGrid = flarum.reg.get('core', 'forum/components/NotificationGrid');
-            if (NotificationGrid && typeof extend0 === 'function') {
+            if (typeof extend0 === 'function') {
                 var t = function (key, fallback) {
                     try {
                         var out = app.translator.trans(key);
@@ -380,7 +408,7 @@
                     } catch (e) {}
                     return fallback;
                 };
-                extend0(NotificationGrid.prototype, 'notificationTypes', function (items) {
+                extend0('flarum/forum/components/NotificationGrid', 'notificationTypes', function (items) {
                     items.add('linkrobinsSupportNewReply', {
                         name: 'linkrobinsSupportNewReply',
                         icon: 'fas fa-life-ring',
@@ -401,6 +429,37 @@
             }
         } catch (e) {
             console.warn('[linkrobins/support] could not extend NotificationGrid:', e);
+        }
+
+        // Appeal-ban toggle in the user's moderation controls dropdown (the
+        // same menu as Suspend). Shown only to users with the
+        // linkrobins-support.manage_appeal_bans permission.
+        try {
+            var extModUC = flarum.reg.get('core', 'common/extend');
+            var extendUC = extModUC && extModUC.extend;
+            var btnMod = flarum.reg.get('core', 'common/components/Button');
+            var ButtonUC = (btnMod && btnMod.default) || btnMod;
+            if (ButtonUC && typeof extendUC === 'function') {
+                extendUC('flarum/forum/utils/UserControls', 'moderationControls', function (items, user) {
+                    if (!readForumAttribute('canManageSupportAppealBans')) return;
+                    if (!user || typeof user.attribute !== 'function') return;
+                    var banned = !!user.attribute('supportAppealBanned');
+                    items.add('linkrobinsSupportAppealBan', m(ButtonUC, {
+                        icon: banned ? 'fas fa-unlock' : 'fas fa-ban',
+                        onclick: function () {
+                            user.save({ supportAppealBanned: !banned }).then(function () {
+                                m.redraw();
+                            }).catch(function () {
+                                showError(tr('user_controls.toggle_failed', 'Could not update the appeal-ban status.'));
+                            });
+                        },
+                    }, banned
+                        ? tr('user_controls.allow_appeals', 'Allow support appeals')
+                        : tr('user_controls.disallow_appeals', 'Disallow support appeals')));
+                });
+            }
+        } catch (e) {
+            console.warn('[linkrobins/support] could not extend UserControls:', e);
         }
 
         try {
@@ -499,11 +558,11 @@
     // --- Sidebar filter metadata ---------------------------------------
 
     var FILTER_OPTIONS = [
-        { id: 'mine',          label: 'My tickets',     icon: 'fas fa-user',          staffOnly: false },
+        { id: 'mine',          label: tr('index.my_tickets', 'My tickets'),     icon: 'fas fa-user',          staffOnly: false },
         { id: 'all',           label: 'All',            icon: 'fas fa-inbox',         staffOnly: true  },
         { id: 'open',          label: 'Open',           icon: 'fas fa-circle',        staffOnly: true  },
-        { id: 'in_progress',   label: 'In progress',    icon: 'fas fa-spinner',       staffOnly: true  },
-        { id: 'awaiting_user', label: 'Awaiting response',  icon: 'fas fa-clock',         staffOnly: true  },
+        { id: 'in_progress',   label: tr('status.in_progress', 'In progress'),    icon: 'fas fa-spinner',       staffOnly: true  },
+        { id: 'awaiting_user', label: tr('status.awaiting_response', 'Awaiting response'),  icon: 'fas fa-clock',         staffOnly: true  },
         { id: 'resolved',      label: 'Resolved',       icon: 'fas fa-check-circle',  staffOnly: true  },
         { id: 'closed',        label: 'Closed',         icon: 'fas fa-times-circle',  staffOnly: true  },
     ];
@@ -529,12 +588,12 @@
                             icon:          'fas fa-plus',
                             className:     'Button Button--primary LinkRobinsSupport-newTicketButton',
                             itemClassName: 'App-primaryControl',
-                            'aria-label':  'New ticket',
-                            title:         'Open a new support ticket',
+                            'aria-label':  tr('index.new_ticket', 'New ticket'),
+                            title:         tr('index.new_ticket_tooltip', 'Open a new support ticket'),
                             onclick:       function (e) {
                                 safeNavigate(newHref, e);
                             },
-                        }, 'New ticket'),
+                        }, tr('index.new_ticket', 'New ticket')),
                         110
                     );
                 }
@@ -737,13 +796,13 @@
                 }
                 if (self.error) {
                     return m('div', { className: 'LinkRobinsSupport-empty' },
-                        'Could not load tickets.');
+                        tr('errors.load_tickets', 'Could not load tickets.'));
                 }
                 if (!self.tickets.length) {
                     return m('div', { className: 'LinkRobinsSupport-empty' },
                         canCreateSupportTicket()
-                            ? 'No tickets yet. Click "New ticket" to open one.'
-                            : 'No tickets to show.');
+                            ? tr('index.empty_own', 'No tickets yet. Click "New ticket" to open one.')
+                            : tr('index.empty', 'No tickets to show.'));
                 }
                 return m('div', { className: 'LinkRobinsSupport-list' },
                     self.tickets.map(function (t) { return self._renderRow(t); })
@@ -799,7 +858,7 @@
                 this.categoryId = '';
                 this.uploadingCount = 0;
                 this.uploadError    = null;
-                try { app.setTitle('New ticket'); } catch (e) {}
+                try { app.setTitle(tr('index.new_ticket', 'New ticket')); } catch (e) {}
 
                 if (!app.session || !app.session.user) {
                     m.route.set('/');
@@ -866,7 +925,7 @@
                                 m('h1', { className: 'LinkRobinsSupport-title' }, 'Support')
                             ),
                             m('div', { className: 'LinkRobinsSupport-empty LinkRobinsSupport-empty--blocked' },
-                                'You are not permitted to file appeals. Please contact the site owner via another channel.'
+                                tr('compose.appeal_banned', 'You are not permitted to file appeals. Please contact the site owner via another channel.')
                             ),
                         ])
                     );
@@ -888,8 +947,8 @@
                             ),
                             m('div', { className: 'LinkRobinsSupport-empty' },
                                 isUserSuspended()
-                                    ? 'No appeal categories are currently available.'
-                                    : 'No support categories have been set up yet. Please contact an admin.'
+                                    ? tr('compose.no_appeal_categories', 'No appeal categories are currently available.')
+                                    : tr('compose.no_categories', 'No support categories have been set up yet. Please contact an admin.')
                             ),
                         ])
                     );
@@ -905,7 +964,7 @@
                         m('header', { className: 'LinkRobinsSupport-header' }, [
 
                             m('h1', { className: 'LinkRobinsSupport-title' },
-                                isUserSuspended() ? 'File an appeal' : 'New support ticket'),
+                                isUserSuspended() ? tr('compose.title_appeal', 'File an appeal') : tr('compose.title', 'New support ticket')),
                         ]),
 
                         self.error ? m('div', { className: 'Alert Alert--danger' }, [
@@ -931,7 +990,7 @@
                                     className:   'FormControl',
                                     value:       self.subject,
                                     disabled:    self.saving,
-                                    placeholder: 'Short summary of your issue',
+                                    placeholder: tr('compose.subject_placeholder', 'Short summary of your issue'),
                                     maxlength:   200,
                                     oninput:     function (e) { self.subject = e.target.value; },
                                 }),
@@ -943,7 +1002,7 @@
                                     rows:        10,
                                     value:       self.body,
                                     disabled:    self.saving,
-                                    placeholder: 'Describe the issue in detail. Markdown is supported.',
+                                    placeholder: tr('compose.body_placeholder', 'Describe the issue in detail. Markdown is supported.'),
                                     oninput:     function (e) { self.body = e.target.value; },
 
                                     onkeydown: function (e) {
@@ -998,7 +1057,7 @@
                                     className: 'Button Button--primary',
                                     disabled:  !canSave,
                                     onclick:   function () { self._submit(); },
-                                }, self.saving ? 'Submitting…' : 'Submit ticket'),
+                                }, self.saving ? 'Submitting…' : tr('compose.submit', 'Submit ticket')),
                             ]),
                         ]),
                     ])
@@ -1007,14 +1066,14 @@
 
             _errorMessage() {
                 var err = this.error;
-                if (!err) return 'Unknown error.';
+                if (!err) return tr('errors.unknown', 'Unknown error.');
                 try {
                     var errors = err.response && err.response.errors;
                     if (errors && errors[0]) {
-                        return errors[0].detail || errors[0].title || 'Could not submit.';
+                        return errors[0].detail || errors[0].title || tr('errors.submit', 'Could not submit.');
                     }
                 } catch (e) {}
-                return 'Could not submit the ticket.';
+                return tr('errors.submit_ticket', 'Could not submit the ticket.');
             }
 
             _submit() {
@@ -1146,7 +1205,7 @@
                                 }, [m('i', { className: 'fas fa-arrow-left' }), ' Back']),
                             ]),
                             m('div', { className: 'LinkRobinsSupport-empty' },
-                                'Could not load this ticket. It may have been deleted, or you may not have permission to view it.'
+                                tr('errors.load_ticket', 'Could not load this ticket. It may have been deleted, or you may not have permission to view it.')
                             ),
                         ])
                     );
@@ -1177,9 +1236,9 @@
                                     className: 'LinkRobinsSupport-row-cat',
                                     style:     'color: ' + (category.attributes.color || 'inherit'),
                                 }, category.attributes.name) : null,
-                                creator ? m('span', null,
-                                    'Opened by ' + (creator.attributes.displayName || creator.attributes.username)
-                                ) : null,
+                                creator ? m('span', null, [
+                                    tr('show.opened_by', 'Opened by'), ' ', userLink(creator),
+                                ]) : null,
                                 m('span', null, formatDate(attr.createdAt)),
                             ]),
                             attr.decision ? m('div', { className: 'LinkRobinsSupport-decision' }, [
@@ -1198,8 +1257,8 @@
                         attr.canReply ? this._renderReplyForm() : (
                             m('div', { className: 'LinkRobinsSupport-empty' },
                                 attr.status === 'closed'
-                                    ? 'This ticket has been closed and cannot be replied to.'
-                                    : 'You cannot reply to this ticket.')
+                                    ? tr('show.closed_notice', 'This ticket has been closed and cannot be replied to.')
+                                    : tr('show.cannot_reply', 'You cannot reply to this ticket.'))
                         ),
                     ])
                 );
@@ -1211,7 +1270,7 @@
                 if (!staff) return null;
                 if (attr.status === 'closed') {
                     return m('div', { className: 'LinkRobinsSupport-staffBar' }, [
-                        m('span', { className: 'LinkRobinsSupport-staffBar-label' }, 'Closed ticket'),
+                        m('span', { className: 'LinkRobinsSupport-staffBar-label' }, tr('show.closed_badge', 'Closed ticket')),
                         this._renderAssignmentRow(false),
                     ]);
                 }
@@ -1220,7 +1279,7 @@
 
                 return m('div', { className: 'LinkRobinsSupport-staffBar' }, [
                     m('label', { className: 'LinkRobinsSupport-staffBar-statusGroup' }, [
-                        m('span', { className: 'LinkRobinsSupport-staffBar-label' }, 'Set status:'),
+                        m('span', { className: 'LinkRobinsSupport-staffBar-label' }, tr('staff.set_status', 'Set status:')),
                         m('select', {
                             className: 'FormControl LinkRobinsSupport-staffBar-statusSelect',
                             value:     attr.status,
@@ -1246,8 +1305,8 @@
                 var actor = app.session && app.session.user;
                 var actorIsAssigned = assigned && actor && String(assigned.id) === String(actor.id());
                 var label = assigned
-                    ? 'Assigned to ' + (assigned.attributes && assigned.attributes.username || ('user #' + assigned.id))
-                    : 'Unassigned';
+                    ? tr('show.assigned_to', 'Assigned to') + ' ' + (assigned.attributes && assigned.attributes.username || ('user #' + assigned.id))
+                    : tr('show.unassigned', 'Unassigned');
 
                 return m('div', { className: 'LinkRobinsSupport-staffBar-assign' }, [
                     m('span', { className: 'LinkRobinsSupport-staffBar-label' }, label),
@@ -1302,7 +1361,7 @@
                     .catch(function (err) {
                         self.updating = false;
                         console.error('[linkrobins/support] assignment update failed:', err);
-                        showError('Could not update assignment.');
+                        showError(tr('errors.update_assignment', 'Could not update assignment.'));
                         m.redraw();
                     });
             }
@@ -1320,7 +1379,7 @@
                     .catch(function (err) {
                         self.updating = false;
                         console.error('[linkrobins/support] status update failed:', err);
-                        showError('Could not update status.');
+                        showError(tr('errors.update_status', 'Could not update status.'));
                         m.redraw();
                     });
             }
@@ -1352,14 +1411,15 @@
                 }, [
                     m('header', { className: 'LinkRobinsSupport-reply-header' }, [
                         user ? m('span', { className: 'LinkRobinsSupport-reply-author' },
-                            user.attributes.displayName || user.attributes.username) : null,
+                            userLink(user)) : null,
                         m('span', { className: 'LinkRobinsSupport-reply-date' },
                             formatDate(attr.createdAt)),
 
                         editedAt ? m('span', {
                             className: 'LinkRobinsSupport-reply-edited',
-                            title: 'Edited ' + formatDate(editedAt)
-                                + (editedBy ? ' by ' + (editedBy.attributes.displayName || editedBy.attributes.username) : ''),
+                            title: editedBy
+                                ? tr('reply.edited_by', 'Edited {date} by {user}', { date: formatDate(editedAt), user: (editedBy.attributes.displayName || editedBy.attributes.username) })
+                                : tr('reply.edited_at', 'Edited {date}', { date: formatDate(editedAt) }),
                         }, '(edited)') : null,
 
                         isDeleted ? m('span', { className: 'LinkRobinsSupport-reply-deletedBadge' }, [
@@ -1373,7 +1433,7 @@
                         : (isDeleted
                             ? m('div', {
                                 className: 'LinkRobinsSupport-reply-body LinkRobinsSupport-reply-body--deleted',
-                            }, 'This reply was deleted.')
+                            }, tr('reply.deleted_notice', 'This reply was deleted.'))
                             : m('div', {
                                 className: 'LinkRobinsSupport-reply-body',
                                 oncreate:  function (vnode) { try { vnode.dom.innerHTML = html; } catch (e) {} },
@@ -1423,7 +1483,7 @@
                             className: 'LinkRobinsSupport-reply-action--danger',
                             disabled:  busy,
                             onclick:   function () { self._forceDeleteReply(reply); },
-                        }, 'Delete forever'));
+                        }, tr('action.delete_forever', 'Delete forever')));
                     }
                 }
 
@@ -1438,7 +1498,7 @@
                         menuClassName:    'Dropdown-menu--right',
                         buttonClassName:  'Button Button--icon Button--flat LinkRobinsSupport-reply-actionsToggle',
                         icon:             'fas fa-ellipsis-h',
-                        accessibleToggleLabel: 'Moderation actions',
+                        accessibleToggleLabel: tr('reply.mod_actions', 'Moderation actions'),
                     }, items)
                 );
             }
@@ -1476,7 +1536,7 @@
                             className: 'Button Button--primary',
                             disabled:  !canSave,
                             onclick:   function () { self._saveEditReply(reply); },
-                        }, state.busy ? 'Saving…' : 'Save changes'),
+                        }, state.busy ? 'Saving…' : tr('action.save_changes', 'Save changes')),
                     ]),
                 ]);
             }
@@ -1528,7 +1588,7 @@
                 }).catch(function (err) {
                     state.busy = false;
                     console.error('[linkrobins/support] edit reply failed:', err);
-                    showError('Could not save the edit.');
+                    showError(tr('errors.save_edit', 'Could not save the edit.'));
                     m.redraw();
                 });
             }
@@ -1536,7 +1596,7 @@
             _softDeleteReply(reply) {
                 var self = this;
                 try {
-                    if (!window.confirm('Soft-delete this reply? Staff can restore it later.')) return;
+                    if (!window.confirm(tr('confirm.soft_delete_reply', 'Soft-delete this reply? Staff can restore it later.'))) return;
                 } catch (e) {}
                 self._patchReplyDeletedState(reply, true);
             }
@@ -1569,7 +1629,7 @@
                 }).catch(function (err) {
                     self._setReplyBusy(reply.id, false);
                     console.error('[linkrobins/support] toggle delete failed:', err);
-                    showError(isDeleted ? 'Could not delete the reply.' : 'Could not restore the reply.');
+                    showError(isDeleted ? tr('errors.delete_reply', 'Could not delete the reply.') : tr('errors.restore_reply', 'Could not restore the reply.'));
                     m.redraw();
                 });
             }
@@ -1577,7 +1637,7 @@
             _forceDeleteReply(reply) {
                 var self = this;
                 try {
-                    if (!window.confirm('Permanently delete this reply? This cannot be undone.')) return;
+                    if (!window.confirm(tr('confirm.delete_reply_forever', 'Permanently delete this reply? This cannot be undone.'))) return;
                 } catch (e) {}
                 self._setReplyBusy(reply.id, true);
 
@@ -1595,7 +1655,7 @@
                 }).catch(function (err) {
                     self._setReplyBusy(reply.id, false);
                     console.error('[linkrobins/support] force delete failed:', err);
-                    showError('Could not permanently delete the reply.');
+                    showError(tr('errors.delete_reply_forever', 'Could not permanently delete the reply.'));
                     m.redraw();
                 });
             }
@@ -1647,7 +1707,7 @@
                             className: 'LinkRobinsSupport-reply-action--danger',
                             disabled:  busy,
                             onclick:   function () { self._softDeleteTicket(); },
-                        }, 'Delete ticket'));
+                        }, tr('ticket.delete', 'Delete ticket')));
                     }
                 } else {
                     if (canUpdate) {
@@ -1655,7 +1715,7 @@
                             icon:     'fas fa-undo',
                             disabled: busy,
                             onclick:  function () { self._restoreTicket(); },
-                        }, 'Restore ticket'));
+                        }, tr('ticket.restore', 'Restore ticket')));
                     }
 
                     if (canDelete) {
@@ -1664,7 +1724,7 @@
                             className: 'LinkRobinsSupport-reply-action--danger',
                             disabled:  busy,
                             onclick:   function () { self._forceDeleteTicket(); },
-                        }, 'Delete forever'));
+                        }, tr('action.delete_forever', 'Delete forever')));
                     }
                 }
 
@@ -1679,7 +1739,7 @@
                         menuClassName:    'Dropdown-menu--right',
                         buttonClassName:  'Button Button--icon Button--flat LinkRobinsSupport-reply-actionsToggle',
                         icon:             'fas fa-ellipsis-h',
-                        accessibleToggleLabel: 'Ticket moderation actions',
+                        accessibleToggleLabel: tr('ticket.mod_actions', 'Ticket moderation actions'),
                     }, items)
                 );
             }
@@ -1687,7 +1747,7 @@
             _softDeleteTicket() {
                 var self = this;
                 try {
-                    if (!window.confirm('Soft-delete this ticket? It will be hidden from the index and from the ticket owner; staff can restore it.')) return;
+                    if (!window.confirm(tr('confirm.soft_delete_ticket', 'Soft-delete this ticket? It will be hidden from the index and from the ticket owner; staff can restore it.'))) return;
                 } catch (e) {}
                 self._patchTicketDeletedState(true);
             }
@@ -1725,7 +1785,7 @@
                 }).catch(function (err) {
                     self._ticketBusy = false;
                     console.error('[linkrobins/support] ticket delete toggle failed:', err);
-                    showError(isDeleted ? 'Could not delete the ticket.' : 'Could not restore the ticket.');
+                    showError(isDeleted ? tr('errors.delete_ticket', 'Could not delete the ticket.') : tr('errors.restore_ticket', 'Could not restore the ticket.'));
                     m.redraw();
                 });
             }
@@ -1734,7 +1794,7 @@
                 var self = this;
                 if (!self.ticket) return;
                 try {
-                    if (!window.confirm('Permanently delete this ticket and all its replies? This cannot be undone.')) return;
+                    if (!window.confirm(tr('confirm.delete_ticket_forever', 'Permanently delete this ticket and all its replies? This cannot be undone.'))) return;
                 } catch (e) {}
                 self._ticketBusy = true;
                 m.redraw();
@@ -1752,7 +1812,7 @@
                 }).catch(function (err) {
                     self._ticketBusy = false;
                     console.error('[linkrobins/support] ticket force delete failed:', err);
-                    showError('Could not permanently delete the ticket.');
+                    showError(tr('errors.delete_ticket_forever', 'Could not permanently delete the ticket.'));
                     m.redraw();
                 });
             }
@@ -1770,8 +1830,8 @@
                         value:       self.replyText,
                         disabled:    self.posting,
                         placeholder: self.replyIsInternal
-                            ? 'Internal note (only staff will see this)…'
-                            : 'Write a reply…',
+                            ? tr('reply.internal_placeholder', 'Internal note (only staff will see this)…')
+                            : tr('reply.placeholder', 'Write a reply…'),
                         oninput:     function (e) { self.replyText = e.target.value; },
                         onkeydown: function (e) {
                             var isSubmit = (e.key === 'Enter' || e.keyCode === 13)
@@ -1845,23 +1905,43 @@
                 return uploadFilesToBody(this, files, 'replyText');
             }
 
+            _refreshTicket() {
+                var self = this;
+                fetchTicket(self._ticketId).then(function (result) {
+                    self.ticket   = result.data;
+                    self.included = result.included || [];
+                    m.redraw();
+                }).catch(function () {});
+            }
+
             _postReply() {
                 var self = this;
                 self.posting = true;
                 m.redraw();
                 postReply(self.ticket.id, self.replyText, self.replyIsInternal)
-                    .then(function () {
+                    .then(function (resp) {
                         self.replyText       = '';
                         self.replyIsInternal = false;
                         self.uploadError     = null;
                         self.uploadingCount  = 0;
                         self.posting         = false;
-                        self._load();
+                        // Append the new reply in place rather than a full
+                        // two-request reload of the whole thread. Then refresh
+                        // just the ticket so any server-side status/assignment
+                        // change is still reflected (one request, no spinner).
+                        if (resp && resp.data) {
+                            self.replies = (self.replies || []).concat([resp.data]);
+                            if (resp.included && resp.included.length) {
+                                self.repliesIncluded = (self.repliesIncluded || []).concat(resp.included);
+                            }
+                        }
+                        m.redraw();
+                        self._refreshTicket();
                     })
                     .catch(function (err) {
                         self.posting = false;
                         console.error('[linkrobins/support] reply failed:', err);
-                        showError('Could not post reply.');
+                        showError(tr('errors.post_reply', 'Could not post reply.'));
                         m.redraw();
                     });
             }
