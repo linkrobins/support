@@ -310,11 +310,11 @@
     // --- Status display helpers -----------------------------------------
 
     var STATUS_LABELS = {
-        open:           'Open',
+        open:           tr('status.open', 'Open'),
         in_progress:    tr('status.in_progress', 'In progress'),
         awaiting_user:  tr('status.awaiting_response', 'Awaiting response'),
-        resolved:       'Resolved',
-        closed:         'Closed',
+        resolved:       tr('status.resolved', 'Resolved'),
+        closed:         tr('status.closed', 'Closed'),
     };
 
     var STATUS_CLASSES = {
@@ -439,8 +439,14 @@
             var extendUC = extModUC && extModUC.extend;
             var btnMod = flarum.reg.get('core', 'common/components/Button');
             var ButtonUC = (btnMod && btnMod.default) || btnMod;
-            if (ButtonUC && typeof extendUC === 'function') {
-                extendUC('flarum/forum/utils/UserControls', 'moderationControls', function (items, user) {
+            // UserControls is a plain object (not a component class), so we must
+            // extend the object itself. The string form of extend() targets
+            // `module.prototype`, which is undefined for a util object, so it
+            // silently no-ops -- that's why the appeal-ban button never showed.
+            var ucMod = flarum.reg.get('core', 'forum/utils/UserControls');
+            var UserControls = (ucMod && ucMod.default) || ucMod;
+            if (ButtonUC && UserControls && typeof extendUC === 'function') {
+                extendUC(UserControls, 'moderationControls', function (items, user) {
                     if (!readForumAttribute('canManageSupportAppealBans')) return;
                     if (!user || typeof user.attribute !== 'function') return;
                     var banned = !!user.attribute('supportAppealBanned');
@@ -473,7 +479,7 @@
                     items.add('linkrobins-support', m(LinkButton, {
                         href: bp + BASE_PATH,
                         icon: 'fas fa-life-ring',
-                    }, 'Support'), 30);
+                    }, tr('nav', 'Support')), 30);
                 });
             }
         } catch (e) {
@@ -501,9 +507,9 @@
                 var n = this.attrs && this.attrs.notification;
                 var from = n && n.fromUser && n.fromUser();
                 if (from && from.displayName) {
-                    return from.displayName() + ' replied to your ticket';
+                    return tr('notifications.reply_from', '{user} replied to your ticket', { user: from.displayName() });
                 }
-                return 'Support replied to your ticket';
+                return tr('notifications.reply_generic', 'Support replied to your ticket');
             }
             excerpt() {
                 var subj = this.attrs && this.attrs.notification
@@ -539,8 +545,10 @@
                 var data = n && n.content && n.content();
                 var isAppeal = !!(data && data.isAppeal);
                 var from = n && n.fromUser && n.fromUser();
-                var who = (from && from.displayName) ? from.displayName() : 'A user';
-                return who + ' opened a new ' + (isAppeal ? 'appeal' : 'support ticket');
+                var who = (from && from.displayName) ? from.displayName() : tr('notifications.someone', 'A user');
+                return isAppeal
+                    ? tr('notifications.new_appeal', '{user} opened a new appeal', { user: who })
+                    : tr('notifications.new_ticket', '{user} opened a new support ticket', { user: who });
             }
             excerpt() {
                 var subj = this.attrs && this.attrs.notification
@@ -559,12 +567,12 @@
 
     var FILTER_OPTIONS = [
         { id: 'mine',          label: tr('index.my_tickets', 'My tickets'),     icon: 'fas fa-user',          staffOnly: false },
-        { id: 'all',           label: 'All',            icon: 'fas fa-inbox',         staffOnly: true  },
-        { id: 'open',          label: 'Open',           icon: 'fas fa-circle',        staffOnly: true  },
+        { id: 'all',           label: tr('index.filter_all', 'All'),            icon: 'fas fa-inbox',         staffOnly: true  },
+        { id: 'open',          label: tr('status.open', 'Open'),           icon: 'fas fa-circle',        staffOnly: true  },
         { id: 'in_progress',   label: tr('status.in_progress', 'In progress'),    icon: 'fas fa-spinner',       staffOnly: true  },
         { id: 'awaiting_user', label: tr('status.awaiting_response', 'Awaiting response'),  icon: 'fas fa-clock',         staffOnly: true  },
-        { id: 'resolved',      label: 'Resolved',       icon: 'fas fa-check-circle',  staffOnly: true  },
-        { id: 'closed',        label: 'Closed',         icon: 'fas fa-times-circle',  staffOnly: true  },
+        { id: 'resolved',      label: tr('status.resolved', 'Resolved'),       icon: 'fas fa-check-circle',  staffOnly: true  },
+        { id: 'closed',        label: tr('status.closed', 'Closed'),         icon: 'fas fa-times-circle',  staffOnly: true  },
     ];
 
     function filterHrefFor(id) {
@@ -603,7 +611,7 @@
                     m(SelectDropdown, {
                         buttonClassName: 'Button',
                         className:       'App-titleControl',
-                        defaultLabel:    'Support',
+                        defaultLabel:    tr('nav', 'Support'),
                     }, this.navItems().toArray()),
                     90
                 );
@@ -673,7 +681,7 @@
                 this.tickets  = [];
                 this.included = [];
                 this.filter = this._filterFromAttrs(this.attrs);
-                try { app.setTitle('Support'); } catch (e) {}
+                try { app.setTitle(tr('nav', 'Support')); } catch (e) {}
                 this._lastLoadedFilter = this.filter;
                 this._load();
             }
@@ -780,11 +788,11 @@
 
 
             _headingFor(filter) {
-                if (!filter || filter === 'mine') return 'Support';
+                if (!filter || filter === 'mine') return tr('nav', 'Support');
                 for (var i = 0; i < FILTER_OPTIONS.length; i++) {
                     if (FILTER_OPTIONS[i].id === filter) return FILTER_OPTIONS[i].label;
                 }
-                return 'Support';
+                return tr('nav', 'Support');
             }
 
             _renderList() {
@@ -792,7 +800,7 @@
                 if (self.loading) {
                     return LoadingIndicator
                         ? m(LoadingIndicator)
-                        : m('div', null, 'Loading...');
+                        : m('div', null, tr('common.loading', 'Loading…'));
                 }
                 if (self.error) {
                     return m('div', { className: 'LinkRobinsSupport-empty' },
@@ -880,7 +888,10 @@
                             });
                         }
                         self.categories = cats;
-                        if (cats.length > 0 && !self.categoryId) {
+                        // Only auto-select when there's a single category, so the
+                        // picker (with descriptions) is shown whenever there's a
+                        // real choice to make.
+                        if (cats.length === 1) {
                             self.categoryId = String(cats[0].id);
                         }
                         self.loading = false;
@@ -922,7 +933,7 @@
                     return self._wrap(
                         m('div', { className: 'LinkRobinsSupport-container' }, [
                             m('header', { className: 'LinkRobinsSupport-header' },
-                                m('h1', { className: 'LinkRobinsSupport-title' }, 'Support')
+                                m('h1', { className: 'LinkRobinsSupport-title' }, tr('nav', 'Support'))
                             ),
                             m('div', { className: 'LinkRobinsSupport-empty LinkRobinsSupport-empty--blocked' },
                                 tr('compose.appeal_banned', 'You are not permitted to file appeals. Please contact the site owner via another channel.')
@@ -934,7 +945,7 @@
                 if (self.loading) {
                     return self._wrap(
                         m('div', { className: 'LinkRobinsSupport-container' },
-                            LoadingIndicator ? m(LoadingIndicator) : 'Loading...'
+                            LoadingIndicator ? m(LoadingIndicator) : tr('common.loading', 'Loading…')
                         )
                     );
                 }
@@ -943,7 +954,7 @@
                     return self._wrap(
                         m('div', { className: 'LinkRobinsSupport-container' }, [
                             m('header', { className: 'LinkRobinsSupport-header' },
-                                m('h1', { className: 'LinkRobinsSupport-title' }, 'Support')
+                                m('h1', { className: 'LinkRobinsSupport-title' }, tr('nav', 'Support'))
                             ),
                             m('div', { className: 'LinkRobinsSupport-empty' },
                                 isUserSuspended()
@@ -954,6 +965,14 @@
                     );
                 }
 
+                // Step 1 of the flow: a category picker showing each category's
+                // description. Shown whenever no category has been chosen yet
+                // (i.e. there's more than one to choose from). Selecting a card
+                // advances to the form below.
+                if (self.categoryId === '') {
+                    return self._wrap(self._renderPicker());
+                }
+
                 var canSave = !self.saving
                     && self.subject.trim() !== ''
                     && self.body.trim() !== ''
@@ -962,9 +981,18 @@
                 return self._wrap(
                     m('div', { className: 'LinkRobinsSupport-container' }, [
                         m('header', { className: 'LinkRobinsSupport-header' }, [
-
+                            self.categories.length > 1 ? m('button', {
+                                type:      'button',
+                                className: 'Button Button--link LinkRobinsSupport-backBtn',
+                                disabled:  self.saving,
+                                onclick:   function () { self._backToCategories(); },
+                            }, [
+                                m('i', { className: 'fas fa-chevron-left' }), ' ',
+                                tr('compose.back_to_categories', 'Back to categories'),
+                            ]) : null,
                             m('h1', { className: 'LinkRobinsSupport-title' },
                                 isUserSuspended() ? tr('compose.title_appeal', 'File an appeal') : tr('compose.title', 'New support ticket')),
+                            self._renderChosenCategory(),
                         ]),
 
                         self.error ? m('div', { className: 'Alert Alert--danger' }, [
@@ -973,18 +1001,7 @@
 
                         m('div', { className: 'LinkRobinsSupport-form' }, [
                             m('div', { className: 'Form-group' }, [
-                                m('label', null, 'Category'),
-                                m('select', {
-                                    className: 'FormControl',
-                                    value:     self.categoryId,
-                                    disabled:  self.saving || self.categories.length < 2,
-                                    onchange:  function (e) { self.categoryId = e.target.value; },
-                                }, self.categories.map(function (c) {
-                                    return m('option', { value: String(c.id) }, c.attributes.name);
-                                })),
-                            ]),
-                            m('div', { className: 'Form-group' }, [
-                                m('label', null, 'Subject'),
+                                m('label', null, tr('compose.subject_label', 'Subject')),
                                 m('input', {
                                     type:        'text',
                                     className:   'FormControl',
@@ -996,7 +1013,7 @@
                                 }),
                             ]),
                             m('div', { className: 'Form-group' }, [
-                                m('label', null, 'Message'),
+                                m('label', null, tr('compose.message_label', 'Message')),
                                 m('textarea', {
                                     className:   'FormControl LinkRobinsSupport-body',
                                     rows:        10,
@@ -1017,8 +1034,9 @@
                                 self.uploadError ? m('div', { className: 'Alert Alert--danger LinkRobinsSupport-uploadAlert' },
                                     self.uploadError) : null,
                                 self.uploadingCount > 0 ? m('div', { className: 'LinkRobinsSupport-uploadStatus' },
-                                    'Uploading ' + self.uploadingCount + ' file' +
-                                    (self.uploadingCount === 1 ? '' : 's') + '…') : null,
+                                    self.uploadingCount === 1
+                                        ? tr('common.uploading_one', 'Uploading 1 file…')
+                                        : tr('common.uploading_many', 'Uploading {count} files…', { count: self.uploadingCount })) : null,
                             ]),
                             m('div', { className: 'LinkRobinsSupport-form-actions' }, [
 
@@ -1034,7 +1052,7 @@
                                         },
                                     }, [
                                         m('i', { className: 'fas fa-paperclip' }),
-                                        ' Attach files',
+                                        ' ', tr('action.attach_files', 'Attach files'),
                                     ]),
                                     m('input', {
                                         type:     'file',
@@ -1057,11 +1075,86 @@
                                     className: 'Button Button--primary',
                                     disabled:  !canSave,
                                     onclick:   function () { self._submit(); },
-                                }, self.saving ? 'Submitting…' : tr('compose.submit', 'Submit ticket')),
+                                }, self.saving ? tr('compose.submitting', 'Submitting…') : tr('compose.submit', 'Submit ticket')),
                             ]),
                         ]),
                     ])
                 );
+            }
+
+            // Step 1: clickable category cards (icon + name + description).
+            _renderPicker() {
+                var self   = this;
+                var appeal = isUserSuspended();
+                return m('div', { className: 'LinkRobinsSupport-container' }, [
+                    m('header', { className: 'LinkRobinsSupport-header LinkRobinsSupport-header--picker' }, [
+                        m('h1', { className: 'LinkRobinsSupport-title' },
+                            appeal ? tr('compose.title_appeal', 'File an appeal') : tr('compose.title', 'New support ticket')),
+                        m('p', { className: 'LinkRobinsSupport-pickerHint' },
+                            appeal
+                                ? tr('compose.choose_category_appeal', 'Choose an appeal category to get started.')
+                                : tr('compose.choose_category', 'Choose a category to get started.')),
+                    ]),
+                    m('ul', { className: 'LinkRobinsSupport-categoryCards' },
+                        self.categories.map(function (c) {
+                            var a     = c.attributes || {};
+                            var color = a.color || null;
+                            return m('li', { className: 'LinkRobinsSupport-categoryCards-item' },
+                                m('button', {
+                                    type:      'button',
+                                    className: 'LinkRobinsSupport-categoryCard',
+                                    onclick:   function () { self._chooseCategory(String(c.id)); },
+                                }, [
+                                    m('span', {
+                                        className: 'LinkRobinsSupport-categoryCard-icon',
+                                        style:     color ? ('color:' + color) : null,
+                                    }, m('i', { className: a.icon || 'fas fa-life-ring' })),
+                                    m('span', { className: 'LinkRobinsSupport-categoryCard-text' }, [
+                                        m('span', { className: 'LinkRobinsSupport-categoryCard-name' }, a.name || ''),
+                                        a.description
+                                            ? m('span', { className: 'LinkRobinsSupport-categoryCard-desc' }, a.description)
+                                            : null,
+                                    ]),
+                                ])
+                            );
+                        })
+                    ),
+                ]);
+            }
+
+            // The selected-category chip shown in the form header (step 2).
+            _renderChosenCategory() {
+                var c = this._chosenCategory();
+                if (!c) return null;
+                var a     = c.attributes || {};
+                var color = a.color || null;
+                return m('div', { className: 'LinkRobinsSupport-chosenCategory' }, [
+                    a.icon ? m('i', {
+                        className: a.icon + ' LinkRobinsSupport-chosenCategory-icon',
+                        style:     color ? ('color:' + color) : null,
+                    }) : null,
+                    m('span', { className: 'LinkRobinsSupport-chosenCategory-name' }, a.name || ''),
+                ]);
+            }
+
+            _chosenCategory() {
+                var id = String(this.categoryId);
+                for (var i = 0; i < this.categories.length; i++) {
+                    if (String(this.categories[i].id) === id) return this.categories[i];
+                }
+                return null;
+            }
+
+            _chooseCategory(id) {
+                this.categoryId = id;
+                this.error      = null;
+                m.redraw();
+            }
+
+            _backToCategories() {
+                this.categoryId = '';
+                this.error      = null;
+                m.redraw();
             }
 
             _errorMessage() {
@@ -1125,7 +1218,7 @@
                 this.updating   = false;
                 this.uploadingCount = 0;
                 this.uploadError    = null;
-                try { app.setTitle('Ticket'); } catch (e) {}
+                try { app.setTitle(tr('show.title', 'Ticket')); } catch (e) {}
                 this._ticketId = (this.attrs && this.attrs.id) || null;
                 if (this._ticketId) this._load();
             }
@@ -1189,7 +1282,7 @@
                 if (self.loading) {
                     return self._wrap(
                         m('div', { className: 'LinkRobinsSupport-container' },
-                            LoadingIndicator ? m(LoadingIndicator) : 'Loading...'
+                            LoadingIndicator ? m(LoadingIndicator) : tr('common.loading', 'Loading…')
                         )
                     );
                 }
@@ -1197,7 +1290,7 @@
                     return self._wrap(
                         m('div', { className: 'LinkRobinsSupport-container' }, [
                             m('header', { className: 'LinkRobinsSupport-header' }, [
-                                m('h1', { className: 'LinkRobinsSupport-title' }, 'Ticket'),
+                                m('h1', { className: 'LinkRobinsSupport-title' }, tr('show.title', 'Ticket')),
                                 m('a', {
                                     href:    basePath() + BASE_PATH,
                                     className: 'Button Button--text',
@@ -1242,7 +1335,7 @@
                                 m('span', null, formatDate(attr.createdAt)),
                             ]),
                             attr.decision ? m('div', { className: 'LinkRobinsSupport-decision' }, [
-                                'Decision: ',
+                                tr('show.decision', 'Decision:'), ' ',
                                 m('span', { className: 'LinkRobinsSupport-decision-' + attr.decision },
                                     attr.decision),
                             ]) : null,
@@ -1316,7 +1409,7 @@
                             className: 'Button Button--default LinkRobinsSupport-staffBtn',
                             disabled:  self.updating,
                             onclick:   function () { self._claim(); },
-                        }, 'Claim')
+                        }, tr('action.claim', 'Claim'))
                         : null,
                     allowChanges && assigned
                         ? m('button', {
@@ -1324,7 +1417,7 @@
                             className: 'Button Button--default LinkRobinsSupport-staffBtn',
                             disabled:  self.updating,
                             onclick:   function () { self._unassign(); },
-                        }, 'Unassign')
+                        }, tr('action.unassign', 'Unassign'))
                         : null,
                 ]);
             }
@@ -1461,7 +1554,7 @@
                             icon:     'fas fa-pencil-alt',
                             disabled: busy,
                             onclick:  function () { self._beginEditReply(reply); },
-                        }, 'Edit'));
+                        }, tr('action.edit', 'Edit')));
                     }
                     if (canDelete) {
                         items.push(m(Button, {
@@ -1469,7 +1562,7 @@
                             className: 'LinkRobinsSupport-reply-action--danger',
                             disabled:  busy,
                             onclick:   function () { self._softDeleteReply(reply); },
-                        }, 'Delete'));
+                        }, tr('action.delete', 'Delete')));
                     }
                 } else {
                     if (canDelete) {
@@ -1477,7 +1570,7 @@
                             icon:     'fas fa-undo',
                             disabled: busy,
                             onclick:  function () { self._restoreReply(reply); },
-                        }, 'Restore'));
+                        }, tr('action.restore', 'Restore')));
                         items.push(m(Button, {
                             icon:      'fas fa-times',
                             className: 'LinkRobinsSupport-reply-action--danger',
@@ -1530,13 +1623,13 @@
                             className: 'Button Button--default',
                             disabled:  state.busy,
                             onclick:   function () { self._cancelEditReply(reply); },
-                        }, 'Cancel'),
+                        }, tr('action.cancel', 'Cancel')),
                         m('button', {
                             type:      'button',
                             className: 'Button Button--primary',
                             disabled:  !canSave,
                             onclick:   function () { self._saveEditReply(reply); },
-                        }, state.busy ? 'Saving…' : tr('action.save_changes', 'Save changes')),
+                        }, state.busy ? tr('action.saving', 'Saving…') : tr('action.save_changes', 'Save changes')),
                     ]),
                 ]);
             }
@@ -1848,8 +1941,9 @@
                     self.uploadError ? m('div', { className: 'Alert Alert--danger LinkRobinsSupport-uploadAlert' },
                         self.uploadError) : null,
                     self.uploadingCount > 0 ? m('div', { className: 'LinkRobinsSupport-uploadStatus' },
-                        'Uploading ' + self.uploadingCount + ' file' +
-                        (self.uploadingCount === 1 ? '' : 's') + '…') : null,
+                        self.uploadingCount === 1
+                            ? tr('common.uploading_one', 'Uploading 1 file…')
+                            : tr('common.uploading_many', 'Uploading {count} files…', { count: self.uploadingCount })) : null,
 
                     m('div', { className: 'LinkRobinsSupport-replyForm-actions' }, [
                         canUpload ? m('span', {
@@ -1864,7 +1958,7 @@
                                 },
                             }, [
                                 m('i', { className: 'fas fa-paperclip' }),
-                                ' Attach files',
+                                ' ', tr('action.attach_files', 'Attach files'),
                             ]),
                             m('input', {
                                 type:     'file',
@@ -1889,14 +1983,14 @@
                                 disabled: self.posting,
                                 onchange: function (e) { self.replyIsInternal = !!e.target.checked; },
                             }),
-                            ' Internal note',
+                            ' ', tr('reply.internal_note', 'Internal note'),
                         ]) : null,
                         m('button', {
                             type:      'button',
                             className: 'Button Button--primary',
                             disabled:  !canSubmit,
                             onclick:   function () { self._postReply(); },
-                        }, self.posting ? 'Posting…' : 'Post reply'),
+                        }, self.posting ? tr('reply.posting', 'Posting…') : tr('reply.post_reply', 'Post reply')),
                     ]),
                 ]);
             }

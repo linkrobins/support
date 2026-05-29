@@ -26,6 +26,16 @@ class AppealBannedFilter implements FilterInterface
 
     public function filter(SearchState $state, string|array $value, bool $negate): void
     {
+        // Only users who manage appeal-bans may filter by this column.
+        // Otherwise the filter acts as an oracle: anyone able to list users
+        // could enumerate which accounts are appeal-banned (a moderation-
+        // internal fact) via filter[supportAppealBanned]=1. The matching
+        // attribute on UserResource is already restricted to managers/self;
+        // this closes the same leak on the filter side.
+        if (! $state->getActor()->hasPermission('linkrobins-support.manage_appeal_bans')) {
+            return;
+        }
+
         $raw = is_array($value) ? reset($value) : $value;
         $wanted = in_array((string) $raw, ['1', 'true'], true) ? 1 : 0;
 

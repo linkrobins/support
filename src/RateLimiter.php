@@ -159,14 +159,12 @@ class RateLimiter
     // so test subclasses can stub them with hardcoded return values without
     // having to spin up Eloquent.
     //
-    // Note on soft-deleted tickets: SupportTicket uses the SoftDeletes
-    // trait, so these count queries implicitly exclude trashed rows.
-    // If staff soft-deletes a user's earlier ticket, it stops counting
-    // toward that user's rate-limit quota. That's the intended behavior
-    // -- soft-deleting typically means "this ticket shouldn't count"
-    // (e.g. spam, duplicate, posted in wrong category), so it should
-    // free up the slot. If you ever want to count trashed tickets too,
-    // chain `->withTrashed()` onto these queries.
+    // Note on soft-deleted tickets: SupportTicket uses the SoftDeletes trait.
+    // The "currently open" count below deliberately EXCLUDES trashed rows --
+    // a soft-deleted appeal isn't really open, so it shouldn't keep blocking
+    // the user. The two per-window VOLUME counts, however, use ->withTrashed()
+    // so that soft-deleting a ticket can't refund the user's quota: otherwise
+    // "file → get it soft-deleted → refile" would defeat the volume throttle.
 
     protected function countOpenAppealsForUser(User $actor): int
     {
@@ -186,6 +184,7 @@ class RateLimiter
     protected function countAppealsForUserSince(User $actor, Carbon $since): int
     {
         return SupportTicket::query()
+            ->withTrashed()
             ->where('user_id', $actor->id)
             ->whereHas('category', function ($q) {
                 $q->where('is_appeal', true);
@@ -197,6 +196,7 @@ class RateLimiter
     protected function countGeneralTicketsForUserSince(User $actor, Carbon $since): int
     {
         return SupportTicket::query()
+            ->withTrashed()
             ->where('user_id', $actor->id)
             ->whereHas('category', function ($q) {
                 $q->where('is_appeal', false);

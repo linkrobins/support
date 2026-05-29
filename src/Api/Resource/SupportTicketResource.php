@@ -9,6 +9,7 @@ use Flarum\Api\Resource\AbstractDatabaseResource;
 use Flarum\Api\Schema;
 use Flarum\Api\Sort\SortColumn;
 use Flarum\Locale\TranslatorInterface;
+use Flarum\User\User;
 use Illuminate\Database\Eloquent\Builder;
 use LinkRobins\Support\RateLimiter;
 use LinkRobins\Support\SupportCategory;
@@ -290,17 +291,49 @@ class SupportTicketResource extends AbstractDatabaseResource
                         $ticket->assigned_staff_id = null;
                         return;
                     }
+                    $targetId = null;
                     if (is_object($value) && isset($value->id)) {
-                        $ticket->assigned_staff_id = (int) $value->id;
+                        $targetId = (int) $value->id;
                     } elseif (is_numeric($value)) {
-                        $ticket->assigned_staff_id = (int) $value;
+                        $targetId = (int) $value;
                     }
+                    if (! $targetId) {
+                        return;
+                    }
+                    // Only allow assigning to an actual staff member. Without
+                    // this, a ticket could be assigned to any user id -- a
+                    // non-staff account or a non-existent one -- creating an
+                    // inconsistent state and surfacing a stranger's profile as
+                    // the ticket's "assigned staff".
+                    $target = User::query()->find($targetId);
+                    if (! $target || ! ($target->isAdmin() || $target->hasPermission('linkrobins-support.handle_tickets'))) {
+                        throw new BadRequestException('Tickets can only be assigned to support staff.');
+                    }
+                    $ticket->assigned_staff_id = $targetId;
                 }),
 
             Schema\Relationship\ToOne::make('category')
                 ->type('linkrobins-support-categories')
                 ->includable()
-                ->writable(),
+                ->writable()
+                ->set(function (SupportTicket $ticket, $value, FlarumContext $context) {
+                    // Defense in depth: only staff may (re)assign a ticket's
+                    // category. The Update endpoint is already staff-only and
+                    // create resolves the category in creating(), so this guard
+                    // keeps the field safe even if those gates ever change --
+                    // a non-staff owner must not be able to move a ticket into
+                    // (or out of) an appeal category and dodge the create-time
+                    // ban/suspension/rate checks.
+                    $actor = $context->getActor();
+                    if (! ($actor->isAdmin() || $actor->hasPermission('linkrobins-support.handle_tickets'))) {
+                        return;
+                    }
+                    if (is_object($value) && isset($value->id)) {
+                        $ticket->category_id = (int) $value->id;
+                    } elseif (is_numeric($value)) {
+                        $ticket->category_id = (int) $value;
+                    }
+                }),
         ];
     }
 
@@ -364,6 +397,42 @@ class SupportTicketResource extends AbstractDatabaseResource
         $model->last_reply_at = Carbon::now();
 
         return $model;
+    }
+
+    /**
+     * Serialize a single user's concurrent ticket creation so the rate-limit
+     * check and the insert are effectively atomic. Firing N parallel create
+     * requests would otherwise let each one pass the count-based check in
+     * creating() before any had inserted (TOCTOU), blowing past the appeal /
+     * general quotas. We take a row lock on the actor inside a transaction and
+     * re-run the limit check immediately before the insert. The creating()
+     * check still runs first as a fast, lock-free reject for the common case.
+     */
+    public function create(object $model, Context $context): object
+    {
+        $actor = $context->getActor();
+
+        if ($actor->isGuest() || empty($model->category_id)) {
+            return parent::create($model, $context);
+        }
+
+        return SupportTicket::query()->getConnection()->transaction(function () use ($model, $context, $actor) {
+            // Lock this user's row for the duration of the insert so their
+            // concurrent creates serialize (a no-op on SQLite, which already
+            // serializes writes). The re-check below then sees a consistent,
+            // committed count.
+            User::query()->whereKey($actor->id)->lockForUpdate()->first();
+
+            $category = SupportCategory::query()->find((int) $model->category_id);
+            if ($category) {
+                $rate = $this->rateLimiter->check($actor, $category);
+                if (! $rate['ok']) {
+                    throw new ForbiddenException($this->rateLimiter->describe($rate));
+                }
+            }
+
+            return parent::create($model, $context);
+        });
     }
 
     public function updating(object $model, Context $context): ?object

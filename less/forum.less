@@ -514,3 +514,105 @@
 .LinkRobinsSupport-uploadAlert {
     margin-top: 8px;
 }
+
+// --- Category picker (new-ticket step 1) -----------------------------
+
+.LinkRobinsSupport-header--picker {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+}
+
+.LinkRobinsSupport-pickerHint {
+    margin: 0;
+    color: var(--muted-color, #888);
+}
+
+.LinkRobinsSupport-categoryCards {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+}
+
+.LinkRobinsSupport-categoryCards-item {
+    margin: 0;
+}
+
+.LinkRobinsSupport-categoryCard {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    width: 100%;
+    text-align: left;
+    padding: 16px 18px;
+    border: 1px solid var(--control-bg, rgba(0, 0, 0, 0.1));
+    border-radius: 8px;
+    background: var(--body-bg, #fff);
+    cursor: pointer;
+    transition: border-color 0.15s, box-shadow 0.15s, transform 0.05s;
+
+    &:hover,
+    &:focus {
+        border-color: var(--primary-color, #07adcc);
+        box-shadow: 0 2px 8px var(--shadow-color, rgba(0, 0, 0, 0.1));
+        outline: none;
+    }
+
+    &:active {
+        transform: translateY(1px);
+    }
+}
+
+.LinkRobinsSupport-categoryCard-icon {
+    flex: 0 0 auto;
+    font-size: 1.5rem;
+    line-height: 1.4;
+    color: var(--primary-color, #07adcc);
+    width: 32px;
+    text-align: center;
+}
+
+.LinkRobinsSupport-categoryCard-text {
+    flex: 1;
+    min-width: 0;
+}
+
+.LinkRobinsSupport-categoryCard-name {
+    display: block;
+    font-weight: 700;
+    font-size: 1.05rem;
+    color: var(--heading-color, var(--body-color));
+}
+
+.LinkRobinsSupport-categoryCard-desc {
+    display: block;
+    margin-top: 4px;
+    color: var(--muted-color, #888);
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+// --- Selected-category chip (new-ticket step 2) ----------------------
+
+.LinkRobinsSupport-backBtn {
+    padding-left: 0;
+    align-self: center;
+}
+
+.LinkRobinsSupport-chosenCategory {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 12px;
+    border-radius: 999px;
+    background: var(--control-bg, rgba(0, 0, 0, 0.05));
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.LinkRobinsSupport-chosenCategory-icon {
+    color: var(--primary-color, #07adcc);
+}
