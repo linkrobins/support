@@ -11,9 +11,8 @@
     },
     "authors": [
         {
-            "name": "Link Robins",
-            "homepage": "https://linkrobins.com",
-            "role": "Developer"
+            "name": "Karl Bullock",
+            "email": "karl@linkrobins.com"
         }
     ],
     "require": {
