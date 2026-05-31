@@ -72,12 +72,6 @@ class SupportTicketPolicy extends AbstractPolicy
 
     protected function isStaff(User $actor): bool
     {
-        if ($actor->isGuest()) {
-            return false;
-        }
-        if ($actor->isAdmin()) {
-            return true;
-        }
-        return $actor->hasPermission('linkrobins-support.handle_tickets');
+        return SupportAbilities::isStaff($actor);
     }
 }

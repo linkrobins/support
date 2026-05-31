@@ -54,6 +54,7 @@ linkrobins-support:
       banned_empty: 'No users are currently banned from filing appeals.'
       column_username: Username
       column_email: Email
+      load_more: 'Load more'
     rate_limits:
       heading: 'Rate limits'
       intro: 'Limit how often users can open support tickets and ban appeals.'
@@ -99,6 +100,7 @@ linkrobins-support:
       new_ticket_tooltip: 'Open a new support ticket'
       empty_own: 'No tickets yet. Click "New ticket" to open one.'
       empty: 'No tickets to show.'
+      untitled: 'Untitled'
     errors:
       load_tickets: 'Could not load tickets.'
       unknown: 'Unknown error.'
@@ -145,6 +147,11 @@ linkrobins-support:
       assigned_to: 'Assigned to'
       unassigned: Unassigned
       decision: 'Decision:'
+      deleted_badge: 'Deleted'
+    decision:
+      pending: 'Pending'
+      accepted: 'Accepted'
+      rejected: 'Rejected'
     staff:
       set_status: 'Set status:'
     reply:
@@ -158,7 +165,9 @@ linkrobins-support:
       placeholder: 'Write a reply…'
       edited_by: 'Edited by {name} on {date}'
       edited_at: 'Edited on {date}'
+      edited_marker: '(edited)'
     action:
+      back: 'Back'
       delete_forever: 'Delete forever'
       save_changes: 'Save changes'
       saving: 'Saving…'
@@ -188,3 +197,33 @@ linkrobins-support:
     new_ticket_subject: '[Support] New ticket: {subject}'
     new_appeal_subject: '[Support / Appeal] New ticket: {subject}'
     fallback_ticket: 'your support ticket'
+    from_support: 'Support'
+    from_a_user: 'a user'
+    new_reply_body: '{name} replied to your support ticket:'
+    view_ticket: 'View the ticket'
+    ticket_type_appeal: 'appeal ticket'
+    ticket_type_general: 'support ticket'
+    new_ticket_body: 'A new {type} was just opened by {name}:'
+    open_ticket: 'Open the ticket'
+  # Server-resolved messages (API error details + rate-limit reasons). Only
+  # used backend-side, so they live outside the forum/admin namespaces.
+  api:
+    assign_staff_only: 'Tickets can only be assigned to support staff.'
+    category_required: 'A category is required.'
+    ticket_soft_delete_first: 'A ticket must be soft-deleted before it can be permanently removed.'
+    login_required_reply: 'You must be logged in to reply.'
+    reply_content_required: 'Reply content is required.'
+    ticket_required: 'A ticket is required.'
+    ticket_not_found: 'Ticket not found.'
+    cannot_reply: 'You cannot reply to this ticket.'
+    login_required_edit: 'You must be logged in to edit a reply.'
+    no_permission_edit: 'You do not have permission to edit replies.'
+    login_required: 'You must be logged in.'
+    no_permission_delete: 'You do not have permission to delete replies.'
+    reply_soft_delete_first: 'A reply must be soft-deleted before it can be permanently removed.'
+    rate_limit:
+      appeal_banned: 'You are not permitted to file appeals.'
+      appeal_has_open: 'You already have an open appeal. Please wait for it to be resolved before filing another.'
+      appeal_quota: 'You have already filed {count} appeal(s) in the past {days} days (limit: {limit}). Try again later.'
+      general_quota: 'You have filed {count} tickets in the past {hours} hours (limit: {limit}). Please wait before filing another.'
+      generic: 'Cannot create a ticket right now.'

@@ -1,24 +1,10 @@
 <?php
 
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Database\Schema\Builder;
+use Flarum\Database\Migration;
 
-
-return [
-    'up' => function (Builder $schema) {
-        if ($schema->hasColumn('users', 'support_appeal_banned')) {
-            return;
-        }
-        $schema->table('users', function (Blueprint $table) {
-            // No ->after(): column placement is MySQL-only syntax and
-            // ordering is irrelevant, so this stays portable to PostgreSQL.
-            $table->boolean('support_appeal_banned')->default(false);
-        });
-    },
-
-    'down' => function (Builder $schema) {
-        $schema->table('users', function (Blueprint $table) {
-            $table->dropColumn('support_appeal_banned');
-        });
-    },
-];
+// A plain boolean column with no index or foreign key, so the columns-only
+// addColumns/dropColumns helpers fit cleanly. (No ->after(): column placement
+// is MySQL-only syntax and ordering is irrelevant, so this stays portable.)
+return Migration::addColumns('users', [
+    'support_appeal_banned' => ['boolean', 'default' => false],
+]);

@@ -21,10 +21,7 @@ class GlobalPolicy extends AbstractPolicy
 {
     public function handleTickets(User $actor): bool
     {
-        if ($actor->isAdmin()) {
-            return true;
-        }
-        return $actor->hasPermission('linkrobins-support.handle_tickets');
+        return SupportAbilities::isStaff($actor);
     }
 
     public function createTicket(User $actor): bool

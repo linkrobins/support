@@ -3,7 +3,10 @@
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Schema\Builder;
 
-
+// Kept as a raw up/down array (not the Migration::addColumns helper): that
+// helper is columns-only and cannot express the deleted_at index this
+// migration adds. The up/down are also guarded to be idempotent on a partial
+// migration state (see comments below).
 return [
     'up' => function (Builder $schema) {
         if ($schema->hasColumn('linkrobins_support_tickets', 'deleted_at')) {

@@ -98,10 +98,14 @@ return [
                     if ($actor->isGuest()) {
                         return false;
                     }
+                    // A policy can() shouldn't throw under normal operation;
+                    // if it somehow does, degrade to false rather than 500 the
+                    // forum boot payload (this field ships on every forum
+                    // response). Mirrors the supportAppealBanned/supportSuspended
+                    // probes below -- no logger resolve() in the field closure.
                     try {
                         return $actor->can('createTicket');
                     } catch (\Throwable $e) {
-                        resolve(\Psr\Log\LoggerInterface::class)->warning('[linkrobins/support] canCreateSupportTicket probe failed', ['exception' => $e]);
                         return false;
                     }
                 }),
@@ -115,7 +119,6 @@ return [
                     try {
                         return $actor->can('handleTickets');
                     } catch (\Throwable $e) {
-                        resolve(\Psr\Log\LoggerInterface::class)->warning('[linkrobins/support] canHandleSupportTickets probe failed', ['exception' => $e]);
                         return false;
                     }
                 }),

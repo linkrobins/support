@@ -1,9 +1,9 @@
 <x-mail::plain.notification>
 <x-slot:body>
-A new {{ $blueprint->ticket->isAppeal() ? 'appeal ticket' : 'support ticket' }} was just opened by {{ $blueprint->getFromUser()?->display_name ?? 'a user' }}:
+{{ $translator->trans('linkrobins-support.email.new_ticket_body', ['type' => $blueprint->ticket->isAppeal() ? $translator->trans('linkrobins-support.email.ticket_type_appeal') : $translator->trans('linkrobins-support.email.ticket_type_general'), 'name' => $blueprint->getFromUser()?->display_name ?? $translator->trans('linkrobins-support.email.from_a_user')]) }}
 
   {{ $blueprint->ticket->subject }}
 
-Open the ticket: {{ $url->to('forum')->base() . '/support/' . $blueprint->ticket->id }}
+{{ $translator->trans('linkrobins-support.email.open_ticket') }}: {{ $url->to('forum')->base() . '/support/' . $blueprint->ticket->id }}
 </x-slot:body>
 </x-mail::plain.notification>

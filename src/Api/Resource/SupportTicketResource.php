@@ -11,6 +11,7 @@ use Flarum\Api\Sort\SortColumn;
 use Flarum\Locale\TranslatorInterface;
 use Flarum\User\User;
 use Illuminate\Database\Eloquent\Builder;
+use LinkRobins\Support\Access\SupportAbilities;
 use LinkRobins\Support\RateLimiter;
 use LinkRobins\Support\SupportCategory;
 use LinkRobins\Support\SupportTicket;
@@ -23,6 +24,7 @@ class SupportTicketResource extends AbstractDatabaseResource
 {
     public function __construct(
         protected RateLimiter $rateLimiter,
+        protected TranslatorInterface $translator,
     ) {
     }
 
@@ -65,8 +67,7 @@ class SupportTicketResource extends AbstractDatabaseResource
             $query->whereRaw('1 = 0');
             return;
         }
-        $isStaff = $actor->isAdmin()
-            || $actor->hasPermission('linkrobins-support.handle_tickets');
+        $isStaff = SupportAbilities::isStaff($actor);
         if ($isStaff) {
             // Staff see soft-deleted tickets too so they can restore
             // or force-delete from the ticket detail page. The default
@@ -139,7 +140,7 @@ class SupportTicketResource extends AbstractDatabaseResource
                     // legitimately PATCHing their ticket (e.g. someday we
                     // let creators edit the subject; they shouldn't be
                     // able to also flip status in the same request).
-                    $isStaff = $actor->isAdmin() || $actor->hasPermission('linkrobins-support.handle_tickets');
+                    $isStaff = SupportAbilities::isStaff($actor);
                     if (! $isStaff) {
                         return;
                     }
@@ -154,7 +155,7 @@ class SupportTicketResource extends AbstractDatabaseResource
                         return;
                     }
                     $actor = $context->getActor();
-                    $isStaff = $actor->isAdmin() || $actor->hasPermission('linkrobins-support.handle_tickets');
+                    $isStaff = SupportAbilities::isStaff($actor);
                     if (! $isStaff) {
                         return;
                     }
@@ -173,7 +174,7 @@ class SupportTicketResource extends AbstractDatabaseResource
                 ->get(function (SupportTicket $ticket, FlarumContext $context) {
                     $actor = $context->getActor();
                     $isStaff = ! $actor->isGuest()
-                        && ($actor->isAdmin() || $actor->hasPermission('linkrobins-support.handle_tickets'));
+                        && (SupportAbilities::isStaff($actor));
                     // Prefer the eager-loaded counts (see TicketSearcher / scope).
                     $col = $isStaff ? 'reply_count_all' : 'reply_count_public';
                     if (isset($ticket->$col)) {
@@ -259,8 +260,7 @@ class SupportTicketResource extends AbstractDatabaseResource
                     if ($actor->isGuest()) {
                         return false;
                     }
-                    return $actor->isAdmin()
-                        || $actor->hasPermission('linkrobins-support.handle_tickets');
+                    return SupportAbilities::isStaff($actor);
                 })
                 ->set(function (SupportTicket $ticket, bool $value, FlarumContext $context) {
                     if ($value && $ticket->deleted_at === null) {
@@ -283,7 +283,7 @@ class SupportTicketResource extends AbstractDatabaseResource
                 ->writableOnUpdate()
                 ->set(function (SupportTicket $ticket, $value, FlarumContext $context) {
                     $actor = $context->getActor();
-                    $isStaff = $actor->isAdmin() || $actor->hasPermission('linkrobins-support.handle_tickets');
+                    $isStaff = SupportAbilities::isStaff($actor);
                     if (! $isStaff) {
                         return;
                     }
@@ -306,8 +306,8 @@ class SupportTicketResource extends AbstractDatabaseResource
                     // inconsistent state and surfacing a stranger's profile as
                     // the ticket's "assigned staff".
                     $target = User::query()->find($targetId);
-                    if (! $target || ! ($target->isAdmin() || $target->hasPermission('linkrobins-support.handle_tickets'))) {
-                        throw new BadRequestException('Tickets can only be assigned to support staff.');
+                    if (! $target || ! SupportAbilities::isStaff($target)) {
+                        throw new BadRequestException($this->translator->trans('linkrobins-support.api.assign_staff_only'));
                     }
                     $ticket->assigned_staff_id = $targetId;
                 }),
@@ -325,7 +325,7 @@ class SupportTicketResource extends AbstractDatabaseResource
                     // (or out of) an appeal category and dodge the create-time
                     // ban/suspension/rate checks.
                     $actor = $context->getActor();
-                    if (! ($actor->isAdmin() || $actor->hasPermission('linkrobins-support.handle_tickets'))) {
+                    if (! (SupportAbilities::isStaff($actor))) {
                         return;
                     }
                     if (is_object($value) && isset($value->id)) {
@@ -362,7 +362,7 @@ class SupportTicketResource extends AbstractDatabaseResource
             }
         }
         if (! $category) {
-            throw new BadRequestException('A category is required.');
+            throw new BadRequestException($this->translator->trans('linkrobins-support.api.category_required'));
         }
 
         // Check rate limits BEFORE the model saves. The limiter knows about
@@ -462,7 +462,7 @@ class SupportTicketResource extends AbstractDatabaseResource
     {
         if ($model->deleted_at === null) {
             throw new BadRequestException(
-                'A ticket must be soft-deleted before it can be permanently removed.'
+                $this->translator->trans('linkrobins-support.api.ticket_soft_delete_first')
             );
         }
 

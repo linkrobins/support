@@ -5,6 +5,7 @@ namespace LinkRobins\Support;
 use Flarum\Group\Group;
 use Flarum\Notification\NotificationSyncer;
 use Flarum\User\User;
+use LinkRobins\Support\Access\SupportAbilities;
 use LinkRobins\Support\Notification\NewSupportReplyBlueprint;
 use LinkRobins\Support\Notification\NewSupportTicketBlueprint;
 use Psr\Log\LoggerInterface;
@@ -117,7 +118,7 @@ class SupportNotifier
                     $q->whereIn('groups.id', function ($sub) {
                         $sub->select('group_id')
                             ->from('group_permission')
-                            ->where('permission', 'linkrobins-support.handle_tickets');
+                            ->where('permission', SupportAbilities::HANDLE_TICKETS);
                     });
                 });
             });
@@ -136,6 +137,6 @@ class SupportNotifier
 
     protected function isStaff(?User $user): bool
     {
-        return $user && ($user->isAdmin() || $user->hasPermission('linkrobins-support.handle_tickets'));
+        return $user !== null && SupportAbilities::isStaff($user);
     }
 }

@@ -7,6 +7,7 @@ use Flarum\Foundation\AbstractServiceProvider;
 use Flarum\Formatter\Formatter;
 use Flarum\User\User;
 use Illuminate\Contracts\Bus\Dispatcher;
+use LinkRobins\Support\Access\SupportAbilities;
 use LinkRobins\Support\Job\NotifyNewReply;
 use LinkRobins\Support\Job\NotifyNewTicket;
 use Psr\Log\LoggerInterface;
@@ -106,12 +107,6 @@ class SupportServiceProvider extends AbstractServiceProvider
      */
     protected static function actorIsStaff(?User $user): bool
     {
-        if (! $user) {
-            return false;
-        }
-        if ($user->isAdmin()) {
-            return true;
-        }
-        return $user->hasPermission('linkrobins-support.handle_tickets');
+        return $user !== null && SupportAbilities::isStaff($user);
     }
 }

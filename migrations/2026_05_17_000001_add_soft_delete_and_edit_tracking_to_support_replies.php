@@ -3,7 +3,10 @@
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Schema\Builder;
 
-
+// Kept as a raw up/down array (not the Migration::addColumns helper): that
+// helper is columns-only and cannot express the deleted_at index or the
+// edited_by_user_id foreign key this migration needs. The down() is also
+// deliberately hand-written to be idempotent and cross-DB safe (see below).
 return [
     'up' => function (Builder $schema) {
         if ($schema->hasColumn('linkrobins_support_replies', 'deleted_at')) {
@@ -27,21 +30,18 @@ return [
             return; // already rolled back
         }
 
-        $conn  = $schema->getConnection();
-        $table = $conn->getTablePrefix() . 'linkrobins_support_replies';
-
-        // The FK must be dropped before the column, but only if it actually
-        // exists -- on a partial/inconsistent state dropForeign() would throw.
-        $fk = $conn->selectOne(
-            'SELECT constraint_name FROM information_schema.key_column_usage'
-            . ' WHERE table_schema = ? AND table_name = ? AND column_name = ?'
-            . ' AND referenced_table_name IS NOT NULL LIMIT 1',
-            [$conn->getDatabaseName(), $table, 'edited_by_user_id']
-        );
-        if ($fk) {
+        // The FK must be dropped before the column. Attempt it inside a
+        // try/catch rather than probing information_schema first: that probe
+        // is MySQL/MariaDB-only (information_schema.key_column_usage does not
+        // exist on PostgreSQL or SQLite, both first-class Flarum targets) and
+        // would fatal the rollback there. dropForeign() simply throwing on a
+        // partial/inconsistent state (FK already gone) is harmless and portable.
+        try {
             $schema->table('linkrobins_support_replies', function (Blueprint $table) {
                 $table->dropForeign(['edited_by_user_id']);
             });
+        } catch (\Throwable $e) {
+            // FK already absent (partial rollback) -- nothing to drop.
         }
 
         $schema->table('linkrobins_support_replies', function (Blueprint $table) {

@@ -30,7 +30,6 @@ class SupportReplyPolicy extends AbstractPolicy
 
     protected function isStaff(User $actor): bool
     {
-        return $actor->isAdmin()
-            || $actor->hasPermission('linkrobins-support.handle_tickets');
+        return SupportAbilities::isStaff($actor);
     }
 }

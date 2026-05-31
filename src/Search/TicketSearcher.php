@@ -5,6 +5,7 @@ namespace LinkRobins\Support\Search;
 use Flarum\Search\Database\AbstractSearcher;
 use Flarum\User\User;
 use Illuminate\Database\Eloquent\Builder;
+use LinkRobins\Support\Access\SupportAbilities;
 use LinkRobins\Support\SupportTicket;
 
 /**
@@ -34,7 +35,7 @@ class TicketSearcher extends AbstractSearcher
             return $query;
         }
 
-        if ($actor->isAdmin() || $actor->hasPermission('linkrobins-support.handle_tickets')) {
+        if (SupportAbilities::isStaff($actor)) {
             // Note: we intentionally do NOT call withTrashed() here.
             // Staff list views ("All tickets", "Open", etc.) should
             // show the active set, not be cluttered with soft-deleted

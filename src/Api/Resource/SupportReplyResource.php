@@ -7,7 +7,9 @@ use Flarum\Api\Endpoint;
 use Flarum\Api\Resource\AbstractDatabaseResource;
 use Flarum\Api\Schema;
 use Flarum\Api\Sort\SortColumn;
+use Flarum\Locale\TranslatorInterface;
 use Illuminate\Database\Eloquent\Builder;
+use LinkRobins\Support\Access\SupportAbilities;
 use LinkRobins\Support\SupportReply;
 use LinkRobins\Support\SupportTicket;
 use LinkRobins\Support\UserState;
@@ -17,6 +19,11 @@ use Tobyz\JsonApiServer\Exception\ForbiddenException;
 
 class SupportReplyResource extends AbstractDatabaseResource
 {
+    public function __construct(
+        protected TranslatorInterface $translator,
+    ) {
+    }
+
     public function type(): string
     {
         return 'linkrobins-support-replies';
@@ -53,8 +60,7 @@ class SupportReplyResource extends AbstractDatabaseResource
             return;
         }
 
-        $isStaff = $actor->isAdmin()
-            || $actor->hasPermission('linkrobins-support.handle_tickets');
+        $isStaff = SupportAbilities::isStaff($actor);
 
         if (! $isStaff) {
             $query->whereHas('ticket', function ($q) use ($actor) {
@@ -163,8 +169,7 @@ class SupportReplyResource extends AbstractDatabaseResource
                     // sends true from a non-staff context, so this only
                     // triggers via direct API misuse.
                     $actor = $context->getActor();
-                    $isStaff = ! $actor->isGuest()
-                        && ($actor->isAdmin() || $actor->hasPermission('linkrobins-support.handle_tickets'));
+                    $isStaff = SupportAbilities::isStaff($actor);
                     $reply->is_internal_note = $isStaff;
                 }),
 
@@ -202,8 +207,7 @@ class SupportReplyResource extends AbstractDatabaseResource
                     if ($actor->isGuest()) {
                         return false;
                     }
-                    return $actor->isAdmin()
-                        || $actor->hasPermission('linkrobins-support.handle_tickets');
+                    return SupportAbilities::isStaff($actor);
                 }),
             Schema\Boolean::make('canDelete')
                 ->get(function (SupportReply $reply, FlarumContext $context) {
@@ -211,8 +215,7 @@ class SupportReplyResource extends AbstractDatabaseResource
                     if ($actor->isGuest()) {
                         return false;
                     }
-                    return $actor->isAdmin()
-                        || $actor->hasPermission('linkrobins-support.handle_tickets');
+                    return SupportAbilities::isStaff($actor);
                 }),
 
             // Writable boolean that maps to the soft-delete state.
@@ -239,8 +242,7 @@ class SupportReplyResource extends AbstractDatabaseResource
                     if ($actor->isGuest()) {
                         return false;
                     }
-                    return $actor->isAdmin()
-                        || $actor->hasPermission('linkrobins-support.handle_tickets');
+                    return SupportAbilities::isStaff($actor);
                 })
                 ->set(function (SupportReply $reply, bool $value, FlarumContext $context) {
                     if ($value && $reply->deleted_at === null) {
@@ -275,7 +277,7 @@ class SupportReplyResource extends AbstractDatabaseResource
     {
         $actor = $context->getActor();
         if ($actor->isGuest()) {
-            throw new ForbiddenException('You must be logged in to reply.');
+            throw new ForbiddenException($this->translator->trans('linkrobins-support.api.login_required_reply'));
         }
 
         // Empty content -> clean 400. Without this, an empty body would
@@ -286,7 +288,7 @@ class SupportReplyResource extends AbstractDatabaseResource
         // the trait's setter has already run and set null for empty.
         $rawContent = $model->getAttribute('content');
         if ($rawContent === null || $rawContent === '') {
-            throw new BadRequestException('Reply content is required.');
+            throw new BadRequestException($this->translator->trans('linkrobins-support.api.reply_content_required'));
         }
         // Whitespace-only content also gets rejected. After the formatter
         // runs, "   " becomes "<t>   <br/></t>" which renders as a blank
@@ -297,7 +299,7 @@ class SupportReplyResource extends AbstractDatabaseResource
         if (is_string($parsedSource)) {
             $textOnly = trim(strip_tags($parsedSource));
             if ($textOnly === '') {
-                throw new BadRequestException('Reply content is required.');
+                throw new BadRequestException($this->translator->trans('linkrobins-support.api.reply_content_required'));
             }
         }
 
@@ -308,16 +310,16 @@ class SupportReplyResource extends AbstractDatabaseResource
         $body = $context->body();
         $ticketRel = data_get($body, 'data.relationships.ticket.data.id');
         if (! is_numeric($ticketRel)) {
-            throw new BadRequestException('A ticket is required.');
+            throw new BadRequestException($this->translator->trans('linkrobins-support.api.ticket_required'));
         }
         $ticket = SupportTicket::query()->find((int) $ticketRel);
         if (! $ticket) {
-            throw new BadRequestException('Ticket not found.');
+            throw new BadRequestException($this->translator->trans('linkrobins-support.api.ticket_not_found'));
         }
 
         // Per-ticket reply permission.
         if (! $actor->can('reply', $ticket)) {
-            throw new ForbiddenException('You cannot reply to this ticket.');
+            throw new ForbiddenException($this->translator->trans('linkrobins-support.api.cannot_reply'));
         }
 
         $model->ticket_id = $ticket->id;
@@ -327,8 +329,7 @@ class SupportReplyResource extends AbstractDatabaseResource
         // this, but the model could theoretically reach here with a stale
         // value from some other code path.
         if ($model->is_internal_note) {
-            $isStaff = $actor->isAdmin()
-                || $actor->hasPermission('linkrobins-support.handle_tickets');
+            $isStaff = SupportAbilities::isStaff($actor);
             if (! $isStaff) {
                 $model->is_internal_note = false;
             }
@@ -362,12 +363,11 @@ class SupportReplyResource extends AbstractDatabaseResource
     {
         $actor = $context->getActor();
         if ($actor->isGuest()) {
-            throw new ForbiddenException('You must be logged in to edit a reply.');
+            throw new ForbiddenException($this->translator->trans('linkrobins-support.api.login_required_edit'));
         }
-        $isStaff = $actor->isAdmin()
-            || $actor->hasPermission('linkrobins-support.handle_tickets');
+        $isStaff = SupportAbilities::isStaff($actor);
         if (! $isStaff) {
-            throw new ForbiddenException('You do not have permission to edit replies.');
+            throw new ForbiddenException($this->translator->trans('linkrobins-support.api.no_permission_edit'));
         }
 
         // Reject empty/whitespace-only content, but only when the
@@ -378,12 +378,12 @@ class SupportReplyResource extends AbstractDatabaseResource
         if ($model->isDirty('content')) {
             $rawContent = $model->getAttribute('content');
             if ($rawContent === null || $rawContent === '') {
-                throw new BadRequestException('Reply content is required.');
+                throw new BadRequestException($this->translator->trans('linkrobins-support.api.reply_content_required'));
             }
             if (is_string($rawContent)) {
                 $textOnly = trim(strip_tags($rawContent));
                 if ($textOnly === '') {
-                    throw new BadRequestException('Reply content is required.');
+                    throw new BadRequestException($this->translator->trans('linkrobins-support.api.reply_content_required'));
                 }
             }
         }
@@ -439,18 +439,17 @@ class SupportReplyResource extends AbstractDatabaseResource
     {
         $actor = $context->getActor();
         if ($actor->isGuest()) {
-            throw new ForbiddenException('You must be logged in.');
+            throw new ForbiddenException($this->translator->trans('linkrobins-support.api.login_required'));
         }
-        $isStaff = $actor->isAdmin()
-            || $actor->hasPermission('linkrobins-support.handle_tickets');
+        $isStaff = SupportAbilities::isStaff($actor);
         if (! $isStaff) {
-            throw new ForbiddenException('You do not have permission to delete replies.');
+            throw new ForbiddenException($this->translator->trans('linkrobins-support.api.no_permission_delete'));
         }
 
         // Only allow force-delete on already-soft-deleted replies.
         if ($model->deleted_at === null) {
             throw new BadRequestException(
-                'A reply must be soft-deleted before it can be permanently removed.'
+                $this->translator->trans('linkrobins-support.api.reply_soft_delete_first')
             );
         }
 

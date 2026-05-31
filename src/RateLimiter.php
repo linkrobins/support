@@ -3,6 +3,7 @@
 namespace LinkRobins\Support;
 
 use Carbon\Carbon;
+use Flarum\Locale\TranslatorInterface;
 use Flarum\Settings\SettingsRepositoryInterface;
 use Flarum\User\User;
 
@@ -25,6 +26,7 @@ class RateLimiter
 {
     public function __construct(
         protected SettingsRepositoryInterface $settings,
+        protected TranslatorInterface $translator,
     ) {
     }
 
@@ -132,25 +134,23 @@ class RateLimiter
         $meta = $result['meta'] ?? [];
         switch ($result['reason'] ?? '') {
             case self::REASON_APPEAL_BANNED:
-                return 'You are not permitted to file appeals.';
+                return $this->translator->trans('linkrobins-support.api.rate_limit.appeal_banned');
             case self::REASON_APPEAL_HAS_OPEN:
-                return 'You already have an open appeal. Please wait for it to be resolved before filing another.';
+                return $this->translator->trans('linkrobins-support.api.rate_limit.appeal_has_open');
             case self::REASON_APPEAL_QUOTA:
-                return sprintf(
-                    'You have already filed %d appeal(s) in the past %d days (limit: %d). Try again later.',
-                    $meta['count'] ?? 0,
-                    $meta['days']  ?? 0,
-                    $meta['limit'] ?? 0,
-                );
+                return $this->translator->trans('linkrobins-support.api.rate_limit.appeal_quota', [
+                    'count' => $meta['count'] ?? 0,
+                    'days'  => $meta['days']  ?? 0,
+                    'limit' => $meta['limit'] ?? 0,
+                ]);
             case self::REASON_GENERAL_QUOTA:
-                return sprintf(
-                    'You have filed %d tickets in the past %d hours (limit: %d). Please wait before filing another.',
-                    $meta['count'] ?? 0,
-                    $meta['hours'] ?? 0,
-                    $meta['limit'] ?? 0,
-                );
+                return $this->translator->trans('linkrobins-support.api.rate_limit.general_quota', [
+                    'count' => $meta['count'] ?? 0,
+                    'hours' => $meta['hours'] ?? 0,
+                    'limit' => $meta['limit'] ?? 0,
+                ]);
         }
-        return 'Cannot create a ticket right now.';
+        return $this->translator->trans('linkrobins-support.api.rate_limit.generic');
     }
 
     // --- DB query methods, extracted so tests can override -------------

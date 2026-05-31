@@ -5,6 +5,7 @@ namespace LinkRobins\Support\Search;
 use Flarum\Search\Database\AbstractSearcher;
 use Flarum\User\User;
 use Illuminate\Database\Eloquent\Builder;
+use LinkRobins\Support\Access\SupportAbilities;
 use LinkRobins\Support\SupportReply;
 
 /**
@@ -23,10 +24,7 @@ class ReplySearcher extends AbstractSearcher
             return $query;
         }
 
-        $isStaff = $actor->isAdmin()
-            || $actor->hasPermission('linkrobins-support.handle_tickets');
-
-        if ($isStaff) {
+        if (SupportAbilities::isStaff($actor)) {
             // Staff see soft-deleted replies in the index so they can
             // restore or force-delete them from the ticket detail
             // page. Non-staff get the default SoftDeletes scope which
