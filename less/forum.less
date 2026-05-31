@@ -55,9 +55,21 @@
     }
 }
 
-// The internal-note toggle when rendered as a composer header row.
+// Our composer header rows (ticket title + internal-note toggle) should each
+// sit on their own line. Core lays header <li>s out `inline-block` with a
+// negative right margin (designed for the discussion title input + tag chips),
+// which makes our wider ticket title overlap the internal-note checkbox on
+// desktop. Scope the override to our composers so core's stays intact.
+.LinkRobinsSupport-replyComposer,
+.LinkRobinsSupport-ticketComposer {
+    .ComposerBody-header > li {
+        display: block;
+        margin-right: 0;
+    }
+}
+
 .ComposerBody-header .LinkRobinsSupport-internalToggle {
-    margin: 0;
+    margin: 4px 0 0;
 }
 
 // "Write a reply" prompt button at the foot of a ticket.
