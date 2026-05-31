@@ -19,7 +19,32 @@
                 return out; // rich (vdom) translation
             }
         } catch (e) {}
-        return fallback != null ? fallback : key;
+        // Fall back to the inline English template. Interpolate {placeholder}
+        // tokens ourselves so an unresolved/missing key never leaks raw braces
+        // to the user (Flarum's translator throws or returns the bare key when
+        // a translation can't be found). NB: never name a param `user` — the
+        // core translator reserves it (extracts it, derives `username`), which
+        // is what broke these strings before.
+        var tmpl = fallback != null ? fallback : key;
+        if (params) {
+            tmpl = tmpl.replace(/\{(\w+)\}/g, function (whole, name) {
+                return Object.prototype.hasOwnProperty.call(params, name) ? String(params[name]) : whole;
+            });
+        }
+        return tmpl;
+    }
+
+    // Resolve Flarum's core TextEditor component -- the same Markdown editor
+    // (toolbar + @mentions) used inside the composer. Returns null if it can't
+    // be found, so callers fall back to a plain <textarea> and the UI keeps
+    // working on stripped-down installs.
+    function getTextEditor() {
+        try {
+            var mod = flarum.reg.get('core', 'common/components/TextEditor');
+            return (mod && mod.default) || mod || null;
+        } catch (e) {
+            return null;
+        }
     }
 
     // Render a username as a link to the user's profile. Accepts a raw API
@@ -240,7 +265,13 @@
         });
     }
 
-    function uploadFilesToBody(target, files, bodyKey) {
+    // Upload files and append their BBCode to the compose body. When the
+    // caller is backed by Flarum's TextEditor (an uncontrolled component that
+    // owns its own textarea), pass `editorGetter` -- a function returning the
+    // active editor driver -- so we insert into the live editor (whose oninput
+    // syncs target[bodyKey] back for us) instead of mutating the string, which
+    // the editor wouldn't see. Plain-textarea callers omit it.
+    function uploadFilesToBody(target, files, bodyKey, editorGetter) {
         target.uploadError    = null;
         target.uploadingCount = (target.uploadingCount || 0) + files.length;
         m.redraw();
@@ -270,9 +301,18 @@
                 if (bb) inserted += (inserted ? '\n' : '') + bb;
             });
             if (inserted) {
-                var existing = target[bodyKey] || '';
-                var sep = existing && !existing.endsWith('\n') ? '\n' : '';
-                target[bodyKey] = existing + sep + inserted + '\n';
+                var editor = typeof editorGetter === 'function' ? editorGetter() : null;
+                if (editor && typeof editor.insertAt === 'function' && editor.el) {
+                    // Append at the end of the live editor; its oninput fires
+                    // onchange, which keeps target[bodyKey] in sync.
+                    var curVal = editor.el.value || '';
+                    var lead = curVal && !curVal.endsWith('\n') ? '\n' : '';
+                    editor.insertAt(curVal.length, lead + inserted + '\n');
+                } else {
+                    var existing = target[bodyKey] || '';
+                    var sep = existing && !existing.endsWith('\n') ? '\n' : '';
+                    target[bodyKey] = existing + sep + inserted + '\n';
+                }
             } else {
                 target.uploadError = tr('errors.upload_no_files', 'Upload returned no files. Please try again.');
             }
@@ -507,7 +547,7 @@
                 var n = this.attrs && this.attrs.notification;
                 var from = n && n.fromUser && n.fromUser();
                 if (from && from.displayName) {
-                    return tr('notifications.reply_from', '{user} replied to your ticket', { user: from.displayName() });
+                    return tr('notifications.reply_from', '{name} replied to your ticket', { name: from.displayName() });
                 }
                 return tr('notifications.reply_generic', 'Support replied to your ticket');
             }
@@ -528,7 +568,11 @@
     function makeNewTicketNotification(NotificationBase) {
         return class NewSupportTicketNotification extends NotificationBase {
             icon() {
-                return 'fas fa-ticket-alt';
+                var n = this.attrs && this.attrs.notification;
+                var data = n && n.content && n.content();
+                // Appeals get a distinct, more fitting glyph (gavel) instead of
+                // the generic ticket icon.
+                return (data && data.isAppeal) ? 'fas fa-gavel' : 'fas fa-ticket-alt';
             }
             href() {
                 var subj = this.attrs && this.attrs.notification
@@ -547,8 +591,8 @@
                 var from = n && n.fromUser && n.fromUser();
                 var who = (from && from.displayName) ? from.displayName() : tr('notifications.someone', 'A user');
                 return isAppeal
-                    ? tr('notifications.new_appeal', '{user} opened a new appeal', { user: who })
-                    : tr('notifications.new_ticket', '{user} opened a new support ticket', { user: who });
+                    ? tr('notifications.new_appeal', '{name} opened a new appeal', { name: who })
+                    : tr('notifications.new_ticket', '{name} opened a new support ticket', { name: who });
             }
             excerpt() {
                 var subj = this.attrs && this.attrs.notification
@@ -978,6 +1022,45 @@
                     && self.body.trim() !== ''
                     && self.categoryId !== '';
 
+                var TextEditor = getTextEditor();
+                if (TextEditor && !self._composeComposer) self._composeComposer = {};
+                // The new-ticket form keeps its own bottom "Submit ticket"
+                // button (it covers subject + category + body), so we embed the
+                // core editor purely for its Markdown toolbar / @mentions and
+                // hide its built-in submit via the wrapper class (see forum.less).
+                var bodyEditor = TextEditor
+                    ? m('div', { className: 'LinkRobinsSupport-composeEditor' }, m(TextEditor, {
+                        key:         'lr-support-compose',
+                        composer:    self._composeComposer,
+                        value:       self.body,
+                        disabled:    self.saving,
+                        placeholder: tr('compose.body_placeholder', 'Describe the issue in detail. Markdown is supported.'),
+                        submitLabel: tr('compose.submit', 'Submit ticket'),
+                        onchange:    function (v) { self.body = v; },
+                        onsubmit:    function () {
+                            if (!self.saving && self.subject.trim() !== ''
+                                && self.body.trim() !== '' && self.categoryId !== '') {
+                                self._submit();
+                            }
+                        },
+                    }))
+                    : m('textarea', {
+                        className:   'FormControl LinkRobinsSupport-body',
+                        rows:        10,
+                        value:       self.body,
+                        disabled:    self.saving,
+                        placeholder: tr('compose.body_placeholder', 'Describe the issue in detail. Markdown is supported.'),
+                        oninput:     function (e) { self.body = e.target.value; },
+                        onkeydown: function (e) {
+                            var isSubmit = (e.key === 'Enter' || e.keyCode === 13)
+                                && (e.ctrlKey || e.metaKey);
+                            if (isSubmit && canSave) {
+                                e.preventDefault();
+                                self._submit();
+                            }
+                        },
+                    });
+
                 return self._wrap(
                     m('div', { className: 'LinkRobinsSupport-container' }, [
                         m('header', { className: 'LinkRobinsSupport-header' }, [
@@ -1014,23 +1097,7 @@
                             ]),
                             m('div', { className: 'Form-group' }, [
                                 m('label', null, tr('compose.message_label', 'Message')),
-                                m('textarea', {
-                                    className:   'FormControl LinkRobinsSupport-body',
-                                    rows:        10,
-                                    value:       self.body,
-                                    disabled:    self.saving,
-                                    placeholder: tr('compose.body_placeholder', 'Describe the issue in detail. Markdown is supported.'),
-                                    oninput:     function (e) { self.body = e.target.value; },
-
-                                    onkeydown: function (e) {
-                                        var isSubmit = (e.key === 'Enter' || e.keyCode === 13)
-                                            && (e.ctrlKey || e.metaKey);
-                                        if (isSubmit && canSave) {
-                                            e.preventDefault();
-                                            self._submit();
-                                        }
-                                    },
-                                }),
+                                bodyEditor,
                                 self.uploadError ? m('div', { className: 'Alert Alert--danger LinkRobinsSupport-uploadAlert' },
                                     self.uploadError) : null,
                                 self.uploadingCount > 0 ? m('div', { className: 'LinkRobinsSupport-uploadStatus' },
@@ -1194,7 +1261,10 @@
             }
 
             _uploadFiles(files) {
-                return uploadFilesToBody(this, files, 'body');
+                var self = this;
+                return uploadFilesToBody(this, files, 'body', function () {
+                    return self._composeComposer && self._composeComposer.editor;
+                });
             }
         };
     }
@@ -1511,7 +1581,7 @@
                         editedAt ? m('span', {
                             className: 'LinkRobinsSupport-reply-edited',
                             title: editedBy
-                                ? tr('reply.edited_by', 'Edited {date} by {user}', { date: formatDate(editedAt), user: (editedBy.attributes.displayName || editedBy.attributes.username) })
+                                ? tr('reply.edited_by', 'Edited {date} by {name}', { date: formatDate(editedAt), name: (editedBy.attributes.displayName || editedBy.attributes.username) })
                                 : tr('reply.edited_at', 'Edited {date}', { date: formatDate(editedAt) }),
                         }, '(edited)') : null,
 
@@ -1600,6 +1670,58 @@
                 var self = this;
                 var canSave = !state.busy && state.draft.trim() !== '';
 
+                var TextEditor = getTextEditor();
+                if (TextEditor) {
+                    // Use Flarum's own composer editor so editing a reply gets
+                    // the same Markdown toolbar / @mention autocomplete as
+                    // posting anywhere else on the forum. TextEditor is
+                    // uncontrolled (it owns its textarea), but the editor is
+                    // mounted fresh when editing begins and torn down on
+                    // save/cancel, so there's no external value to sync. The
+                    // `composer` attr is just a holder TextEditor stashes its
+                    // driver on; the `key` forces a clean remount per reply.
+                    if (!state._composer) state._composer = {};
+                    return m('div', { className: 'LinkRobinsSupport-reply-editor' }, [
+                        // The keyed editor must be the sole child of an unkeyed
+                        // wrapper: mithril forbids mixing keyed and unkeyed
+                        // siblings in one array, and the actions row below is
+                        // unkeyed. (The key lets us remount per reply.)
+                        m('div', { className: 'LinkRobinsSupport-editorWrap' }, m(TextEditor, {
+                            key:         'lr-support-edit-' + reply.id,
+                            composer:    state._composer,
+                            value:       state.draft,
+                            disabled:    state.busy,
+                            placeholder: tr('reply.placeholder', 'Write a reply…'),
+                            submitLabel: state.busy
+                                ? tr('action.saving', 'Saving…')
+                                : tr('action.save_changes', 'Save changes'),
+                            onchange:    function (v) { state.draft = v; },
+                            onsubmit:    function () {
+                                if (!state.busy && state.draft.trim() !== '') {
+                                    self._saveEditReply(reply);
+                                }
+                            },
+                        })),
+                        m('div', { className: 'LinkRobinsSupport-reply-editor-actions' }, [
+                            m('button', {
+                                type:      'button',
+                                className: 'Button Button--link',
+                                disabled:  state.busy,
+                                onclick:   function () { self._cancelEditReply(reply); },
+                            }, tr('action.cancel', 'Cancel')),
+                            // Own submit button (the editor's built-in one is
+                            // hidden). Ctrl+Enter also saves via onsubmit.
+                            m('button', {
+                                type:      'button',
+                                className: 'Button Button--primary',
+                                disabled:  !canSave,
+                                onclick:   function () { self._saveEditReply(reply); },
+                            }, state.busy ? tr('action.saving', 'Saving…') : tr('action.save_changes', 'Save changes')),
+                        ]),
+                    ]);
+                }
+
+                // Fallback: plain textarea when the core editor is unavailable.
                 return m('div', { className: 'LinkRobinsSupport-reply-editor' }, [
                     m('textarea', {
                         className:   'FormControl LinkRobinsSupport-body',
@@ -1915,16 +2037,47 @@
                 var canPostInternal = !!(self.ticket && self.ticket.attributes && self.ticket.attributes.canPostInternalNote);
                 var canSubmit = !self.posting && self.replyText.trim() !== '';
                 var canUpload = !!(app.forum && typeof app.forum.attribute === 'function' && app.forum.attribute('fof-upload.canUpload'));
+                var placeholder = self.replyIsInternal
+                    ? tr('reply.internal_placeholder', 'Internal note (only staff will see this)…')
+                    : tr('reply.placeholder', 'Write a reply…');
 
-                return m('div', { className: 'LinkRobinsSupport-replyForm' }, [
-                    m('textarea', {
+                var TextEditor = getTextEditor();
+                var editorNode;
+                if (TextEditor) {
+                    // Flarum's composer editor (Markdown toolbar + @mentions),
+                    // matching the reply-edit box. It's uncontrolled, so after
+                    // a post we clear by bumping `_replyEditorNonce` (the key),
+                    // which remounts a fresh empty editor. The submit button is
+                    // provided by TextEditor itself, so the actions row below
+                    // only carries attach / internal-note.
+                    if (!self._replyComposer) self._replyComposer = {};
+                    // Wrap the keyed editor in an unkeyed div: it sits among
+                    // unkeyed siblings (upload status, actions row) and mithril
+                    // forbids mixing keyed/unkeyed siblings in one array. The
+                    // key still lets us remount (clear) the editor after a post.
+                    editorNode = m('div', { className: 'LinkRobinsSupport-editorWrap' }, m(TextEditor, {
+                        key:         'lr-support-reply-' + (self._replyEditorNonce || 0),
+                        composer:    self._replyComposer,
+                        value:       self.replyText,
+                        disabled:    self.posting,
+                        placeholder: placeholder,
+                        submitLabel: self.posting
+                            ? tr('reply.posting', 'Posting…')
+                            : tr('reply.post_reply', 'Post reply'),
+                        onchange:    function (v) { self.replyText = v; },
+                        onsubmit:    function () {
+                            if (!self.posting && self.replyText.trim() !== '') {
+                                self._postReply();
+                            }
+                        },
+                    }));
+                } else {
+                    editorNode = m('textarea', {
                         className:   'FormControl LinkRobinsSupport-body',
                         rows:        5,
                         value:       self.replyText,
                         disabled:    self.posting,
-                        placeholder: self.replyIsInternal
-                            ? tr('reply.internal_placeholder', 'Internal note (only staff will see this)…')
-                            : tr('reply.placeholder', 'Write a reply…'),
+                        placeholder: placeholder,
                         oninput:     function (e) { self.replyText = e.target.value; },
                         onkeydown: function (e) {
                             var isSubmit = (e.key === 'Enter' || e.keyCode === 13)
@@ -1936,7 +2089,11 @@
                                 self._postReply();
                             }
                         },
-                    }),
+                    });
+                }
+
+                return m('div', { className: 'LinkRobinsSupport-replyForm' }, [
+                    editorNode,
 
                     self.uploadError ? m('div', { className: 'Alert Alert--danger LinkRobinsSupport-uploadAlert' },
                         self.uploadError) : null,
@@ -1985,6 +2142,10 @@
                             }),
                             ' ', tr('reply.internal_note', 'Internal note'),
                         ]) : null,
+                        // We always render our own submit button -- the embedded
+                        // editor's built-in one is hidden (it carries header-
+                        // control styling that breaks inline). Ctrl+Enter still
+                        // submits via the editor's onsubmit.
                         m('button', {
                             type:      'button',
                             className: 'Button Button--primary',
@@ -1996,7 +2157,10 @@
             }
 
             _uploadFiles(files) {
-                return uploadFilesToBody(this, files, 'replyText');
+                var self = this;
+                return uploadFilesToBody(this, files, 'replyText', function () {
+                    return self._replyComposer && self._replyComposer.editor;
+                });
             }
 
             _refreshTicket() {
@@ -2019,6 +2183,12 @@
                         self.uploadError     = null;
                         self.uploadingCount  = 0;
                         self.posting         = false;
+                        // Remount the (uncontrolled) core editor so it clears.
+                        // Bumping the key tears down the old driver and builds a
+                        // fresh empty one; a new holder avoids touching the
+                        // destroyed driver in the gap before it rebuilds.
+                        self._replyEditorNonce = (self._replyEditorNonce || 0) + 1;
+                        self._replyComposer    = {};
                         // Append the new reply in place rather than a full
                         // two-request reload of the whole thread. Then refresh
                         // just the ticket so any server-side status/assignment

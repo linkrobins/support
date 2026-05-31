@@ -13,8 +13,51 @@
     }
 }
 
+// ---- Embedded core editor (TextEditor) -----------------------------------
+// The reply, edit, and new-ticket boxes embed Flarum's composer editor for
+// its Markdown toolbar + @mentions. Its default styles assume the docked
+// bottom composer: a -105px control gutter (for the avatar), a border/height-
+// less textarea, and a submit button styled as a header control (which on
+// phones is `position: absolute`). Inline, that looks disoriented. We reframe
+// the editor as a plain bordered field, hide its built-in submit button, and
+// supply our own submit buttons -- so the editor only contributes the textarea
+// and the Markdown toolbar.
+.LinkRobinsSupport-editorWrap,
+.LinkRobinsSupport-composeEditor {
+    border: 1px solid var(--control-bg, rgba(0, 0, 0, 0.12));
+    border-radius: 4px;
+    padding: 8px 12px;
+    background: var(--body-bg, #fff);
+
+    .TextEditor {
+        display: block;
+    }
+
+    .TextEditor-editor {
+        min-height: 120px;
+        padding: 0;
+    }
+
+    // Drop the docked-composer gutter margins so the toolbar stays in our box.
+    .TextEditor-controls {
+        margin: 0;
+        padding: 6px 0 0;
+        border-top: 1px solid var(--control-bg, rgba(0, 0, 0, 0.08));
+        overflow-x: auto;
+    }
+
+    // Our own submit button lives outside the editor.
+    .TextEditor-controls .item-submit {
+        display: none;
+    }
+}
+
+.LinkRobinsSupport-composeEditor .TextEditor-editor {
+    min-height: 160px;
+}
+
 .LinkRobinsSupport-title {
-    font-size: 1.75rem;
+    font-size: 1.5rem;
     font-weight: 700;
     margin: 0;
     display: flex;
@@ -326,6 +369,14 @@
 }
 
 @media (max-width: 767px) {
+    // Shrink the ticket title on narrow screens so a normal subject doesn't
+    // wrap onto two lines next to the status badge / actions.
+    .LinkRobinsSupport-title {
+        font-size: 1.2rem;
+    }
+    .LinkRobinsSupport-ticket-titleRow .LinkRobinsSupport-title {
+        font-size: 1.2rem;
+    }
     .LinkRobinsSupport-staffBar {
         flex-direction: column;
         align-items: stretch;
