@@ -13,47 +13,56 @@
     }
 }
 
-// ---- Embedded core editor (TextEditor) -----------------------------------
-// The reply, edit, and new-ticket boxes embed Flarum's composer editor for
-// its Markdown toolbar + @mentions. Its default styles assume the docked
-// bottom composer: a -105px control gutter (for the avatar), a border/height-
-// less textarea, and a submit button styled as a header control (which on
-// phones is `position: absolute`). Inline, that looks disoriented. We reframe
-// the editor as a plain bordered field, hide its built-in submit button, and
-// supply our own submit buttons -- so the editor only contributes the textarea
-// and the Markdown toolbar.
-.LinkRobinsSupport-editorWrap,
-.LinkRobinsSupport-composeEditor {
-    border: 1px solid var(--control-bg, rgba(0, 0, 0, 0.12));
-    border-radius: 4px;
-    padding: 8px 12px;
-    background: var(--body-bg, #fff);
+// ---- Docked composer ------------------------------------------------------
+// Replies, edits and new tickets are written in Flarum's real docked composer
+// (app.composer), so the editor + every editor extension (FoF Rich Text, FoF
+// Upload, Mentions, Emoji) get their native styling and behaviour for free.
+// We only style our own header rows shown above the editor.
+.LinkRobinsSupport-composerTitle {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 
-    .TextEditor {
-        display: block;
-    }
-
-    .TextEditor-editor {
-        min-height: 120px;
-        padding: 0;
-    }
-
-    // Drop the docked-composer gutter margins so the toolbar stays in our box.
-    .TextEditor-controls {
-        margin: 0;
-        padding: 6px 0 0;
-        border-top: 1px solid var(--control-bg, rgba(0, 0, 0, 0.08));
-        overflow-x: auto;
-    }
-
-    // Our own submit button lives outside the editor.
-    .TextEditor-controls .item-submit {
-        display: none;
+    i {
+        color: var(--primary-color, #07adcc);
     }
 }
 
-.LinkRobinsSupport-composeEditor .TextEditor-editor {
-    min-height: 160px;
+.LinkRobinsSupport-composerTitle-cat {
+    font-weight: 400;
+    color: var(--muted-color, #888);
+}
+
+// Discussion-style reply placeholder ("click to write…" + live preview) reused
+// for ticket replies and the new-ticket message. Core styles .Post /
+// .ReplyPlaceholder; outside a PostStream the .ReplyPlaceholder <button> shrinks
+// to its content, so we force it (and the live-preview article) to fill the
+// width of wherever it sits.
+.LinkRobinsSupport-replyPrompt,
+.LinkRobinsSupport-composePreview {
+    display: block;
+    width: 100%;
+
+    .ReplyPlaceholder,
+    .Post {
+        display: block;
+        width: 100%;
+        margin: 0;
+        box-sizing: border-box;
+    }
+}
+
+// The internal-note toggle when rendered as a composer header row.
+.ComposerBody-header .LinkRobinsSupport-internalToggle {
+    margin: 0;
+}
+
+// "Write a reply" prompt button at the foot of a ticket.
+.LinkRobinsSupport-replyPrompt {
+    margin-top: 8px;
 }
 
 .LinkRobinsSupport-title {

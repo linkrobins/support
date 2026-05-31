@@ -34,6 +34,39 @@
         return tmpl;
     }
 
+    // Translator helper resolved in init() to flatten translation output to a
+    // plain string.
+    var extractTextHelper = null;
+
+    // Like tr(), but ALWAYS returns a plain string. Use this whenever a
+    // translation is placed in an HTML attribute (title, placeholder, value).
+    // With {placeholder} params the core translator returns an ARRAY of parts;
+    // assigning that array to an attribute coerces it via Array.toString(),
+    // which inserts a comma between every part ("Edited by ,Bob, on ,May 1,").
+    // extractText flattens it back to a clean string.
+    function trText(key, fallback, params) {
+        var out = tr(key, fallback, params);
+        if (typeof out === 'string') return out;
+        try {
+            var ex = extractTextHelper && (extractTextHelper.default || extractTextHelper);
+            if (ex) {
+                var s = ex(out);
+                if (typeof s === 'string') return s;
+            }
+        } catch (e) {}
+        // Last-resort flatten without comma separators.
+        return flattenToText(out);
+    }
+
+    function flattenToText(node) {
+        if (node == null || node === false) return '';
+        if (typeof node === 'string' || typeof node === 'number') return String(node);
+        if (Array.isArray(node)) return node.map(flattenToText).join('');
+        if (node.children != null) return flattenToText(node.children);
+        if (node.text != null) return String(node.text);
+        return '';
+    }
+
     // Resolve Flarum's core TextEditor component -- the same Markdown editor
     // (toolbar + @mentions) used inside the composer. Returns null if it can't
     // be found, so callers fall back to a plain <textarea> and the UI keeps
@@ -45,6 +78,181 @@
         } catch (e) {
             return null;
         }
+    }
+
+    // --- Real composer integration --------------------------------------
+    // Resolved from core's registry in init(). When present we drive Flarum's
+    // real docked composer (app.composer) instead of embedding TextEditor
+    // inline -- that's the environment FoF Rich Text, FoF Upload, Mentions and
+    // Emoji are built for, so they all behave exactly as in a normal forum
+    // reply (toolbar, @mentions, upload-at-cursor, mobile layout, submit). Null
+    // on stripped-down installs, so callers keep a plain-textarea fallback.
+    var ComposerBodyBase     = null;
+    var SupportComposerClass = null;
+    // Eagerly-registered helpers used to mirror the core discussion reply
+    // placeholder (the "click to write…" box + live preview). Resolved in init.
+    var AvatarC              = null;
+    var ComposerPostPreviewC = null;
+    var usernameHelper       = null;
+
+    function regComp(c) { return c && (c.default || c); }
+
+    // Render the same "reply placeholder" Flarum shows at the end of a
+    // discussion: a click-to-compose box, or -- while the composer is open for
+    // this context -- a live preview of what's being typed (ComposerPostPreview).
+    // opts: { composing, placeholder, onclick }.
+    function supportComposerPreview(opts) {
+        var Avatar = regComp(AvatarC);
+        var user   = app.session && app.session.user;
+
+        if (opts.composing && ComposerPostPreviewC) {
+            var Preview = regComp(ComposerPostPreviewC);
+            var uname   = regComp(usernameHelper);
+            return m('article', { className: 'Post CommentPost editing', 'aria-busy': 'true' },
+                m('div', { className: 'Post-container' }, [
+                    m('div', { className: 'Post-side' }, Avatar ? m(Avatar, { user: user, className: 'Post-avatar' }) : null),
+                    m('div', { className: 'Post-main' }, [
+                        m('header', { className: 'Post-header' },
+                            m('div', { className: 'PostUser' },
+                                m('h3', { className: 'PostUser-name' }, uname ? uname(user) : (user && user.username ? user.username() : '')))),
+                        m('div', { className: 'Post-body' },
+                            m(Preview, { className: 'Post-body', composer: app.composer })),
+                    ]),
+                ])
+            );
+        }
+
+        return m('button', {
+            type:      'button',
+            className: 'Post ReplyPlaceholder',
+            onclick:   opts.onclick,
+        }, m('div', { className: 'Post-container' }, [
+            m('div', { className: 'Post-side' }, Avatar ? m(Avatar, { user: user, className: 'Post-avatar' }) : null),
+            m('div', { className: 'Post-main' },
+                m('span', { className: 'Post-header' }, opts.placeholder)),
+        ]));
+    }
+
+    // Build a ComposerBody subclass for the docked composer. The caller drives
+    // behaviour through attrs so one class serves replies, edits and new
+    // tickets:
+    //   onSupportSubmit(content, body)  perform the save; call
+    //                                   body.composer.hide() on success.
+    //   supportHeaderItems(body)        optional [{name, content, priority}]
+    //                                   rows rendered above the editor (e.g. the
+    //                                   subject/category fields, internal-note
+    //                                   toggle).
+    function makeSupportComposer(ComposerBody) {
+        return class SupportComposer extends ComposerBody {
+            headerItems() {
+                var items = super.headerItems();
+                var defs = typeof this.attrs.supportHeaderItems === 'function'
+                    ? this.attrs.supportHeaderItems(this)
+                    : null;
+                if (defs && defs.length) {
+                    defs.forEach(function (d, i) {
+                        if (d == null) return;
+                        items.add(d.name || ('support-header-' + i), d.content, d.priority || 0);
+                    });
+                }
+                return items;
+            }
+
+            onsubmit() {
+                var content = this.composer.fields.content();
+                if (typeof this.attrs.onSupportSubmit === 'function') {
+                    this.attrs.onSupportSubmit(content, this);
+                }
+            }
+        };
+    }
+
+    // Core ships ComposerBody in a lazily-loaded chunk (it's registered via
+    // flarum.reg.addChunkModule, not eagerly), so flarum.reg.get() returns null
+    // until that chunk loads. We therefore resolve it asynchronously: build the
+    // SupportComposer subclass the first time it's needed (loading the chunk if
+    // necessary) and cache it.
+    var COMPOSER_BODY_PATH = 'flarum/forum/components/ComposerBody';
+
+    function ensureSupportComposer() {
+        if (SupportComposerClass) return Promise.resolve(SupportComposerClass);
+        try {
+            // Already loaded into the registry?
+            var loaded = flarum.reg.checkModule && flarum.reg.checkModule('core', 'forum/components/ComposerBody');
+            if (loaded) {
+                ComposerBodyBase = loaded.default || loaded;
+                SupportComposerClass = makeSupportComposer(ComposerBodyBase);
+                return Promise.resolve(SupportComposerClass);
+            }
+        } catch (e) {}
+        try {
+            if (flarum.reg.asyncModuleImport) {
+                return flarum.reg.asyncModuleImport(COMPOSER_BODY_PATH).then(function (mod) {
+                    ComposerBodyBase = (mod && mod.default) || mod || null;
+                    SupportComposerClass = ComposerBodyBase ? makeSupportComposer(ComposerBodyBase) : null;
+                    return SupportComposerClass;
+                }).catch(function (e) {
+                    console.error('[linkrobins/support] could not load composer chunk:', e);
+                    return null;
+                });
+            }
+        } catch (e) {}
+        return Promise.resolve(null);
+    }
+
+    // Whether the real docked composer can be used. True when app.composer
+    // exists and core's ComposerBody is either loaded or registered in a chunk
+    // we can load on demand. Lets pages choose the composer UI over the inline
+    // textarea fallback before the chunk has finished loading.
+    function supportComposerSupported() {
+        if (!app.composer || typeof app.composer.load !== 'function') return false;
+        if (SupportComposerClass) return true;
+        try {
+            if (flarum.reg.checkModule && flarum.reg.checkModule('core', 'forum/components/ComposerBody')) return true;
+            if (flarum.reg.chunkModules && typeof flarum.reg.chunkModules.has === 'function'
+                && flarum.reg.chunkModules.has('core:forum/components/ComposerBody')) return true;
+        } catch (e) {}
+        return false;
+    }
+
+    // Open the docked composer with a SupportComposer body. Loads the composer
+    // chunk first if needed. Returns true when the real composer is available;
+    // false on stripped installs so callers can fall back to an inline editor.
+    function openSupportComposer(attrs) {
+        if (!supportComposerSupported()) return false;
+        if (!attrs.user) attrs.user = app.session && app.session.user;
+        ensureSupportComposer().then(function (Cls) {
+            if (!Cls) {
+                showError(tr('errors.unknown', 'Unknown error.'));
+                return;
+            }
+            app.composer.load(Cls, attrs).then(function () {
+                app.composer.show();
+            });
+        });
+        return true;
+    }
+
+    // True when the docked composer is currently open with our body for the
+    // given marker (set via attrs.supportContext). Lets a page reflect that a
+    // draft is being composed and read its live content.
+    function supportComposerOpenFor(contextKey) {
+        try {
+            if (!app.composer || !app.composer.isVisible || !app.composer.isVisible()) return false;
+            var body = app.composer.body;
+            var bodyAttrs = body && body.attrs;
+            return !!(bodyAttrs && bodyAttrs.supportContext === contextKey);
+        } catch (e) { return false; }
+    }
+
+    // Live content of the open composer (empty string when not applicable).
+    function supportComposerContent() {
+        try {
+            if (app.composer && app.composer.fields && app.composer.fields.content) {
+                return app.composer.fields.content() || '';
+            }
+        } catch (e) {}
+        return '';
     }
 
     // Render a username as a link to the user's profile. Accepts a raw API
@@ -116,10 +324,13 @@
         try {
             var d = new Date(iso);
             if (isNaN(d.getTime())) return '';
-            return d.toLocaleString(undefined, {
-                year: 'numeric', month: 'short', day: 'numeric',
-                hour: '2-digit', minute: '2-digit',
-            });
+            // Format the date and time separately and join them with "at",
+            // rather than toLocaleString's single string -- the latter glues
+            // them with a comma ("May 31, 2026, 09:26 AM"), which reads as an
+            // awkward double-comma run when embedded in a sentence.
+            var datePart = d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+            var timePart = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+            return trText('common.date_at_time', '{date} at {time}', { date: datePart, time: timePart });
         } catch (e) { return ''; }
     }
 
@@ -349,13 +560,20 @@
 
     // --- Status display helpers -----------------------------------------
 
-    var STATUS_LABELS = {
-        open:           tr('status.open', 'Open'),
-        in_progress:    tr('status.in_progress', 'In progress'),
-        awaiting_user:  tr('status.awaiting_response', 'Awaiting response'),
-        resolved:       tr('status.resolved', 'Resolved'),
-        closed:         tr('status.closed', 'Closed'),
-    };
+    // Resolve a status label at RENDER time. Building this as a static map at
+    // module-load time froze the labels to their English fallbacks, because the
+    // translator hasn't loaded the active locale yet when this file evaluates --
+    // which is why the status dropdown/badges weren't translatable.
+    function statusLabel(status) {
+        switch (status) {
+            case 'open':          return tr('status.open',              'Open');
+            case 'in_progress':   return tr('status.in_progress',       'In progress');
+            case 'awaiting_user': return tr('status.awaiting_response', 'Awaiting response');
+            case 'resolved':      return tr('status.resolved',          'Resolved');
+            case 'closed':        return tr('status.closed',            'Closed');
+            default:              return status;
+        }
+    }
 
     var STATUS_CLASSES = {
         open:          'is-open',
@@ -366,7 +584,7 @@
     };
 
     function statusBadge(status) {
-        var label = STATUS_LABELS[status] || status;
+        var label = statusLabel(status);
         var cls   = STATUS_CLASSES[status] || '';
         return m('span', {
             className: 'LinkRobinsSupport-status ' + cls,
@@ -396,6 +614,17 @@
         try { Separator        = flarum.reg.get('core', 'common/components/Separator'); }        catch (e) {}
         var Dropdown = null;
         try { Dropdown         = flarum.reg.get('core', 'common/components/Dropdown'); }         catch (e) {}
+
+        // Eager components used for the discussion-style reply placeholder.
+        try { AvatarC              = flarum.reg.get('core', 'common/components/Avatar'); }        catch (e) {}
+        try { ComposerPostPreviewC = flarum.reg.get('core', 'forum/components/ComposerPostPreview'); } catch (e) {}
+        try { usernameHelper       = flarum.reg.get('core', 'common/helpers/username'); }         catch (e) {}
+        try { extractTextHelper    = flarum.reg.get('core', 'common/utils/extractText'); }         catch (e) {}
+
+        // Note: we deliberately do NOT pre-load core's ComposerBody chunk here.
+        // During boot app.forum isn't populated yet, and webpack caches a failed
+        // chunk-load promise -- which would poison the later on-demand load. The
+        // chunk is loaded the first time openSupportComposer() runs instead.
 
         if (!Page) {
             console.error('[linkrobins/support] Page component not available; aborting.');
@@ -1017,71 +1246,61 @@
                     return self._wrap(self._renderPicker());
                 }
 
-                var canSave = !self.saving
+                var composerOpen = supportComposerOpenFor('new-ticket');
+
+                // With the real composer: keep the subject field on the page and
+                // use the same discussion-style "reply placeholder" box for the
+                // message -- clicking it opens the docked composer, and while
+                // composing the box shows a live preview of the body. Submitting
+                // happens from the composer ("Submit ticket"). Without the
+                // composer we fall back to a full inline form.
+                if (supportComposerSupported()) {
+                    return self._wrap(
+                        m('div', { className: 'LinkRobinsSupport-container' }, [
+                            self._renderComposeHeader(),
+                            self.error ? m('div', { className: 'Alert Alert--danger' }, [
+                                m('span', { className: 'Alert-body' }, self._errorMessage()),
+                            ]) : null,
+                            m('div', { className: 'LinkRobinsSupport-form' }, [
+                                m('div', { className: 'Form-group' }, [
+                                    m('label', null, tr('compose.subject_label', 'Subject')),
+                                    m('input', {
+                                        type:        'text',
+                                        className:   'FormControl',
+                                        value:       self.subject,
+                                        disabled:    self.saving,
+                                        placeholder: tr('compose.subject_placeholder', 'Short summary of your issue'),
+                                        maxlength:   200,
+                                        oninput:     function (e) { self.subject = e.target.value; },
+                                    }),
+                                ]),
+                                m('div', { className: 'Form-group' }, [
+                                    m('label', null, tr('compose.message_label', 'Message')),
+                                    m('div', { className: 'LinkRobinsSupport-composePreview' },
+                                        supportComposerPreview({
+                                            composing:   composerOpen,
+                                            placeholder: tr('compose.message_placeholder_click', 'Click to write your message…'),
+                                            onclick:     function () { self._openComposeComposer(); },
+                                        })),
+                                ]),
+                            ]),
+                        ])
+                    );
+                }
+
+                // Fallback (stripped install without the composer): full inline
+                // form with subject + textarea + attach + submit.
+                var canSaveFallback = !self.saving
                     && self.subject.trim() !== ''
                     && self.body.trim() !== ''
                     && self.categoryId !== '';
 
-                var TextEditor = getTextEditor();
-                if (TextEditor && !self._composeComposer) self._composeComposer = {};
-                // The new-ticket form keeps its own bottom "Submit ticket"
-                // button (it covers subject + category + body), so we embed the
-                // core editor purely for its Markdown toolbar / @mentions and
-                // hide its built-in submit via the wrapper class (see forum.less).
-                var bodyEditor = TextEditor
-                    ? m('div', { className: 'LinkRobinsSupport-composeEditor' }, m(TextEditor, {
-                        key:         'lr-support-compose',
-                        composer:    self._composeComposer,
-                        value:       self.body,
-                        disabled:    self.saving,
-                        placeholder: tr('compose.body_placeholder', 'Describe the issue in detail. Markdown is supported.'),
-                        submitLabel: tr('compose.submit', 'Submit ticket'),
-                        onchange:    function (v) { self.body = v; },
-                        onsubmit:    function () {
-                            if (!self.saving && self.subject.trim() !== ''
-                                && self.body.trim() !== '' && self.categoryId !== '') {
-                                self._submit();
-                            }
-                        },
-                    }))
-                    : m('textarea', {
-                        className:   'FormControl LinkRobinsSupport-body',
-                        rows:        10,
-                        value:       self.body,
-                        disabled:    self.saving,
-                        placeholder: tr('compose.body_placeholder', 'Describe the issue in detail. Markdown is supported.'),
-                        oninput:     function (e) { self.body = e.target.value; },
-                        onkeydown: function (e) {
-                            var isSubmit = (e.key === 'Enter' || e.keyCode === 13)
-                                && (e.ctrlKey || e.metaKey);
-                            if (isSubmit && canSave) {
-                                e.preventDefault();
-                                self._submit();
-                            }
-                        },
-                    });
-
                 return self._wrap(
                     m('div', { className: 'LinkRobinsSupport-container' }, [
-                        m('header', { className: 'LinkRobinsSupport-header' }, [
-                            self.categories.length > 1 ? m('button', {
-                                type:      'button',
-                                className: 'Button Button--link LinkRobinsSupport-backBtn',
-                                disabled:  self.saving,
-                                onclick:   function () { self._backToCategories(); },
-                            }, [
-                                m('i', { className: 'fas fa-chevron-left' }), ' ',
-                                tr('compose.back_to_categories', 'Back to categories'),
-                            ]) : null,
-                            m('h1', { className: 'LinkRobinsSupport-title' },
-                                isUserSuspended() ? tr('compose.title_appeal', 'File an appeal') : tr('compose.title', 'New support ticket')),
-                            self._renderChosenCategory(),
-                        ]),
-
+                        self._renderComposeHeader(),
                         self.error ? m('div', { className: 'Alert Alert--danger' }, [
                             m('span', { className: 'Alert-body' }, self._errorMessage()),
                         ]) : null,
-
                         m('div', { className: 'LinkRobinsSupport-form' }, [
                             m('div', { className: 'Form-group' }, [
                                 m('label', null, tr('compose.subject_label', 'Subject')),
@@ -1097,7 +1316,22 @@
                             ]),
                             m('div', { className: 'Form-group' }, [
                                 m('label', null, tr('compose.message_label', 'Message')),
-                                bodyEditor,
+                                m('textarea', {
+                                    className:   'FormControl LinkRobinsSupport-body',
+                                    rows:        10,
+                                    value:       self.body,
+                                    disabled:    self.saving,
+                                    placeholder: tr('compose.body_placeholder', 'Describe the issue in detail. Markdown is supported.'),
+                                    oninput:     function (e) { self.body = e.target.value; },
+                                    onkeydown: function (e) {
+                                        var isSubmit = (e.key === 'Enter' || e.keyCode === 13)
+                                            && (e.ctrlKey || e.metaKey);
+                                        if (isSubmit && canSaveFallback) {
+                                            e.preventDefault();
+                                            self._submit();
+                                        }
+                                    },
+                                }),
                                 self.uploadError ? m('div', { className: 'Alert Alert--danger LinkRobinsSupport-uploadAlert' },
                                     self.uploadError) : null,
                                 self.uploadingCount > 0 ? m('div', { className: 'LinkRobinsSupport-uploadStatus' },
@@ -1106,7 +1340,6 @@
                                         : tr('common.uploading_many', 'Uploading {count} files…', { count: self.uploadingCount })) : null,
                             ]),
                             m('div', { className: 'LinkRobinsSupport-form-actions' }, [
-
                                 (app.forum && app.forum.attribute('fof-upload.canUpload')) ? m('span', {
                                     className: 'LinkRobinsSupport-attachBtnWrap',
                                 }, [
@@ -1140,13 +1373,63 @@
                                 m('button', {
                                     type:      'button',
                                     className: 'Button Button--primary',
-                                    disabled:  !canSave,
+                                    disabled:  !canSaveFallback,
                                     onclick:   function () { self._submit(); },
                                 }, self.saving ? tr('compose.submitting', 'Submitting…') : tr('compose.submit', 'Submit ticket')),
                             ]),
                         ]),
                     ])
                 );
+            }
+
+            _renderComposeHeader() {
+                var self = this;
+                return m('header', { className: 'LinkRobinsSupport-header' }, [
+                    self.categories.length > 1 ? m('button', {
+                        type:      'button',
+                        className: 'Button Button--link LinkRobinsSupport-backBtn',
+                        disabled:  self.saving,
+                        onclick:   function () { self._backToCategories(); },
+                    }, [
+                        m('i', { className: 'fas fa-chevron-left' }), ' ',
+                        tr('compose.back_to_categories', 'Back to categories'),
+                    ]) : null,
+                    m('h1', { className: 'LinkRobinsSupport-title' },
+                        isUserSuspended() ? tr('compose.title_appeal', 'File an appeal') : tr('compose.title', 'New support ticket')),
+                    self._renderChosenCategory(),
+                ]);
+            }
+
+            // Open the docked composer to write the ticket. The subject field and
+            // the message editor both live inside the composer, so a single
+            // native "Submit ticket" action creates the ticket.
+            _openComposeComposer() {
+                var self     = this;
+                var cat      = self._chosenCategory();
+                var catAttrs = (cat && cat.attributes) || {};
+                openSupportComposer({
+                    supportContext:  'new-ticket',
+                    className:       'LinkRobinsSupport-ticketComposer',
+                    placeholder:     tr('compose.body_placeholder', 'Describe the issue in detail. Markdown is supported.'),
+                    submitLabel:     tr('compose.submit', 'Submit ticket'),
+                    confirmExit:     tr('compose.discard_confirm', 'You have an unsubmitted ticket. Discard it?'),
+                    originalContent: self.body || '',
+                    supportHeaderItems: function () {
+                        return [{
+                            name:    'title',
+                            content: m('h3', { className: 'LinkRobinsSupport-composerTitle' }, [
+                                m('i', { className: catAttrs.icon || 'fas fa-life-ring' }), ' ',
+                                self.subject || tr('compose.title', 'New support ticket'),
+                                catAttrs.name
+                                    ? m('span', { className: 'LinkRobinsSupport-composerTitle-cat' }, ' · ' + catAttrs.name)
+                                    : null,
+                            ]),
+                        }];
+                    },
+                    onSupportSubmit: function (content, body) {
+                        self._submit(content, body);
+                    },
+                });
             }
 
             // Step 1: clickable category cards (icon + name + description).
@@ -1221,6 +1504,12 @@
             _backToCategories() {
                 this.categoryId = '';
                 this.error      = null;
+                // Close the docked composer if it's open for this draft.
+                try {
+                    if (supportComposerOpenFor('new-ticket') && app.composer && app.composer.close) {
+                        app.composer.close();
+                    }
+                } catch (e) {}
                 m.redraw();
             }
 
@@ -1236,15 +1525,32 @@
                 return tr('errors.submit_ticket', 'Could not submit the ticket.');
             }
 
-            _submit() {
-                var self = this;
+            // Create the ticket. Called from the docked composer with
+            // (content, body), or from the fallback page button with no args
+            // (it reads self.body).
+            _submit(content, body) {
+                var self     = this;
+                var bodyText = (typeof content === 'string') ? content : self.body;
+
+                if (self.subject.trim() === '' || self.categoryId === '') {
+                    showError(tr('compose.subject_first', 'Enter a subject first, then write your message.'));
+                    return;
+                }
+                if (!bodyText || bodyText.trim() === '') {
+                    showError(tr('errors.empty_body', 'Please write your message before submitting.'));
+                    return;
+                }
+
                 self.saving = true;
                 self.error  = null;
+                if (body) body.loading = true;
                 m.redraw();
 
-                createTicket(self.subject.trim(), self.categoryId, self.body)
+                createTicket(self.subject.trim(), self.categoryId, bodyText)
                     .then(function (resp) {
                         self.saving = false;
+                        self.body   = '';
+                        if (body && body.composer) body.composer.hide();
                         var ticket = resp && resp.data;
                         if (ticket && ticket.id) {
                             m.route.set(BASE_PATH + '/' + encodeURIComponent(ticket.id));
@@ -1254,6 +1560,7 @@
                     })
                     .catch(function (err) {
                         self.saving = false;
+                        if (body) body.loading = false;
                         self.error  = err;
                         console.error('[linkrobins/support] submit failed:', err);
                         m.redraw();
@@ -1455,7 +1762,7 @@
                                 }
                             },
                         }, statuses.map(function (s) {
-                            return m('option', { value: s }, STATUS_LABELS[s]);
+                            return m('option', { value: s }, statusLabel(s));
                         })),
                     ]),
                     this._renderAssignmentRow(true),
@@ -1581,8 +1888,8 @@
                         editedAt ? m('span', {
                             className: 'LinkRobinsSupport-reply-edited',
                             title: editedBy
-                                ? tr('reply.edited_by', 'Edited {date} by {name}', { date: formatDate(editedAt), name: (editedBy.attributes.displayName || editedBy.attributes.username) })
-                                : tr('reply.edited_at', 'Edited {date}', { date: formatDate(editedAt) }),
+                                ? trText('reply.edited_by', 'Edited by {name} on {date}', { date: formatDate(editedAt), name: (editedBy.attributes.displayName || editedBy.attributes.username) })
+                                : trText('reply.edited_at', 'Edited on {date}', { date: formatDate(editedAt) }),
                         }, '(edited)') : null,
 
                         isDeleted ? m('span', { className: 'LinkRobinsSupport-reply-deletedBadge' }, [
@@ -1666,62 +1973,13 @@
                 );
             }
 
+            // Inline edit-reply editor. Only used as a fallback on stripped
+            // installs without the docked composer; normally _beginEditReply
+            // opens the composer instead.
             _renderReplyEditor(reply, state) {
                 var self = this;
                 var canSave = !state.busy && state.draft.trim() !== '';
 
-                var TextEditor = getTextEditor();
-                if (TextEditor) {
-                    // Use Flarum's own composer editor so editing a reply gets
-                    // the same Markdown toolbar / @mention autocomplete as
-                    // posting anywhere else on the forum. TextEditor is
-                    // uncontrolled (it owns its textarea), but the editor is
-                    // mounted fresh when editing begins and torn down on
-                    // save/cancel, so there's no external value to sync. The
-                    // `composer` attr is just a holder TextEditor stashes its
-                    // driver on; the `key` forces a clean remount per reply.
-                    if (!state._composer) state._composer = {};
-                    return m('div', { className: 'LinkRobinsSupport-reply-editor' }, [
-                        // The keyed editor must be the sole child of an unkeyed
-                        // wrapper: mithril forbids mixing keyed and unkeyed
-                        // siblings in one array, and the actions row below is
-                        // unkeyed. (The key lets us remount per reply.)
-                        m('div', { className: 'LinkRobinsSupport-editorWrap' }, m(TextEditor, {
-                            key:         'lr-support-edit-' + reply.id,
-                            composer:    state._composer,
-                            value:       state.draft,
-                            disabled:    state.busy,
-                            placeholder: tr('reply.placeholder', 'Write a reply…'),
-                            submitLabel: state.busy
-                                ? tr('action.saving', 'Saving…')
-                                : tr('action.save_changes', 'Save changes'),
-                            onchange:    function (v) { state.draft = v; },
-                            onsubmit:    function () {
-                                if (!state.busy && state.draft.trim() !== '') {
-                                    self._saveEditReply(reply);
-                                }
-                            },
-                        })),
-                        m('div', { className: 'LinkRobinsSupport-reply-editor-actions' }, [
-                            m('button', {
-                                type:      'button',
-                                className: 'Button Button--link',
-                                disabled:  state.busy,
-                                onclick:   function () { self._cancelEditReply(reply); },
-                            }, tr('action.cancel', 'Cancel')),
-                            // Own submit button (the editor's built-in one is
-                            // hidden). Ctrl+Enter also saves via onsubmit.
-                            m('button', {
-                                type:      'button',
-                                className: 'Button Button--primary',
-                                disabled:  !canSave,
-                                onclick:   function () { self._saveEditReply(reply); },
-                            }, state.busy ? tr('action.saving', 'Saving…') : tr('action.save_changes', 'Save changes')),
-                        ]),
-                    ]);
-                }
-
-                // Fallback: plain textarea when the core editor is unavailable.
                 return m('div', { className: 'LinkRobinsSupport-reply-editor' }, [
                     m('textarea', {
                         className:   'FormControl LinkRobinsSupport-body',
@@ -1757,12 +2015,40 @@
             }
 
             _beginEditReply(reply) {
-                if (!this._replyEditState) this._replyEditState = {};
+                var self = this;
                 var attr = reply.attributes || {};
-                // Pre-fill the editor with the original markdown source so
-                // editing preserves formatting. (Previously this stripped the
-                // rendered HTML, which silently discarded all markdown.)
+                // Pre-fill with the original markdown source so editing
+                // preserves formatting.
                 var draft = typeof attr.content === 'string' ? attr.content : '';
+
+                // Preferred path: edit in the docked composer (matches editing a
+                // post on the forum), so rich text / mentions / upload all work.
+                if (supportComposerSupported()) {
+                    openSupportComposer({
+                        supportContext:  'edit-reply:' + reply.id,
+                        className:       'LinkRobinsSupport-replyComposer',
+                        placeholder:     tr('reply.placeholder', 'Write a reply…'),
+                        submitLabel:     tr('action.save_changes', 'Save changes'),
+                        confirmExit:     tr('reply.discard_confirm', 'You have unsaved changes. Discard them?'),
+                        originalContent: draft,
+                        supportHeaderItems: function () {
+                            return [{
+                                name:    'title',
+                                content: m('h3', { className: 'LinkRobinsSupport-composerTitle' }, [
+                                    m('i', { className: 'fas fa-pencil-alt' }), ' ',
+                                    tr('action.edit_reply', 'Edit reply'),
+                                ]),
+                            }];
+                        },
+                        onSupportSubmit: function (content, body) {
+                            self._saveEditReply(reply, content, body);
+                        },
+                    });
+                    return;
+                }
+
+                // Fallback: inline textarea editor.
+                if (!this._replyEditState) this._replyEditState = {};
                 this._replyEditState[reply.id] = {
                     editing: true,
                     draft:   draft,
@@ -1776,18 +2062,25 @@
                 m.redraw();
             }
 
-            _saveEditReply(reply) {
-                var self = this;
+            // Save a reply edit. Called from the docked composer with
+            // (reply, content, body), or from the fallback inline editor with
+            // just (reply) (it reads the inline draft).
+            _saveEditReply(reply, content, body) {
+                var self  = this;
                 var state = self._replyEditState && self._replyEditState[reply.id];
-                if (!state) return;
-                state.busy = true;
+                var text  = (typeof content === 'string') ? content : (state ? state.draft : '');
+                if (!text || text.trim() === '') return;
+                if (!content && !state) return;
+
+                if (state) state.busy = true;
+                if (body) body.loading = true;
                 m.redraw();
 
                 var payload = {
                     data: {
                         type:       'linkrobins-support-replies',
                         id:         String(reply.id),
-                        attributes: { content: state.draft },
+                        attributes: { content: text },
                     },
                 };
                 app.request({
@@ -1798,10 +2091,12 @@
                     body:   payload,
                 }).then(function (resp) {
                     self._replaceReply(reply.id, resp);
-                    delete self._replyEditState[reply.id];
+                    if (self._replyEditState) delete self._replyEditState[reply.id];
+                    if (body && body.composer) body.composer.hide();
                     m.redraw();
                 }).catch(function (err) {
-                    state.busy = false;
+                    if (state) state.busy = false;
+                    if (body) body.loading = false;
                     console.error('[linkrobins/support] edit reply failed:', err);
                     showError(tr('errors.save_edit', 'Could not save the edit.'));
                     m.redraw();
@@ -2035,44 +2330,34 @@
             _renderReplyForm() {
                 var self = this;
                 var canPostInternal = !!(self.ticket && self.ticket.attributes && self.ticket.attributes.canPostInternalNote);
+
+                // Preferred path: open Flarum's real docked composer. The editor
+                // and every editor extension (FoF Rich Text, FoF Upload,
+                // Mentions, Emoji) then behave exactly as for a normal forum
+                // reply -- including the upload button, @mention autocomplete and
+                // mobile toolbar. We show the same "reply placeholder" box
+                // Flarum uses at the end of a discussion: click to open the
+                // composer, with a live preview while composing.
+                if (supportComposerSupported()) {
+                    var open = supportComposerOpenFor('reply:' + self.ticket.id);
+                    return m('div', { className: 'LinkRobinsSupport-replyPrompt' },
+                        supportComposerPreview({
+                            composing:   open,
+                            placeholder: app.translator.trans('core.forum.post_stream.reply_placeholder'),
+                            onclick:     function () { self._openReplyComposer(canPostInternal); },
+                        }));
+                }
+
+                // Fallback for stripped installs without the composer: a plain
+                // textarea + attach button.
                 var canSubmit = !self.posting && self.replyText.trim() !== '';
                 var canUpload = !!(app.forum && typeof app.forum.attribute === 'function' && app.forum.attribute('fof-upload.canUpload'));
                 var placeholder = self.replyIsInternal
                     ? tr('reply.internal_placeholder', 'Internal note (only staff will see this)…')
                     : tr('reply.placeholder', 'Write a reply…');
 
-                var TextEditor = getTextEditor();
-                var editorNode;
-                if (TextEditor) {
-                    // Flarum's composer editor (Markdown toolbar + @mentions),
-                    // matching the reply-edit box. It's uncontrolled, so after
-                    // a post we clear by bumping `_replyEditorNonce` (the key),
-                    // which remounts a fresh empty editor. The submit button is
-                    // provided by TextEditor itself, so the actions row below
-                    // only carries attach / internal-note.
-                    if (!self._replyComposer) self._replyComposer = {};
-                    // Wrap the keyed editor in an unkeyed div: it sits among
-                    // unkeyed siblings (upload status, actions row) and mithril
-                    // forbids mixing keyed/unkeyed siblings in one array. The
-                    // key still lets us remount (clear) the editor after a post.
-                    editorNode = m('div', { className: 'LinkRobinsSupport-editorWrap' }, m(TextEditor, {
-                        key:         'lr-support-reply-' + (self._replyEditorNonce || 0),
-                        composer:    self._replyComposer,
-                        value:       self.replyText,
-                        disabled:    self.posting,
-                        placeholder: placeholder,
-                        submitLabel: self.posting
-                            ? tr('reply.posting', 'Posting…')
-                            : tr('reply.post_reply', 'Post reply'),
-                        onchange:    function (v) { self.replyText = v; },
-                        onsubmit:    function () {
-                            if (!self.posting && self.replyText.trim() !== '') {
-                                self._postReply();
-                            }
-                        },
-                    }));
-                } else {
-                    editorNode = m('textarea', {
+                return m('div', { className: 'LinkRobinsSupport-replyForm' }, [
+                    m('textarea', {
                         className:   'FormControl LinkRobinsSupport-body',
                         rows:        5,
                         value:       self.replyText,
@@ -2083,17 +2368,12 @@
                             var isSubmit = (e.key === 'Enter' || e.keyCode === 13)
                                 && (e.ctrlKey || e.metaKey);
                             if (!isSubmit) return;
-                            var canNow = !self.posting && self.replyText.trim() !== '';
-                            if (canNow) {
+                            if (!self.posting && self.replyText.trim() !== '') {
                                 e.preventDefault();
                                 self._postReply();
                             }
                         },
-                    });
-                }
-
-                return m('div', { className: 'LinkRobinsSupport-replyForm' }, [
-                    editorNode,
+                    }),
 
                     self.uploadError ? m('div', { className: 'Alert Alert--danger LinkRobinsSupport-uploadAlert' },
                         self.uploadError) : null,
@@ -2142,10 +2422,6 @@
                             }),
                             ' ', tr('reply.internal_note', 'Internal note'),
                         ]) : null,
-                        // We always render our own submit button -- the embedded
-                        // editor's built-in one is hidden (it carries header-
-                        // control styling that breaks inline). Ctrl+Enter still
-                        // submits via the editor's onsubmit.
                         m('button', {
                             type:      'button',
                             className: 'Button Button--primary',
@@ -2154,6 +2430,49 @@
                         }, self.posting ? tr('reply.posting', 'Posting…') : tr('reply.post_reply', 'Post reply')),
                     ]),
                 ]);
+            }
+
+            // Open the docked composer to write a reply / internal note. The
+            // ticket subject (and, for staff, an internal-note toggle) are shown
+            // as composer header rows; submitting posts the reply.
+            _openReplyComposer(canPostInternal) {
+                var self    = this;
+                var ticket  = self.ticket;
+                var subject = (ticket.attributes && ticket.attributes.subject) || '';
+                openSupportComposer({
+                    supportContext:  'reply:' + ticket.id,
+                    className:       'LinkRobinsSupport-replyComposer',
+                    placeholder:     tr('reply.placeholder', 'Write a reply…'),
+                    submitLabel:     tr('reply.post_reply', 'Post reply'),
+                    confirmExit:     tr('reply.discard_confirm', 'You have an unsaved reply. Discard it?'),
+                    originalContent: '',
+                    supportHeaderItems: function (body) {
+                        var rows = [{
+                            name:     'title',
+                            priority: 10,
+                            content:  m('h3', { className: 'LinkRobinsSupport-composerTitle' }, [
+                                m('i', { className: 'fas fa-reply' }), ' ', subject,
+                            ]),
+                        }];
+                        if (canPostInternal) {
+                            rows.push({
+                                name:    'internal',
+                                content: m('label', { className: 'LinkRobinsSupport-internalToggle' }, [
+                                    m('input', {
+                                        type:     'checkbox',
+                                        checked:  !!body._supportInternal,
+                                        onchange: function (e) { body._supportInternal = !!e.target.checked; },
+                                    }),
+                                    ' ', tr('reply.internal_note', 'Internal note'),
+                                ]),
+                            });
+                        }
+                        return rows;
+                    },
+                    onSupportSubmit: function (content, body) {
+                        self._postReply(content, !!body._supportInternal, body);
+                    },
+                });
             }
 
             _uploadFiles(files) {
@@ -2172,23 +2491,33 @@
                 }).catch(function () {});
             }
 
-            _postReply() {
-                var self = this;
+            // Post a reply. Called from the docked composer with
+            // (content, isInternal, body), or from the fallback textarea with no
+            // args (it reads self.replyText / self.replyIsInternal).
+            _postReply(content, isInternal, body) {
+                var self     = this;
+                var text     = (typeof content === 'string') ? content : self.replyText;
+                var internal = (typeof isInternal === 'boolean') ? isInternal : !!self.replyIsInternal;
+                if (!text || text.trim() === '') return;
+
                 self.posting = true;
+                if (body) body.loading = true;
                 m.redraw();
-                postReply(self.ticket.id, self.replyText, self.replyIsInternal)
+
+                postReply(self.ticket.id, text, internal)
                     .then(function (resp) {
-                        self.replyText       = '';
-                        self.replyIsInternal = false;
-                        self.uploadError     = null;
-                        self.uploadingCount  = 0;
-                        self.posting         = false;
-                        // Remount the (uncontrolled) core editor so it clears.
-                        // Bumping the key tears down the old driver and builds a
-                        // fresh empty one; a new holder avoids touching the
-                        // destroyed driver in the gap before it rebuilds.
-                        self._replyEditorNonce = (self._replyEditorNonce || 0) + 1;
-                        self._replyComposer    = {};
+                        self.posting        = false;
+                        self.uploadError    = null;
+                        self.uploadingCount = 0;
+                        if (body && body.composer) {
+                            // Close the docked composer (clears its content).
+                            body.composer.hide();
+                        } else {
+                            // Fallback inline editor: clear + remount.
+                            self.replyText       = '';
+                            self.replyIsInternal = false;
+                            self._replyEditorNonce = (self._replyEditorNonce || 0) + 1;
+                        }
                         // Append the new reply in place rather than a full
                         // two-request reload of the whole thread. Then refresh
                         // just the ticket so any server-side status/assignment
@@ -2204,6 +2533,7 @@
                     })
                     .catch(function (err) {
                         self.posting = false;
+                        if (body) body.loading = false;
                         console.error('[linkrobins/support] reply failed:', err);
                         showError(tr('errors.post_reply', 'Could not post reply.'));
                         m.redraw();

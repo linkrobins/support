@@ -76,6 +76,7 @@ linkrobins-support:
       loading: 'Loading…'
       uploading_one: 'Uploading 1 file…'
       uploading_many: 'Uploading {count} files…'
+      date_at_time: '{date} at {time}'
     notifications:
       someone: 'A user'
       reply_from: '{name} replied to your ticket'
@@ -116,6 +117,7 @@ linkrobins-support:
       restore_ticket: 'Could not restore the ticket.'
       delete_ticket_forever: 'Could not permanently delete the ticket.'
       post_reply: 'Could not post reply.'
+      empty_body: 'Please write your message before submitting.'
     compose:
       appeal_banned: 'You are not permitted to file appeals. Please contact the site owner via another channel.'
       no_appeal_categories: 'No appeal categories are currently available.'
@@ -131,6 +133,9 @@ linkrobins-support:
       subject_placeholder: 'Short summary of your issue'
       body_placeholder: 'Describe the issue in detail. Markdown is supported.'
       submit: 'Submit ticket'
+      subject_first: 'Please enter a subject for your ticket.'
+      discard_confirm: 'You have an unsubmitted ticket. Discard it?'
+      message_placeholder_click: 'Click to write your message…'
     show:
       title: 'Ticket'
       closed_notice: 'This ticket has been closed and cannot be replied to.'
@@ -149,13 +154,15 @@ linkrobins-support:
       internal_note: 'Internal note'
       post_reply: 'Post reply'
       posting: 'Posting…'
+      discard_confirm: 'You have unsaved changes. Discard them?'
       placeholder: 'Write a reply…'
-      edited_by: 'Edited {date} by {name}'
-      edited_at: 'Edited {date}'
+      edited_by: 'Edited by {name} on {date}'
+      edited_at: 'Edited on {date}'
     action:
       delete_forever: 'Delete forever'
       save_changes: 'Save changes'
       saving: 'Saving…'
+      edit_reply: 'Edit reply'
       attach_files: 'Attach files'
       claim: 'Claim'
       unassign: 'Unassign'
