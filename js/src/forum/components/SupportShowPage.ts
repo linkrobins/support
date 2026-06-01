@@ -203,6 +203,7 @@ export default class SupportShowPage extends Page {
     if (ticket.status() === 'closed') {
       return m('div', { className: 'LinkRobinsSupport-staffBar' }, [
         m('span', { className: 'LinkRobinsSupport-staffBar-label' }, tr('show.closed_badge', 'Closed ticket')),
+        this._renderDecisionGroup(ticket),
         this._renderAssignmentRow(false),
       ]);
     }
@@ -227,7 +228,35 @@ export default class SupportShowPage extends Page {
           statuses.map((s) => m('option', { value: s }, statusLabel(s)))
         ),
       ]),
+      this._renderDecisionGroup(ticket),
       this._renderAssignmentRow(true),
+    ]);
+  }
+
+  // Appeal tickets carry a decision (pending/accepted/rejected); regular tickets
+  // have a null decision and get no selector. Staff change it here -- the backend
+  // (SupportTicketResource) gates the writable `decision` attribute to staff.
+  _renderDecisionGroup(ticket: any) {
+    if (!ticket.decision()) return null;
+    const decisions = ['pending', 'accepted', 'rejected'];
+
+    return m('label', { className: 'LinkRobinsSupport-staffBar-statusGroup' }, [
+      m('span', { className: 'LinkRobinsSupport-staffBar-label' }, tr('staff.set_decision', 'Appeal decision:')),
+      m(
+        'select',
+        {
+          className: 'FormControl LinkRobinsSupport-staffBar-statusSelect',
+          value: ticket.decision(),
+          disabled: this.updating,
+          onchange: (e: any) => {
+            const next = e.target.value;
+            if (next && next !== ticket.decision()) {
+              this._setDecision(next);
+            }
+          },
+        },
+        decisions.map((d) => m('option', { value: d }, decisionLabel(d)))
+      ),
     ]);
   }
 
@@ -318,6 +347,23 @@ export default class SupportShowPage extends Page {
         this.updating = false;
         console.error('[linkrobins/support] status update failed:', err);
         showError(tr('errors.update_status', 'Could not update status.'));
+        m.redraw();
+      });
+  }
+
+  _setDecision(decision: string) {
+    this.updating = true;
+    m.redraw();
+    this.ticket
+      .save({ decision })
+      .then(() => {
+        this.updating = false;
+        m.redraw();
+      })
+      .catch((err: any) => {
+        this.updating = false;
+        console.error('[linkrobins/support] decision update failed:', err);
+        showError(tr('errors.update_decision', 'Could not update the appeal decision.'));
         m.redraw();
       });
   }

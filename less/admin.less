@@ -1,69 +1,7 @@
-
-
-.LinkRobinsSupportAdmin {
-    padding-top: 30px;
-    padding-bottom: 30px;
-}
-
-.LinkRobinsSupportAdmin-tabs {
-    display: flex;
-    gap: 4px;
-    border-bottom: 2px solid var(--control-bg, rgba(0,0,0,0.08));
-    margin-bottom: 24px;
-}
-
-.LinkRobinsSupportAdmin-tab {
-    background: transparent;
-    border: none;
-    border-bottom: 2px solid transparent;
-    padding: 10px 18px;
-    margin-bottom: -2px;
-    font-size: 0.95rem;
-    font-weight: 600;
-    color: var(--muted-color, #888);
-    cursor: pointer;
-    transition: color 0.15s, border-color 0.15s;
-
-    &:hover {
-        color: var(--text-color, inherit);
-    }
-    &.is-active {
-        color: var(--primary-color, #07adcc);
-        border-bottom-color: var(--primary-color, #07adcc);
-    }
-}
-
-.LinkRobinsSupportAdmin-section {
-    margin-bottom: 32px;
-
-    > .Form-group {
-        margin-bottom: 24px;
-
-        // Last group is the submit button -- don't pad after it.
-        &:last-of-type {
-            margin-bottom: 0;
-        }
-    }
-}
-
-.LinkRobinsSupportAdmin-sectionHeader {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 16px;
-    margin-bottom: 16px;
-
-    h3 {
-        margin: 0 0 4px;
-    }
-
-    .helpText {
-        margin: 0;
-        font-size: 0.85rem;
-        color: var(--muted-color, #888);
-        max-width: 600px;
-    }
-}
+// The admin page now uses Flarum's standard ExtensionPage + FormSectionGroup /
+// FormSection layout (matching the core Tags extension page), so the old custom
+// tab-bar / section-header styling is gone. Only the table and small helpers
+// below remain.
 
 .LinkRobinsSupportAdmin-empty {
     padding: 24px;
@@ -71,6 +9,44 @@
     color: var(--muted-color, #888);
     background: var(--control-bg, rgba(0,0,0,0.03));
     border-radius: 8px;
+}
+
+// Core's FormSectionGroup lays its FormSections out side-by-side in a wrapping
+// flex row, capped at max-width 400px each -- great for narrow settings panels
+// (e.g. Tags' tag lists), but our category/banned tables are far wider and would
+// overflow their column and bleed into the neighbouring section. Force the
+// support sections to stack vertically and span the full width instead.
+.LinkRobinsSupportAdmin {
+    .FormSectionGroup {
+        display: block;
+    }
+
+    .FormSection {
+        display: grid;
+        max-width: none;
+        min-height: 0;
+        margin-bottom: 20px;
+    }
+
+    // Let wide tables scroll horizontally rather than overflow on narrow / mobile
+    // viewports. FormSection-body is min-width:0 so this clamps correctly.
+    .LinkRobinsSupportAdmin-tableWrap {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .helpText {
+        margin-bottom: 12px;
+    }
+
+    .LinkRobinsSupportAdmin-tableWrap + .Button,
+    .LinkRobinsSupportAdmin-empty + .Button {
+        margin-top: 16px;
+    }
+
+    h4 {
+        margin: 20px 0 8px;
+    }
 }
 
 // Category editor modal: built on Flarum's FormModal and Form components, so
@@ -130,13 +106,5 @@
 .LinkRobinsSupportAdmin-actions {
     text-align: right;
     white-space: nowrap;
-
-    .Button {
-        padding: 4px 8px !important;
-    }
-}
-
-.LinkRobinsSupportAdmin-danger {
-    color: #c0392b !important;
 }
 

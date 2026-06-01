@@ -11,7 +11,7 @@ import SupportReply from './common/models/SupportReply';
 import SupportIndexPage from './forum/components/SupportIndexPage';
 import SupportComposePage from './forum/components/SupportComposePage';
 import SupportShowPage from './forum/components/SupportShowPage';
-import { NewSupportReplyNotification, NewSupportTicketNotification } from './forum/components/notifications';
+import { NewSupportReplyNotification, NewSupportTicketNotification, installSupportNotificationGrouping } from './forum/components/notifications';
 
 import { tr } from './forum/utils/translate';
 import { basePath, BASE_PATH, readForumAttribute, showError } from './forum/utils/helpers';
@@ -32,6 +32,10 @@ app.initializers.add('linkrobins-support', () => {
     app.notificationComponents['linkrobinsSupportNewReply'] = NewSupportReplyNotification;
     app.notificationComponents['linkrobinsSupportNewTicket'] = NewSupportTicketNotification;
   }
+
+  // Group support notifications under a translatable "Support" heading in the
+  // notifications dropdown, instead of the generic forum-title group.
+  installSupportNotificationGrouping();
 
   // NotificationGrid lives in a lazily-loaded chunk, so it isn't in the
   // registry at init time -- a direct import resolves to undefined. Use the

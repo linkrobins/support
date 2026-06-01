@@ -63,10 +63,17 @@ export default class SupportIndexSidebar extends IndexSidebar {
     }
     if (!items) return new ItemList();
 
+    // The Tags extension injects a tag list (the "Tags" link, a separator, one
+    // item per tag, and a "More" link) into IndexSidebar.navItems via extend().
+    // Because we subclass IndexSidebar, super.navItems() inherits all of those.
+    // Strip them so the support sidebar only shows ticket filters.
     try {
-      if (typeof items.has === 'function' && items.has('separator') && typeof items.remove === 'function') {
-        items.remove('separator');
-      }
+      const all = (items as any)._items || {};
+      Object.keys(all).forEach((key) => {
+        if (key === 'tags' || key === 'moreTags' || key === 'separator' || /^tag\d+$/.test(key)) {
+          if (typeof items.remove === 'function') items.remove(key);
+        }
+      });
     } catch (e) {}
 
     const canHandle = canHandleSupportTickets();
