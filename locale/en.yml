@@ -10,6 +10,7 @@ linkrobins-support:
     permissions:
       handle_tickets: 'Handle support tickets'
       manage_appeal_bans: 'Manage support appeal-bans'
+      force_delete_tickets: 'Permanently delete support tickets'
     categories:
       heading: 'Support categories'
       intro: 'Create and organize the categories users choose from when opening a support ticket.'
@@ -102,6 +103,7 @@ linkrobins-support:
       empty_own: 'No tickets yet. Click "New ticket" to open one.'
       empty: 'No tickets to show.'
       untitled: 'Untitled'
+      deleted_badge: 'Deleted'
     errors:
       load_tickets: 'Could not load tickets.'
       unknown: 'Unknown error.'

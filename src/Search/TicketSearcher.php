@@ -36,14 +36,12 @@ class TicketSearcher extends AbstractSearcher
         }
 
         if (SupportAbilities::isStaff($actor)) {
-            // Note: we intentionally do NOT call withTrashed() here.
-            // Staff list views ("All tickets", "Open", etc.) should
-            // show the active set, not be cluttered with soft-deleted
-            // rows. Staff can still reach a soft-deleted ticket via
-            // its direct URL -- the resource Show endpoint uses
-            // withTrashed() in its scope so the row is found and the
-            // restore / force-delete UI is reachable.
-            return $query;
+            // Staff see soft-deleted tickets in list views too, rendered
+            // with a "deleted" treatment, so a trashed ticket stays
+            // visible (and restorable) until it is permanently removed --
+            // matching how Flarum core keeps soft-deleted discussions in
+            // the list. The Show endpoint likewise uses withTrashed().
+            return $query->withTrashed();
         }
 
         // Non-staff: only their own tickets.

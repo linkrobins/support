@@ -149,12 +149,13 @@ export default class SupportIndexPage extends Page {
     const user = ticket.user && ticket.user();
     const cat = ticket.category && ticket.category();
     const href = basePath() + BASE_PATH + '/' + encodeURIComponent(ticket.id());
+    const isDeleted = !!(ticket.isDeleted && ticket.isDeleted());
 
     return m(
       'a',
       {
         href,
-        className: 'LinkRobinsSupport-row',
+        className: 'LinkRobinsSupport-row' + (isDeleted ? ' LinkRobinsSupport-row--deleted' : ''),
         onclick: (e: any) => {
           safeNavigate(href, e);
         },
@@ -162,7 +163,12 @@ export default class SupportIndexPage extends Page {
       },
       [
         m('div', { className: 'LinkRobinsSupport-row-main' }, [
-          m('div', { className: 'LinkRobinsSupport-row-subject' }, ticket.subject() || tr('index.untitled', 'Untitled')),
+          m('div', { className: 'LinkRobinsSupport-row-subject' }, [
+            ticket.subject() || tr('index.untitled', 'Untitled'),
+            isDeleted
+              ? m('span', { className: 'LinkRobinsSupport-row-deletedBadge' }, tr('index.deleted_badge', 'Deleted'))
+              : null,
+          ]),
           m('div', { className: 'LinkRobinsSupport-row-meta' }, [
             cat
               ? m(

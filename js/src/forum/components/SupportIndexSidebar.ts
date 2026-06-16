@@ -66,11 +66,13 @@ export default class SupportIndexSidebar extends IndexSidebar {
     // The Tags extension injects a tag list (the "Tags" link, a separator, one
     // item per tag, and a "More" link) into IndexSidebar.navItems via extend().
     // Because we subclass IndexSidebar, super.navItems() inherits all of those.
-    // Strip them so the support sidebar only shows ticket filters.
+    // Strip the per-tag clutter (the individual tags, the "More" link and the
+    // separator that precedes them) but KEEP the top-level "Tags" link so users
+    // still have a way back to the tags page from the support sidebar.
     try {
       const all = (items as any)._items || {};
       Object.keys(all).forEach((key) => {
-        if (key === 'tags' || key === 'moreTags' || key === 'separator' || /^tag\d+$/.test(key)) {
+        if (key === 'moreTags' || key === 'separator' || /^tag\d+$/.test(key)) {
           if (typeof items.remove === 'function') items.remove(key);
         }
       });

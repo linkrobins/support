@@ -50,9 +50,11 @@ class SupportTicketPolicy extends AbstractPolicy
 
     public function delete(User $actor, SupportTicket $ticket): bool
     {
-        // Deliberately admin-only. Staff can close tickets (status='closed')
-        // but can't permanently destroy the audit trail.
-        return $actor->isAdmin();
+        // Permanent (force-)delete. Admins always may; other staff need the
+        // explicit force_delete_tickets permission. Plain soft-delete /
+        // restore is handled separately (any staff, via the resource's
+        // isDeleted toggle).
+        return SupportAbilities::canForceDelete($actor);
     }
 
     public function postInternalNote(User $actor, SupportTicket $ticket): bool

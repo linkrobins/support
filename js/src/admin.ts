@@ -31,6 +31,15 @@ app.initializers.add('linkrobins-support', () => {
         'moderate',
         94
       );
+      app.registry.registerPermission(
+        {
+          permission: 'linkrobins-support.force_delete_tickets',
+          icon: 'fas fa-trash',
+          label: tx('linkrobins-support.admin.permissions.force_delete_tickets'),
+        },
+        'moderate',
+        93
+      );
     }
   } catch (e) {
     console.warn('[linkrobins/support] could not register permission:', e);

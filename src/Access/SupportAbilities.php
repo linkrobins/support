@@ -17,6 +17,7 @@ class SupportAbilities
 {
     public const HANDLE_TICKETS = 'linkrobins-support.handle_tickets';
     public const MANAGE_APPEAL_BANS = 'linkrobins-support.manage_appeal_bans';
+    public const FORCE_DELETE_TICKETS = 'linkrobins-support.force_delete_tickets';
 
     /**
      * Whether the actor may see and act on all tickets (admins always do).
@@ -30,5 +31,19 @@ class SupportAbilities
         // Admins hold every permission, but the explicit short-circuit keeps
         // the intent obvious and matches the original inline checks.
         return $actor->isAdmin() || $actor->hasPermission(self::HANDLE_TICKETS);
+    }
+
+    /**
+     * Whether the actor may permanently (force-)delete tickets. Admins always
+     * can; other staff need the explicit force_delete_tickets permission.
+     * Plain soft-delete / restore only requires isStaff().
+     */
+    public static function canForceDelete(User $actor): bool
+    {
+        if ($actor->isGuest()) {
+            return false;
+        }
+
+        return $actor->isAdmin() || $actor->hasPermission(self::FORCE_DELETE_TICKETS);
     }
 }

@@ -160,6 +160,32 @@
     }
 }
 
+// Soft-deleted tickets stay in the staff list (until they're permanently
+// removed) but are dimmed and struck through so they read as "trashed".
+.LinkRobinsSupport-row--deleted {
+    opacity: 0.6;
+
+    .LinkRobinsSupport-row-subject {
+        text-decoration: line-through;
+        text-decoration-color: var(--muted-color, #888);
+    }
+}
+
+.LinkRobinsSupport-row-deletedBadge {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 1px 7px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    text-decoration: none;
+    vertical-align: middle;
+    color: var(--alert-error-color, #b71c1c);
+    background: fade(#b71c1c, 12%);
+    border-radius: 3px;
+}
+
 .LinkRobinsSupport-row-main {
     flex: 1;
     min-width: 0;
@@ -337,7 +363,6 @@
 
 .LinkRobinsSupport-staffBar-statusSelect {
     width: auto;
-    min-width: 180px;
     font-size: 0.9rem;
     font-weight: 600;
     padding: 6px 28px 6px 12px;
