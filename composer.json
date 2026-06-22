@@ -6,8 +6,8 @@
     "keywords": ["flarum", "support", "tickets", "helpdesk", "appeals"],
     "homepage": "https://linkrobins.com",
     "support": {
-        "issues": "https://linkrobins.com/support",
-        "source": "https://linkrobins.com"
+        "issues": "https://github.com/linkrobins/support/issues",
+        "source": "https://github.com/linkrobins/support"
     },
     "authors": [
         {
