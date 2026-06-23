@@ -1,23 +1,24 @@
 import Page from 'flarum/common/components/Page';
 import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
 import PageStructure from 'flarum/forum/components/PageStructure';
-import Button from 'flarum/common/components/Button';
-import Dropdown from 'flarum/common/components/Dropdown';
 import SupportIndexSidebar from './SupportIndexSidebar';
-import { tr, trText } from '../utils/translate';
-import { basePath, BASE_PATH, formatDate, safeNavigate, showError, userLink } from '../utils/helpers';
+import TicketHeader from './TicketHeader';
+import StaffControlBar from './StaffControlBar';
+import ReplyItem from './ReplyItem';
+import ReplyComposer from './ReplyComposer';
+import { tr } from '../utils/translate';
+import { basePath, BASE_PATH, safeNavigate, showError } from '../utils/helpers';
 import { canHandleSupportTickets } from '../utils/permissions';
-import { statusLabel, statusBadge, decisionLabel } from '../utils/status';
 import { loadTicket, loadReplies, postReply, uploadFilesToBody } from '../utils/api';
-import {
-  supportComposerSupported,
-  supportComposerOpenFor,
-  openSupportComposer,
-  supportComposerPreview,
-} from '../utils/composer';
+import { openSupportComposer, supportComposerSupported } from '../utils/composer';
 
+// Orchestrates the ticket detail page: owns loading/error state, the ticket and
+// its (paginated) replies, and all mutation logic. Rendering is delegated to
+// the presentational TicketHeader / StaffControlBar / ReplyItem / ReplyComposer
+// components, which receive data + callbacks.
 export default class SupportShowPage extends Page {
   loading = true;
+  loadingMore = false;
   error: any = null;
   ticket: any = null;
   replies: any[] = [];
@@ -33,6 +34,8 @@ export default class SupportShowPage extends Page {
   _replyFileInput: any = null;
   _replyComposer: any = null;
   _replyEditorNonce = 0;
+  // Replies load a page at a time; a "Load more" button fetches the next page.
+  _replyLimit = 50;
 
   oninit(vnode: any) {
     super.oninit(vnode);
@@ -69,7 +72,7 @@ export default class SupportShowPage extends Page {
     this.loading = true;
     m.redraw();
 
-    Promise.all([loadTicket(this._ticketId), loadReplies(this._ticketId)])
+    Promise.all([loadTicket(this._ticketId), loadReplies(this._ticketId, 0, this._replyLimit)])
       .then((results: any[]) => {
         this.ticket = results[0];
         this.replies = results[1] || [];
@@ -84,6 +87,29 @@ export default class SupportShowPage extends Page {
         this.error = err;
         this.loading = false;
         console.error('[linkrobins/support] ticket load failed:', err);
+        m.redraw();
+      });
+  }
+
+  // Fetch the next page of replies (sorted oldest-first) and append them.
+  _loadMoreReplies() {
+    if (this.loadingMore || !this._ticketId) return;
+    this.loadingMore = true;
+    m.redraw();
+
+    loadReplies(this._ticketId, this.replies.length, this._replyLimit)
+      .then((more: any[]) => {
+        // Guard against any overlap if the list shifted between requests.
+        const seen = new Set((this.replies || []).map((r: any) => String(r.id())));
+        const fresh = (more || []).filter((r: any) => !seen.has(String(r.id())));
+        this.replies = (this.replies || []).concat(fresh);
+        this.loadingMore = false;
+        m.redraw();
+      })
+      .catch((err: any) => {
+        this.loadingMore = false;
+        console.error('[linkrobins/support] load more replies failed:', err);
+        showError(tr('errors.load_more_replies', 'Could not load more replies.'));
         m.redraw();
       });
   }
@@ -144,8 +170,6 @@ export default class SupportShowPage extends Page {
     }
 
     const ticket = this.ticket;
-    const creator = ticket.user && ticket.user();
-    const category = ticket.category && ticket.category();
     const isDeleted = !!ticket.isDeleted();
     const canModerate = !!ticket.canUpdate() || !!ticket.canDelete();
 
@@ -154,49 +178,73 @@ export default class SupportShowPage extends Page {
         'div',
         { className: 'LinkRobinsSupport-container' + (isDeleted ? ' LinkRobinsSupport-container--deleted' : '') },
         [
-          m('header', { className: 'LinkRobinsSupport-header LinkRobinsSupport-ticket-header' }, [
-            m('div', { className: 'LinkRobinsSupport-ticket-titleRow' }, [
-              m('h1', { className: 'LinkRobinsSupport-title' }, ticket.subject()),
-              statusBadge(ticket.status()),
-              isDeleted
-                ? m('span', { className: 'LinkRobinsSupport-reply-deletedBadge' }, [
-                    m('i', { className: 'fas fa-trash' }),
-                    ' ',
-                    tr('show.deleted_badge', 'Deleted'),
-                  ])
-                : null,
-              canModerate ? this._renderTicketActions(ticket) : null,
-            ]),
-            m('div', { className: 'LinkRobinsSupport-ticket-meta' }, [
-              category
-                ? m(
-                    'span',
-                    { className: 'LinkRobinsSupport-row-cat', style: 'color: ' + (category.color() || 'inherit') },
-                    category.name()
-                  )
-                : null,
-              creator ? m('span', null, [tr('show.opened_by', 'Opened by'), ' ', userLink(creator)]) : null,
-              m('span', null, formatDate(ticket.createdAt())),
-            ]),
-            ticket.decision()
-              ? m('div', { className: 'LinkRobinsSupport-decision' }, [
-                  tr('show.decision', 'Decision:'),
-                  ' ',
-                  m('span', { className: 'LinkRobinsSupport-decision-' + ticket.decision() }, decisionLabel(ticket.decision())),
-                ])
-              : null,
-          ]),
+          m(TicketHeader, {
+            ticket,
+            canModerate,
+            ticketBusy: this._ticketBusy,
+            onSoftDelete: () => this._softDeleteTicket(),
+            onRestore: () => this._restoreTicket(),
+            onForceDelete: () => this._forceDeleteTicket(),
+          }),
 
-          canHandleSupportTickets() ? this._renderStaffControls(ticket) : null,
+          canHandleSupportTickets()
+            ? m(StaffControlBar, {
+                ticket,
+                updating: this.updating,
+                onSetStatus: (s: string) => this._setStatus(s),
+                onSetDecision: (d: string) => this._setDecision(d),
+                onClaim: () => this._claim(),
+                onUnassign: () => this._unassign(),
+              })
+            : null,
 
           m(
             'div',
             { className: 'LinkRobinsSupport-replies' },
-            this.replies.map((r: any) => this._renderReply(r))
+            this.replies.map((r: any) =>
+              m(ReplyItem, {
+                key: 'reply-' + r.id(),
+                reply: r,
+                editState: this._replyEditState ? this._replyEditState[r.id()] : null,
+                onBeginEdit: (rep: any) => this._beginEditReply(rep),
+                onSaveEditInline: (rep: any) => this._saveEditReply(rep),
+                onCancelEdit: (rep: any) => this._cancelEditReply(rep),
+                onSoftDelete: (rep: any) => this._softDeleteReply(rep),
+                onRestore: (rep: any) => this._restoreReply(rep),
+                onForceDelete: (rep: any) => this._forceDeleteReply(rep),
+              })
+            )
           ),
 
+          this._renderLoadMore(),
+
           ticket.canReply()
-            ? this._renderReplyForm()
+            ? m(ReplyComposer, {
+                ticket,
+                posting: this.posting,
+                replyText: this.replyText,
+                replyIsInternal: this.replyIsInternal,
+                uploadingCount: this.uploadingCount,
+                uploadError: this.uploadError,
+                onOpenComposer: (canPostInternal: boolean) => this._openReplyComposer(canPostInternal),
+                onSubmit: () => this._postReply(),
+                onReplyTextInput: (v: string) => {
+                  this.replyText = v;
+                },
+                onToggleInternal: (v: boolean) => {
+                  this.replyIsInternal = v;
+                },
+                onAttachClick: () => {
+                  if (this._replyFileInput) this._replyFileInput.click();
+                },
+                onFileInputCreate: (dom: any) => {
+                  this._replyFileInput = dom;
+                },
+                onFileInputRemove: () => {
+                  this._replyFileInput = null;
+                },
+                onFilesChosen: (files: any) => this._uploadFiles(files),
+              })
             : m(
                 'div',
                 { className: 'LinkRobinsSupport-empty' },
@@ -209,108 +257,32 @@ export default class SupportShowPage extends Page {
     );
   }
 
-  _renderStaffControls(ticket: any) {
-    if (!canHandleSupportTickets()) return null;
-    if (ticket.status() === 'closed') {
-      return m('div', { className: 'LinkRobinsSupport-staffBar' }, [
-        m('span', { className: 'LinkRobinsSupport-staffBar-label' }, tr('show.closed_badge', 'Closed ticket')),
-        this._renderDecisionGroup(ticket),
-        this._renderAssignmentRow(false),
-      ]);
-    }
-    const statuses = ['open', 'in_progress', 'awaiting_user', 'resolved', 'closed'];
+  // "Load more replies" button, shown while fewer replies are loaded than the
+  // ticket's reply count (which respects the same visibility as the list).
+  _renderLoadMore() {
+    const ticket = this.ticket;
+    const total = ticket && typeof ticket.replyCount === 'function' ? ticket.replyCount() : null;
+    if (total == null || this.replies.length >= total) return null;
 
-    return m('div', { className: 'LinkRobinsSupport-staffBar' }, [
-      m('label', { className: 'LinkRobinsSupport-staffBar-statusGroup' }, [
-        m('span', { className: 'LinkRobinsSupport-staffBar-label' }, tr('staff.set_status', 'Set status:')),
-        m(
-          'select',
-          {
-            className: 'FormControl LinkRobinsSupport-staffBar-statusSelect',
-            value: ticket.status(),
-            disabled: this.updating,
-            onchange: (e: any) => {
-              const next = e.target.value;
-              if (next && next !== ticket.status()) {
-                this._setStatus(next);
-              }
-            },
-          },
-          statuses.map((s) => m('option', { value: s }, statusLabel(s)))
-        ),
-      ]),
-      this._renderDecisionGroup(ticket),
-      this._renderAssignmentRow(true),
-    ]);
-  }
-
-  // Appeal tickets carry a decision (pending/accepted/rejected); regular tickets
-  // have a null decision and get no selector. Staff change it here -- the backend
-  // (SupportTicketResource) gates the writable `decision` attribute to staff.
-  _renderDecisionGroup(ticket: any) {
-    if (!ticket.decision()) return null;
-    const decisions = ['pending', 'accepted', 'rejected'];
-
-    return m('label', { className: 'LinkRobinsSupport-staffBar-statusGroup' }, [
-      m('span', { className: 'LinkRobinsSupport-staffBar-label' }, tr('staff.set_decision', 'Appeal decision:')),
+    return m(
+      'div',
+      { className: 'LinkRobinsSupport-loadMore' },
       m(
-        'select',
+        'button',
         {
-          className: 'FormControl LinkRobinsSupport-staffBar-statusSelect',
-          value: ticket.decision(),
-          disabled: this.updating,
-          onchange: (e: any) => {
-            const next = e.target.value;
-            if (next && next !== ticket.decision()) {
-              this._setDecision(next);
-            }
+          type: 'button',
+          className: 'Button Button--default LinkRobinsSupport-loadMoreBtn',
+          disabled: this.loadingMore,
+          onclick: () => {
+            this._loadMoreReplies();
           },
         },
-        decisions.map((d) => m('option', { value: d }, decisionLabel(d)))
-      ),
-    ]);
+        this.loadingMore ? tr('action.loading_more', 'Loading…') : tr('action.load_more_replies', 'Load more replies')
+      )
+    );
   }
 
-  _renderAssignmentRow(allowChanges: boolean) {
-    const assigned = this.ticket.assignedStaff && this.ticket.assignedStaff();
-    const actor = app.session && app.session.user;
-    const actorIsAssigned = assigned && actor && String(assigned.id()) === String(actor.id());
-    const label = assigned
-      ? tr('show.assigned_to', 'Assigned to') + ' ' + (assigned.username() || 'user #' + assigned.id())
-      : tr('show.unassigned', 'Unassigned');
-
-    return m('div', { className: 'LinkRobinsSupport-staffBar-assign' }, [
-      m('span', { className: 'LinkRobinsSupport-staffBar-label' }, label),
-      allowChanges && !actorIsAssigned
-        ? m(
-            'button',
-            {
-              type: 'button',
-              className: 'Button Button--default LinkRobinsSupport-staffBtn',
-              disabled: this.updating,
-              onclick: () => {
-                this._claim();
-              },
-            },
-            tr('action.claim', 'Claim')
-          )
-        : null,
-      allowChanges && assigned
-        ? m(
-            'button',
-            {
-              type: 'button',
-              className: 'Button Button--default LinkRobinsSupport-staffBtn',
-              disabled: this.updating,
-              onclick: () => {
-                this._unassign();
-              },
-            },
-            tr('action.unassign', 'Unassign')
-          )
-        : null,
-    ]);
-  }
+  // --- Staff controls ----------------------------------------------------
 
   _claim() {
     const actor = app.session && app.session.user;
@@ -379,220 +351,7 @@ export default class SupportShowPage extends Page {
       });
   }
 
-  _renderReply(reply: any) {
-    const user = reply.user && reply.user();
-    const html = reply.contentHtml() || '';
-    const isInternal = !!reply.isInternalNote();
-    const isDeleted = !!reply.isDeleted();
-    const canEdit = !!reply.canEdit();
-    const canDelete = !!reply.canDelete();
-    const editedAt = reply.editedAt();
-    const editedBy = reply.editedBy && reply.editedBy();
-
-    if (!this._replyEditState) this._replyEditState = {};
-    const state = this._replyEditState[reply.id()] || null;
-    const editing = !!(state && state.editing);
-    const busy = !!(state && state.busy);
-
-    let classes = 'LinkRobinsSupport-reply';
-    if (isInternal) classes += ' is-internal';
-    if (isDeleted) classes += ' is-deleted';
-
-    return m('article', { className: classes, key: 'reply-' + reply.id() }, [
-      m('header', { className: 'LinkRobinsSupport-reply-header' }, [
-        user ? m('span', { className: 'LinkRobinsSupport-reply-author' }, userLink(user)) : null,
-        m('span', { className: 'LinkRobinsSupport-reply-date' }, formatDate(reply.createdAt())),
-        editedAt
-          ? m(
-              'span',
-              {
-                className: 'LinkRobinsSupport-reply-edited',
-                title: editedBy
-                  ? trText('reply.edited_by', 'Edited by {name} on {date}', {
-                      date: formatDate(editedAt),
-                      name: editedBy.displayName() || editedBy.username(),
-                    })
-                  : trText('reply.edited_at', 'Edited on {date}', { date: formatDate(editedAt) }),
-              },
-              tr('reply.edited_marker', '(edited)')
-            )
-          : null,
-        isDeleted
-          ? m('span', { className: 'LinkRobinsSupport-reply-deletedBadge' }, [
-              m('i', { className: 'fas fa-trash' }),
-              ' ',
-              tr('show.deleted_badge', 'Deleted'),
-            ])
-          : null,
-        canEdit || canDelete ? this._renderReplyActions(reply, isDeleted, editing, busy) : null,
-      ]),
-
-      editing
-        ? this._renderReplyEditor(reply, state)
-        : isDeleted
-        ? m(
-            'div',
-            { className: 'LinkRobinsSupport-reply-body LinkRobinsSupport-reply-body--deleted' },
-            tr('reply.deleted_notice', 'This reply was deleted.')
-          )
-        : m('div', {
-            className: 'LinkRobinsSupport-reply-body',
-            oncreate: (vnode: any) => {
-              try {
-                vnode.dom.innerHTML = html;
-              } catch (e) {}
-            },
-            onupdate: (vnode: any) => {
-              try {
-                vnode.dom.innerHTML = html;
-              } catch (e) {}
-            },
-          }),
-    ]);
-  }
-
-  _renderReplyActions(reply: any, isDeleted: boolean, editing: boolean, busy: boolean) {
-    const canEdit = !!reply.canEdit();
-    const canDelete = !!reply.canDelete();
-
-    if (editing) {
-      return null;
-    }
-
-    const items: any[] = [];
-    if (!isDeleted) {
-      if (canEdit) {
-        items.push(
-          m(
-            Button,
-            {
-              icon: 'fas fa-pencil-alt',
-              disabled: busy,
-              onclick: () => {
-                this._beginEditReply(reply);
-              },
-            },
-            tr('action.edit', 'Edit')
-          )
-        );
-      }
-      if (canDelete) {
-        items.push(
-          m(
-            Button,
-            {
-              icon: 'fas fa-trash',
-              className: 'LinkRobinsSupport-reply-action--danger',
-              disabled: busy,
-              onclick: () => {
-                this._softDeleteReply(reply);
-              },
-            },
-            tr('action.delete', 'Delete')
-          )
-        );
-      }
-    } else {
-      if (canDelete) {
-        items.push(
-          m(
-            Button,
-            {
-              icon: 'fas fa-undo',
-              disabled: busy,
-              onclick: () => {
-                this._restoreReply(reply);
-              },
-            },
-            tr('action.restore', 'Restore')
-          )
-        );
-        items.push(
-          m(
-            Button,
-            {
-              icon: 'fas fa-times',
-              className: 'LinkRobinsSupport-reply-action--danger',
-              disabled: busy,
-              onclick: () => {
-                this._forceDeleteReply(reply);
-              },
-            },
-            tr('action.delete_forever', 'Delete forever')
-          )
-        );
-      }
-    }
-
-    if (items.length === 0) return null;
-
-    return m(
-      'span',
-      { className: 'LinkRobinsSupport-reply-actions' },
-      m(
-        Dropdown,
-        {
-          menuClassName: 'Dropdown-menu--right',
-          buttonClassName: 'Button Button--icon Button--flat LinkRobinsSupport-reply-actionsToggle',
-          icon: 'fas fa-ellipsis-h',
-          accessibleToggleLabel: tr('reply.mod_actions', 'Moderation actions'),
-        },
-        items
-      )
-    );
-  }
-
-  // Inline edit-reply editor. Only a fallback on stripped installs without the
-  // docked composer; normally _beginEditReply opens the composer instead.
-  _renderReplyEditor(reply: any, state: any) {
-    const canSave = !state.busy && state.draft.trim() !== '';
-
-    return m('div', { className: 'LinkRobinsSupport-reply-editor' }, [
-      m('textarea', {
-        className: 'FormControl LinkRobinsSupport-body',
-        rows: 5,
-        value: state.draft,
-        disabled: state.busy,
-        oninput: (e: any) => {
-          state.draft = e.target.value;
-        },
-        onkeydown: (e: any) => {
-          const isSubmit = (e.key === 'Enter' || e.keyCode === 13) && (e.ctrlKey || e.metaKey);
-          if (!isSubmit) return;
-          if (!state.busy && state.draft.trim() !== '') {
-            e.preventDefault();
-            this._saveEditReply(reply);
-          }
-        },
-      }),
-      m('div', { className: 'LinkRobinsSupport-reply-editor-actions' }, [
-        m(
-          'button',
-          {
-            type: 'button',
-            className: 'Button Button--default',
-            disabled: state.busy,
-            onclick: () => {
-              this._cancelEditReply(reply);
-            },
-          },
-          tr('action.cancel', 'Cancel')
-        ),
-        m(
-          'button',
-          {
-            type: 'button',
-            className: 'Button Button--primary',
-            disabled: !canSave,
-            onclick: () => {
-              this._saveEditReply(reply);
-            },
-          },
-          state.busy ? tr('action.saving', 'Saving…') : tr('action.save_changes', 'Save changes')
-        ),
-      ]),
-    ]);
-  }
+  // --- Reply editing / moderation ----------------------------------------
 
   _beginEditReply(reply: any) {
     // Pre-fill with the original markdown source so editing preserves format.
@@ -744,82 +503,6 @@ export default class SupportShowPage extends Page {
 
   // --- Ticket moderation -------------------------------------------------
 
-  _renderTicketActions(ticket: any) {
-    const canUpdate = !!ticket.canUpdate();
-    const canDelete = !!ticket.canDelete();
-    const isDeleted = !!ticket.isDeleted();
-    const busy = !!this._ticketBusy;
-
-    const items: any[] = [];
-    if (!isDeleted) {
-      if (canUpdate) {
-        items.push(
-          m(
-            Button,
-            {
-              icon: 'fas fa-trash',
-              className: 'LinkRobinsSupport-reply-action--danger',
-              disabled: busy,
-              onclick: () => {
-                this._softDeleteTicket();
-              },
-            },
-            tr('ticket.delete', 'Delete ticket')
-          )
-        );
-      }
-    } else {
-      if (canUpdate) {
-        items.push(
-          m(
-            Button,
-            {
-              icon: 'fas fa-undo',
-              disabled: busy,
-              onclick: () => {
-                this._restoreTicket();
-              },
-            },
-            tr('ticket.restore', 'Restore ticket')
-          )
-        );
-      }
-      if (canDelete) {
-        items.push(
-          m(
-            Button,
-            {
-              icon: 'fas fa-times',
-              className: 'LinkRobinsSupport-reply-action--danger',
-              disabled: busy,
-              onclick: () => {
-                this._forceDeleteTicket();
-              },
-            },
-            tr('action.delete_forever', 'Delete forever')
-          )
-        );
-      }
-    }
-
-    if (items.length === 0) return null;
-
-    return m(
-      'span',
-      { className: 'LinkRobinsSupport-ticket-actions' },
-      m(
-        Dropdown,
-        {
-          menuClassName: 'Dropdown-menu--right',
-          buttonClassName: 'Button Button--icon Button--flat LinkRobinsSupport-reply-actionsToggle',
-          icon: 'fas fa-ellipsis-h',
-          accessibleToggleLabel: tr('ticket.mod_actions', 'Ticket moderation actions'),
-        },
-        items
-      )
-    );
-  }
-
   _softDeleteTicket() {
     try {
       if (
@@ -892,138 +575,7 @@ export default class SupportShowPage extends Page {
       });
   }
 
-  _renderReplyForm() {
-    const canPostInternal = !!(this.ticket && this.ticket.canPostInternalNote());
-
-    // Preferred path: open Flarum's real docked composer (FoF Rich Text, FoF
-    // Upload, Mentions, Emoji all behave as for a normal forum reply). Show the
-    // same "reply placeholder" box Flarum uses at the end of a discussion.
-    if (supportComposerSupported()) {
-      const open = supportComposerOpenFor('reply:' + this.ticket.id());
-      return m(
-        'div',
-        { className: 'LinkRobinsSupport-replyPrompt' },
-        supportComposerPreview({
-          composing: open,
-          placeholder: app.translator.trans('core.forum.post_stream.reply_placeholder'),
-          onclick: () => {
-            this._openReplyComposer(canPostInternal);
-          },
-        })
-      );
-    }
-
-    // Fallback for stripped installs: a plain textarea + attach button.
-    const canSubmit = !this.posting && this.replyText.trim() !== '';
-    const canUpload = !!(
-      app.forum &&
-      typeof app.forum.attribute === 'function' &&
-      app.forum.attribute('fof-upload.canUpload')
-    );
-    const placeholder = this.replyIsInternal
-      ? tr('reply.internal_placeholder', 'Internal note (only staff will see this)…')
-      : tr('reply.placeholder', 'Write a reply…');
-
-    return m('div', { className: 'LinkRobinsSupport-replyForm' }, [
-      m('textarea', {
-        className: 'FormControl LinkRobinsSupport-body',
-        rows: 5,
-        value: this.replyText,
-        disabled: this.posting,
-        placeholder,
-        oninput: (e: any) => {
-          this.replyText = e.target.value;
-        },
-        onkeydown: (e: any) => {
-          const isSubmit = (e.key === 'Enter' || e.keyCode === 13) && (e.ctrlKey || e.metaKey);
-          if (!isSubmit) return;
-          if (!this.posting && this.replyText.trim() !== '') {
-            e.preventDefault();
-            this._postReply();
-          }
-        },
-      }),
-
-      this.uploadError
-        ? m('div', { className: 'Alert Alert--danger LinkRobinsSupport-uploadAlert' }, this.uploadError)
-        : null,
-      this.uploadingCount > 0
-        ? m(
-            'div',
-            { className: 'LinkRobinsSupport-uploadStatus' },
-            this.uploadingCount === 1
-              ? tr('common.uploading_one', 'Uploading 1 file…')
-              : tr('common.uploading_many', 'Uploading {count} files…', { count: this.uploadingCount })
-          )
-        : null,
-
-      m('div', { className: 'LinkRobinsSupport-replyForm-actions' }, [
-        canUpload
-          ? m('span', { className: 'LinkRobinsSupport-attachBtnWrap' }, [
-              m(
-                'button',
-                {
-                  type: 'button',
-                  className: 'Button Button--default LinkRobinsSupport-attachBtn',
-                  disabled: this.posting || this.uploadingCount > 0,
-                  onclick: () => {
-                    if (this._replyFileInput) this._replyFileInput.click();
-                  },
-                },
-                [m('i', { className: 'fas fa-paperclip' }), ' ', tr('action.attach_files', 'Attach files')]
-              ),
-              m('input', {
-                type: 'file',
-                multiple: true,
-                style: 'display:none;',
-                disabled: this.posting || this.uploadingCount > 0,
-                oncreate: (vnode: any) => {
-                  this._replyFileInput = vnode.dom;
-                },
-                onremove: () => {
-                  this._replyFileInput = null;
-                },
-                onchange: (e: any) => {
-                  const files = e.target.files;
-                  if (files && files.length) {
-                    this._uploadFiles(files);
-                  }
-                  try {
-                    e.target.value = '';
-                  } catch (err) {}
-                },
-              }),
-            ])
-          : null,
-        canPostInternal
-          ? m('label', { className: 'LinkRobinsSupport-internalToggle' }, [
-              m('input', {
-                type: 'checkbox',
-                checked: this.replyIsInternal,
-                disabled: this.posting,
-                onchange: (e: any) => {
-                  this.replyIsInternal = !!e.target.checked;
-                },
-              }),
-              ' ',
-              tr('reply.internal_note', 'Internal note'),
-            ])
-          : null,
-        m(
-          'button',
-          {
-            type: 'button',
-            className: 'Button Button--primary',
-            disabled: !canSubmit,
-            onclick: () => {
-              this._postReply();
-            },
-          },
-          this.posting ? tr('reply.posting', 'Posting…') : tr('reply.post_reply', 'Post reply')
-        ),
-      ]),
-    ]);
-  }
+  // --- Reply composer ----------------------------------------------------
 
   // Open the docked composer to write a reply / internal note.
   _openReplyComposer(canPostInternal: boolean) {

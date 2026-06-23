@@ -29,11 +29,18 @@ export function loadTicket(id: string | number): Promise<SupportTicket> {
   });
 }
 
-export function loadReplies(ticketId: string | number): Promise<any> {
+export function loadReplies(
+  ticketId: string | number,
+  offset = 0,
+  limit = 50
+): Promise<any> {
+  // Paginated (oldest-first): the show page loads one page and appends more on
+  // demand, so long tickets don't fetch every reply + rendered HTML at once.
+  // The endpoint enforces paginate(50, 200), so limit is capped server-side.
   return app.store.find('linkrobins-support-replies', {
     sort: 'createdAt',
     filter: { ticketId },
-    page: { limit: 200 },
+    page: { offset, limit },
     include: 'user,editedBy',
   });
 }

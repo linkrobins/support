@@ -112,6 +112,7 @@ linkrobins-support:
       upload: 'Could not upload file.'
       upload_no_files: 'Upload returned no files. Please try again.'
       load_ticket: 'Could not load this ticket. It may have been deleted, or you may not have permission to view it.'
+      load_more_replies: 'Could not load more replies.'
       update_assignment: 'Could not update assignment.'
       update_status: 'Could not update status.'
       update_decision: 'Could not update the appeal decision.'
@@ -184,6 +185,8 @@ linkrobins-support:
       delete: 'Delete'
       restore: 'Restore'
       cancel: 'Cancel'
+      load_more_replies: 'Load more replies'
+      loading_more: 'Loading…'
     confirm:
       delete_reply_forever: 'Permanently delete this reply? This cannot be undone.'
       soft_delete_reply: 'Soft-delete this reply? Staff can restore it later.'
