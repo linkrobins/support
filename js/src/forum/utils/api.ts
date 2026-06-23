@@ -52,10 +52,13 @@ export function createTicket(
   category: SupportCategory,
   body: string
 ): Promise<SupportTicket> {
+  // Single atomic create: the opening message rides along as `firstPost` and
+  // the backend posts it as the first reply in the same transaction. This used
+  // to be two requests (save ticket, then postReply); if the second failed it
+  // left a subject-only ticket the owner couldn't fix.
   return app.store
     .createRecord('linkrobins-support-tickets')
-    .save({ subject, relationships: { category } })
-    .then((ticket: SupportTicket) => postReply(ticket, body, false).then(() => ticket));
+    .save({ subject, firstPost: body, relationships: { category } });
 }
 
 export function postReply(

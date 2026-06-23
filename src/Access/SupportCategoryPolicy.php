@@ -13,13 +13,8 @@ class SupportCategoryPolicy extends AbstractPolicy
         return true;
     }
 
-    public function edit(User $actor, SupportCategory $category): bool
-    {
-        return $actor->isAdmin();
-    }
-
-    public function delete(User $actor, SupportCategory $category): bool
-    {
-        return $actor->isAdmin();
-    }
+    // No per-model edit()/delete() abilities: every category-mutating
+    // endpoint (Create/Update/Delete in SupportCategoryResource) gates on
+    // the global `manageCategories` ability, so model-scoped checks here
+    // were never reached.
 }

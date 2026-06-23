@@ -13,6 +13,7 @@ use LinkRobins\Support\Access\SupportAbilities;
 use LinkRobins\Support\SupportReply;
 use LinkRobins\Support\SupportTicket;
 use LinkRobins\Support\UserState;
+use Psr\Log\LoggerInterface;
 use Tobyz\JsonApiServer\Context;
 use Tobyz\JsonApiServer\Exception\BadRequestException;
 use Tobyz\JsonApiServer\Exception\ForbiddenException;
@@ -21,6 +22,7 @@ class SupportReplyResource extends AbstractDatabaseResource
 {
     public function __construct(
         protected TranslatorInterface $translator,
+        protected LoggerInterface $log,
     ) {
     }
 
@@ -149,7 +151,7 @@ class SupportReplyResource extends AbstractDatabaseResource
                     try {
                         return $reply->formatContent($context->request);
                     } catch (\Throwable $e) {
-                        resolve(\Psr\Log\LoggerInterface::class)->warning('[linkrobins/support] formatContent failed', ['exception' => $e]);
+                        $this->log->warning('[linkrobins/support] formatContent failed', ['exception' => $e]);
                         return '';
                     }
                 }),

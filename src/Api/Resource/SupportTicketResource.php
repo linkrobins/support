@@ -121,8 +121,28 @@ class SupportTicketResource extends AbstractDatabaseResource
                 ->maxLength(200)
                 ->set(function (SupportTicket $ticket, $value) {
                     $trimmed = is_string($value) ? trim($value) : '';
+                    // The column is NOT NULL but accepts ''. Without this
+                    // guard a direct API call with subject: '' would save a
+                    // blank-subject ticket (the frontend submit button is
+                    // the only other gate). Reject it with a clean 400.
+                    if ($trimmed === '') {
+                        throw new BadRequestException($this->translator->trans('linkrobins-support.api.subject_required'));
+                    }
                     $ticket->subject = $trimmed;
                 }),
+
+            // Write-only virtual field carrying the ticket's opening message.
+            // It maps to no column; create() consumes the raw value from the
+            // request body and posts it as the first reply inside the same
+            // transaction (see create()), so a ticket can never be saved
+            // without its body. Mirrors how core's DiscussionResource accepts
+            // `content` for the first post. requiredOnCreate guarantees the
+            // attribute is present; the reply resource enforces non-empty.
+            Schema\Str::make('firstPost')
+                ->writableOnCreate()
+                ->requiredOnCreate()
+                ->visible(false)
+                ->set(fn () => null),
 
             Schema\Str::make('status')
                 ->writableOnUpdate()
@@ -431,8 +451,52 @@ class SupportTicketResource extends AbstractDatabaseResource
                 }
             }
 
-            return parent::create($model, $context);
+            $ticket = parent::create($model, $context);
+
+            // Post the opening message as the ticket's first reply, atomically
+            // with the insert above. This used to be a second client request
+            // (save ticket, then POST reply): if that second request failed,
+            // the forum was left with a subject-only ticket the owner couldn't
+            // fix. Creating it here, in the same transaction, means a failed
+            // body rolls the whole thing back -- no body-less tickets.
+            $this->createFirstReply($ticket, $context);
+
+            return $ticket;
         });
+    }
+
+    /**
+     * Create the ticket's opening message as its first reply, inside the
+     * caller's transaction. Reuses SupportReplyResource's create endpoint so
+     * the body runs through the same validation, formatting and
+     * SupportReply::created side-effects (last_reply_at bump, notifications)
+     * as any other reply. Mirrors how core's DiscussionResource posts the
+     * first post via PostResource. A failure here (e.g. empty body, rejected
+     * by the reply resource) bubbles up and rolls back the ticket insert.
+     */
+    protected function createFirstReply(SupportTicket $ticket, Context $context): void
+    {
+        $content = data_get($context->body(), 'data.attributes.firstPost');
+
+        $context->api
+            ->forResource(SupportReplyResource::class)
+            ->forEndpoint('create')
+            ->withRequest($context->request)
+            ->process([
+                'data' => [
+                    'attributes' => [
+                        'content' => $content,
+                    ],
+                    'relationships' => [
+                        'ticket' => [
+                            'data' => [
+                                'type' => 'linkrobins-support-tickets',
+                                'id' => (string) $ticket->id,
+                            ],
+                        ],
+                    ],
+                ],
+            ]);
     }
 
     public function updating(object $model, Context $context): ?object

@@ -215,6 +215,7 @@ linkrobins-support:
   api:
     assign_staff_only: 'Tickets can only be assigned to support staff.'
     category_required: 'A category is required.'
+    subject_required: 'A subject is required.'
     ticket_soft_delete_first: 'A ticket must be soft-deleted before it can be permanently removed.'
     login_required_reply: 'You must be logged in to reply.'
     reply_content_required: 'Reply content is required.'
