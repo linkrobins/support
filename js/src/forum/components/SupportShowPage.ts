@@ -93,7 +93,18 @@ export default class SupportShowPage extends Page {
       PageStructure,
       {
         className: 'IndexPage LinkRobinsSupport-page',
-        sidebar: () => m(SupportIndexSidebar, { className: 'LinkRobinsSupport-sidebar', activeFilter: null }),
+        // Highlight the sidebar item this ticket belongs to: its status for
+        // staff (who see the status views), or "My tickets" for the owner.
+        // Null while the ticket is still loading.
+        sidebar: () =>
+          m(SupportIndexSidebar, {
+            className: 'LinkRobinsSupport-sidebar',
+            activeFilter: this.ticket
+              ? canHandleSupportTickets()
+                ? this.ticket.status()
+                : 'mine'
+              : null,
+          }),
       },
       inner
     );
