@@ -195,6 +195,7 @@ export default class SupportShowPage extends Page {
                 onSetDecision: (d: string) => this._setDecision(d),
                 onClaim: () => this._claim(),
                 onUnassign: () => this._unassign(),
+                onReopen: () => this._reopen(),
               })
             : null,
 
@@ -317,7 +318,25 @@ export default class SupportShowPage extends Page {
       });
   }
 
+  // Reopen a closed ticket: put it back to 'open' so staff can act on it again.
+  // Goes through _setStatus, which skips the close-confirm for non-close changes.
+  _reopen() {
+    this._setStatus('open');
+  }
+
   _setStatus(status: string) {
+    // Closing blocks all further replies, and it's easy to pick from the
+    // dropdown by accident, so confirm first. (Reopening and other changes are
+    // not gated.)
+    if (status === 'closed') {
+      try {
+        if (!window.confirm(tr('confirm.close_ticket', 'Close this ticket? It cannot be replied to until it is reopened.'))) {
+          m.redraw(); // reset the status dropdown to the current value
+          return;
+        }
+      } catch (e) {}
+    }
+
     this.updating = true;
     m.redraw();
     this.ticket

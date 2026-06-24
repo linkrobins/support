@@ -181,6 +181,7 @@ linkrobins-support:
       attach_files: 'Attach files'
       claim: 'Claim'
       unassign: 'Unassign'
+      reopen: 'Reopen ticket'
       edit: 'Edit'
       delete: 'Delete'
       restore: 'Restore'
@@ -188,6 +189,7 @@ linkrobins-support:
       load_more_replies: 'Load more replies'
       loading_more: 'Loading…'
     confirm:
+      close_ticket: 'Close this ticket? It cannot be replied to until it is reopened.'
       delete_reply_forever: 'Permanently delete this reply? This cannot be undone.'
       soft_delete_reply: 'Soft-delete this reply? Staff can restore it later.'
       soft_delete_ticket: 'Soft-delete this ticket? It will be hidden from the index and from the ticket owner; staff can restore it.'

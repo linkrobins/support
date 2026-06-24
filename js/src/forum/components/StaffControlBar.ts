@@ -10,8 +10,20 @@ export default class StaffControlBar extends Component {
     const { ticket, updating } = this.attrs as any;
 
     if (ticket.status() === 'closed') {
+      // A closed ticket hides the status dropdown, so offer an explicit Reopen
+      // button -- otherwise an accidental close is unrecoverable from the UI.
       return m('div', { className: 'LinkRobinsSupport-staffBar' }, [
         m('span', { className: 'LinkRobinsSupport-staffBar-label' }, tr('show.closed_badge', 'Closed ticket')),
+        m(
+          'button',
+          {
+            type: 'button',
+            className: 'Button Button--default LinkRobinsSupport-staffBtn',
+            disabled: updating,
+            onclick: () => (this.attrs as any).onReopen(),
+          },
+          tr('action.reopen', 'Reopen ticket')
+        ),
         this.decisionGroup(ticket),
         this.assignmentRow(false),
       ]);
