@@ -154,17 +154,21 @@ class SupportTicketResource extends AbstractDatabaseResource
                         return;
                     }
                     $actor = $context->getActor();
-                    // Status changes are staff-only. The policy::update is
-                    // already enforced for the endpoint -- this is a
-                    // defensive double-check that ALSO catches a creator
-                    // legitimately PATCHing their ticket (e.g. someday we
-                    // let creators edit the subject; they shouldn't be
-                    // able to also flip status in the same request).
-                    $isStaff = SupportAbilities::isStaff($actor);
-                    if (! $isStaff) {
+                    if (SupportAbilities::isStaff($actor)) {
+                        $ticket->status = $value;
                         return;
                     }
-                    $ticket->status = $value;
+                    // Non-staff: the only status change allowed is the owner
+                    // reopening their OWN closed, non-appeal ticket
+                    // (closed -> open). Appeals stay staff-only so a suspended
+                    // user can't reopen a rejected appeal. Everything else from
+                    // a non-staff actor is ignored.
+                    if (
+                        $this->ownerMayReopen($ticket, $actor)
+                        && $value === SupportTicket::STATUS_OPEN
+                    ) {
+                        $ticket->status = $value;
+                    }
                 }),
 
             Schema\Str::make('decision')
@@ -219,6 +223,19 @@ class SupportTicketResource extends AbstractDatabaseResource
                     } catch (\Throwable $e) {
                         return false;
                     }
+                }),
+
+            // Whether the current actor may reopen this (closed) ticket: staff
+            // can reopen any closed ticket; an owner can reopen their own closed
+            // NON-appeal ticket. Drives the Reopen button (the staff bar uses it
+            // too; owners get a button on the closed-ticket notice).
+            Schema\Boolean::make('canReopen')
+                ->get(function (SupportTicket $ticket, FlarumContext $context) {
+                    $actor = $context->getActor();
+                    if ($actor->isGuest() || $ticket->status !== SupportTicket::STATUS_CLOSED) {
+                        return false;
+                    }
+                    return SupportAbilities::isStaff($actor) || $this->ownerMayReopen($ticket, $actor);
                 }),
 
             Schema\Boolean::make('canUpdate')
@@ -355,6 +372,25 @@ class SupportTicketResource extends AbstractDatabaseResource
                     }
                 }),
         ];
+    }
+
+    /**
+     * Whether $actor may reopen $ticket as its owner: they own it, it is
+     * currently closed, and it is not an appeal (appeals stay staff-only so a
+     * suspended user can't reopen a rejected appeal). Called before the status
+     * setter reassigns, so $ticket->status is still the persisted value.
+     */
+    protected function ownerMayReopen(SupportTicket $ticket, User $actor): bool
+    {
+        if ($actor->isGuest() || (int) $actor->id !== (int) $ticket->user_id) {
+            return false;
+        }
+        if ($ticket->status !== SupportTicket::STATUS_CLOSED) {
+            return false;
+        }
+        $category = $ticket->category;
+
+        return ! ($category && $category->is_appeal);
     }
 
     public function creating(object $model, Context $context): ?object
@@ -508,6 +544,16 @@ class SupportTicketResource extends AbstractDatabaseResource
         if ((int) $model->user_id !== (int) $originalUserId) {
             $model->user_id = $originalUserId;
         }
+
+        // The owner-reopen path loosens the update policy for non-staff owners,
+        // and the subject setter has no staff gate -- so revert any subject
+        // change from a non-staff actor here. The status setter already limits
+        // them to closed -> open, so reopening is the only effective change.
+        $actor = $context->getActor();
+        if (! $actor->isGuest() && ! SupportAbilities::isStaff($actor) && $model->isDirty('subject')) {
+            $model->subject = $model->getOriginal('subject');
+        }
+
         return $model;
     }
 

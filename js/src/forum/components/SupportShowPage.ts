@@ -246,13 +246,29 @@ export default class SupportShowPage extends Page {
                 },
                 onFilesChosen: (files: any) => this._uploadFiles(files),
               })
-            : m(
-                'div',
-                { className: 'LinkRobinsSupport-empty' },
+            : m('div', { className: 'LinkRobinsSupport-empty' }, [
                 ticket.status() === 'closed'
                   ? tr('show.closed_notice', 'This ticket has been closed and cannot be replied to.')
-                  : tr('show.cannot_reply', 'You cannot reply to this ticket.')
-              ),
+                  : tr('show.cannot_reply', 'You cannot reply to this ticket.'),
+                // Owner-facing Reopen button on a closed ticket (staff use the
+                // status bar above instead). canReopen is false for appeals.
+                ticket.status() === 'closed' && ticket.canReopen() && !canHandleSupportTickets()
+                  ? m(
+                      'div',
+                      { className: 'LinkRobinsSupport-reopenRow' },
+                      m(
+                        'button',
+                        {
+                          type: 'button',
+                          className: 'Button Button--primary',
+                          disabled: this.updating,
+                          onclick: () => this._reopen(),
+                        },
+                        tr('action.reopen', 'Reopen ticket')
+                      )
+                    )
+                  : null,
+              ]),
         ]
       )
     );

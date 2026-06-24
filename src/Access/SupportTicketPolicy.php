@@ -45,7 +45,21 @@ class SupportTicketPolicy extends AbstractPolicy
         if ($actor->isAdmin()) {
             return true;
         }
-        return $this->isStaff($actor);
+        if ($this->isStaff($actor)) {
+            return true;
+        }
+        // The owner may update their own closed, non-appeal ticket solely to
+        // reopen it. The status setter caps non-staff at closed -> open and
+        // updating() reverts any other field they might include, so this
+        // authorization can't be used to edit the ticket otherwise. Appeals
+        // stay staff-only.
+        if ($this->isOwner($actor, $ticket) && $ticket->isClosed()) {
+            $category = $ticket->category;
+
+            return ! ($category && $category->is_appeal);
+        }
+
+        return false;
     }
 
     public function delete(User $actor, SupportTicket $ticket): bool
