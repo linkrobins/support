@@ -78,7 +78,7 @@
 }
 
 .LinkRobinsSupport-title {
-    font-size: 1.5rem;
+    font-size: calc(1.5rem * var(--lr-text-scale, 1));
     font-weight: 700;
     margin: 0;
     display: flex;
@@ -284,7 +284,7 @@
 
     .LinkRobinsSupport-title {
         flex: 1;
-        font-size: 1.5rem;
+        font-size: calc(1.5rem * var(--lr-text-scale, 1));
         margin: 0;
     }
 }
@@ -418,10 +418,10 @@
     // Shrink the ticket title on narrow screens so a normal subject doesn't
     // wrap onto two lines next to the status badge / actions.
     .LinkRobinsSupport-title {
-        font-size: 1.2rem;
+        font-size: calc(1.2rem * var(--lr-text-scale, 1));
     }
     .LinkRobinsSupport-ticket-titleRow .LinkRobinsSupport-title {
-        font-size: 1.2rem;
+        font-size: calc(1.2rem * var(--lr-text-scale, 1));
     }
     .LinkRobinsSupport-staffBar {
         flex-direction: column;
@@ -498,6 +498,10 @@
 .LinkRobinsSupport-reply-body {
     line-height: 1.6;
     word-wrap: break-word;
+    // Opt the ticket message/reply body into linkrobins/font-sizer's reading
+    // control: 1em is a no-op at the default size and scales the inherited body
+    // text when a reader raises the size.
+    font-size: calc(1em * var(--lr-text-scale, 1));
 
     > *:first-child { margin-top: 0; }
     > *:last-child  { margin-bottom: 0; }
