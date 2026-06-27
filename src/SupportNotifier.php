@@ -130,7 +130,13 @@ class SupportNotifier
                 $query->where('id', '!=', $exceptId);
             }
 
-            return $query->distinct()->get()->all();
+            // No distinct() here: the staff filter is built from EXISTS
+            // subqueries (whereHas/orWhereHas), not joins, so a user can
+            // never appear twice -- distinct() is redundant. It also breaks
+            // on PostgreSQL, where "SELECT DISTINCT *" over the users table
+            // fails (the json `preferences` column has no equality operator,
+            // SQLSTATE 42883). On MySQL that query merely worked by accident.
+            return $query->get()->all();
         } catch (\Throwable $e) {
             $this->log->warning('[linkrobins/support] staffRecipients failed', ['exception' => $e]);
 
