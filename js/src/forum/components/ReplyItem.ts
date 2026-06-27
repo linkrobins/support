@@ -61,24 +61,24 @@ export default class ReplyItem extends Component {
       editing
         ? this.editor(reply, state)
         : isDeleted
-        ? m(
-            'div',
-            { className: 'LinkRobinsSupport-reply-body LinkRobinsSupport-reply-body--deleted' },
-            tr('reply.deleted_notice', 'This reply was deleted.')
-          )
-        : m('div', {
-            className: 'LinkRobinsSupport-reply-body',
-            oncreate: (vnode: any) => {
-              try {
-                vnode.dom.innerHTML = html;
-              } catch (e) {}
-            },
-            onupdate: (vnode: any) => {
-              try {
-                vnode.dom.innerHTML = html;
-              } catch (e) {}
-            },
-          }),
+          ? m(
+              'div',
+              { className: 'LinkRobinsSupport-reply-body LinkRobinsSupport-reply-body--deleted' },
+              tr('reply.deleted_notice', 'This reply was deleted.')
+            )
+          : m('div', {
+              className: 'LinkRobinsSupport-reply-body',
+              oncreate: (vnode: any) => {
+                try {
+                  vnode.dom.innerHTML = html;
+                } catch (e) {}
+              },
+              onupdate: (vnode: any) => {
+                try {
+                  vnode.dom.innerHTML = html;
+                } catch (e) {}
+              },
+            }),
     ]);
   }
 
@@ -94,9 +94,7 @@ export default class ReplyItem extends Component {
     const items: any[] = [];
     if (!isDeleted) {
       if (canEdit) {
-        items.push(
-          m(Button, { icon: 'fas fa-pencil-alt', disabled: busy, onclick: () => onBeginEdit(reply) }, tr('action.edit', 'Edit'))
-        );
+        items.push(m(Button, { icon: 'fas fa-pencil-alt', disabled: busy, onclick: () => onBeginEdit(reply) }, tr('action.edit', 'Edit')));
       }
       if (canDelete) {
         items.push(
@@ -114,9 +112,7 @@ export default class ReplyItem extends Component {
       }
     } else {
       if (canDelete) {
-        items.push(
-          m(Button, { icon: 'fas fa-undo', disabled: busy, onclick: () => onRestore(reply) }, tr('action.restore', 'Restore'))
-        );
+        items.push(m(Button, { icon: 'fas fa-undo', disabled: busy, onclick: () => onRestore(reply) }, tr('action.restore', 'Restore')));
         items.push(
           m(
             Button,

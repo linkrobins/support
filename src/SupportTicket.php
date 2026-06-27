@@ -8,6 +8,25 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * @property int $id
+ * @property int|null $category_id
+ * @property int|null $user_id
+ * @property int|null $assigned_staff_id
+ * @property string $subject
+ * @property string $status
+ * @property string|null $decision
+ * @property \Carbon\Carbon|null $last_reply_at
+ * @property \Carbon\Carbon|null $created_at
+ * @property \Carbon\Carbon|null $updated_at
+ * @property \Carbon\Carbon|null $deleted_at
+ * @property-read int|null $reply_count_all
+ * @property-read int|null $reply_count_public
+ * @property-read SupportCategory|null $category
+ * @property-read User|null $user
+ * @property-read User|null $assignedStaff
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, SupportReply> $replies
+ */
 class SupportTicket extends AbstractModel
 {
     use SoftDeletes;
@@ -53,6 +72,7 @@ class SupportTicket extends AbstractModel
         'last_reply_at' => 'datetime',
     ];
 
+    /** @var list<string> */
     protected $dates = [
         'deleted_at',
     ];

@@ -56,6 +56,7 @@ class SupportReplyResource extends AbstractDatabaseResource
      */
     public function scope(Builder $query, Context $context): void
     {
+        /** @var \Illuminate\Database\Eloquent\Builder<SupportReply> $query */
         $actor = $context->getActor();
         if ($actor->isGuest()) {
             $query->whereRaw('1 = 0');
@@ -277,6 +278,7 @@ class SupportReplyResource extends AbstractDatabaseResource
 
     public function creating(object $model, Context $context): ?object
     {
+        /** @var SupportReply $model */
         $actor = $context->getActor();
         if ($actor->isGuest()) {
             throw new ForbiddenException($this->translator->trans('linkrobins-support.api.login_required_reply'));
@@ -363,6 +365,7 @@ class SupportReplyResource extends AbstractDatabaseResource
      */
     public function updating(object $model, Context $context): ?object
     {
+        /** @var SupportReply $model */
         $actor = $context->getActor();
         if ($actor->isGuest()) {
             throw new ForbiddenException($this->translator->trans('linkrobins-support.api.login_required_edit'));
@@ -439,6 +442,7 @@ class SupportReplyResource extends AbstractDatabaseResource
      */
     public function deleting(object $model, Context $context): void
     {
+        /** @var SupportReply $model */
         $actor = $context->getActor();
         if ($actor->isGuest()) {
             throw new ForbiddenException($this->translator->trans('linkrobins-support.api.login_required'));

@@ -29,11 +29,7 @@ export default class ReplyComposer extends Component {
 
     // Fallback for stripped installs: a plain textarea + attach button.
     const canSubmit = !a.posting && a.replyText.trim() !== '';
-    const canUpload = !!(
-      app.forum &&
-      typeof app.forum.attribute === 'function' &&
-      app.forum.attribute('fof-upload.canUpload')
-    );
+    const canUpload = !!(app.forum && typeof app.forum.attribute === 'function' && app.forum.attribute('fof-upload.canUpload'));
     const placeholder = a.replyIsInternal
       ? tr('reply.internal_placeholder', 'Internal note (only staff will see this)…')
       : tr('reply.placeholder', 'Write a reply…');
@@ -58,9 +54,7 @@ export default class ReplyComposer extends Component {
         },
       }),
 
-      a.uploadError
-        ? m('div', { className: 'Alert Alert--danger LinkRobinsSupport-uploadAlert' }, a.uploadError)
-        : null,
+      a.uploadError ? m('div', { className: 'Alert Alert--danger LinkRobinsSupport-uploadAlert' }, a.uploadError) : null,
       a.uploadingCount > 0
         ? m(
             'div',

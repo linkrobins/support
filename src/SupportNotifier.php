@@ -69,6 +69,9 @@ class SupportNotifier
      * Sync with isolated error handling: alerts are written before emails
      * are sent, so an email-send failure still leaves the bell-icon alert.
      * We distinguish mailer failures from genuine sync bugs in the log.
+     *
+     * @param \Flarum\Notification\Blueprint\BlueprintInterface $blueprint
+     * @param list<\Flarum\User\User> $recipients
      */
     protected function trySync($blueprint, array $recipients, string $kind): void
     {

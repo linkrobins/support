@@ -23,10 +23,7 @@ function makeSupportComposer(ComposerBody: any): any {
   return class SupportComposer extends ComposerBody {
     headerItems() {
       const items = super.headerItems();
-      const defs =
-        typeof this.attrs.supportHeaderItems === 'function'
-          ? this.attrs.supportHeaderItems(this)
-          : null;
+      const defs = typeof this.attrs.supportHeaderItems === 'function' ? this.attrs.supportHeaderItems(this) : null;
       if (defs && defs.length) {
         defs.forEach((d: any, i: number) => {
           if (d == null) return;
@@ -56,8 +53,7 @@ const COMPOSER_BODY_PATH = 'flarum/forum/components/ComposerBody';
 function ensureSupportComposer(): Promise<any> {
   if (SupportComposerClass) return Promise.resolve(SupportComposerClass);
   try {
-    const loaded =
-      flarum.reg.checkModule && flarum.reg.checkModule('core', 'forum/components/ComposerBody');
+    const loaded = flarum.reg.checkModule && flarum.reg.checkModule('core', 'forum/components/ComposerBody');
     if (loaded) {
       const base = loaded.default || loaded;
       SupportComposerClass = makeSupportComposer(base);
@@ -91,8 +87,7 @@ export function supportComposerSupported(): boolean {
   if (!app.composer || typeof app.composer.load !== 'function') return false;
   if (SupportComposerClass) return true;
   try {
-    if (flarum.reg.checkModule && flarum.reg.checkModule('core', 'forum/components/ComposerBody'))
-      return true;
+    if (flarum.reg.checkModule && flarum.reg.checkModule('core', 'forum/components/ComposerBody')) return true;
     if (
       flarum.reg.chunkModules &&
       typeof flarum.reg.chunkModules.has === 'function' &&
@@ -153,11 +148,7 @@ export function supportComposerContent(): string {
  * a click-to-compose box, or -- while the composer is open for this context --
  * a live preview of what's being typed (ComposerPostPreview).
  */
-export function supportComposerPreview(opts: {
-  composing?: boolean;
-  placeholder: any;
-  onclick: () => void;
-}): any {
+export function supportComposerPreview(opts: { composing?: boolean; placeholder: any; onclick: () => void }): any {
   const user = app.session && app.session.user;
 
   if (opts.composing) {
@@ -167,11 +158,7 @@ export function supportComposerPreview(opts: {
       m('div', { className: 'Post-container' }, [
         m('div', { className: 'Post-side' }, user ? m(Avatar, { user, className: 'Post-avatar' }) : null),
         m('div', { className: 'Post-main' }, [
-          m(
-            'header',
-            { className: 'Post-header' },
-            m('div', { className: 'PostUser' }, m('h3', { className: 'PostUser-name' }, username(user)))
-          ),
+          m('header', { className: 'Post-header' }, m('div', { className: 'PostUser' }, m('h3', { className: 'PostUser-name' }, username(user)))),
           m('div', { className: 'Post-body' }, m(ComposerPostPreview, { className: 'Post-body', composer: app.composer })),
         ]),
       ])

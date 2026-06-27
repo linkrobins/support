@@ -55,6 +55,7 @@ class SupportTicketResource extends AbstractDatabaseResource
      */
     public function scope(Builder $query, Context $context): void
     {
+        /** @var \Illuminate\Database\Eloquent\Builder<SupportTicket> $query */
         // Eager-load reply counts (see TicketSearcher) so the replyCount field
         // reads a column instead of issuing a COUNT() per ticket.
         $query->withCount([
@@ -395,6 +396,7 @@ class SupportTicketResource extends AbstractDatabaseResource
 
     public function creating(object $model, Context $context): ?object
     {
+        /** @var SupportTicket $model */
         $actor = $context->getActor();
 
         // Force user_id to the acting user. Same anti-impersonation guard
@@ -466,6 +468,7 @@ class SupportTicketResource extends AbstractDatabaseResource
      */
     public function create(object $model, Context $context): object
     {
+        /** @var SupportTicket $model */
         $actor = $context->getActor();
 
         if ($actor->isGuest() || empty($model->category_id)) {
@@ -537,6 +540,7 @@ class SupportTicketResource extends AbstractDatabaseResource
 
     public function updating(object $model, Context $context): ?object
     {
+        /** @var SupportTicket $model */
         // Block user_id tampering on update. Same anti-impersonation guard
         // as on create. Staff legitimately editing a ticket might
         // accidentally include the user relationship; we silently revert.
@@ -570,6 +574,7 @@ class SupportTicketResource extends AbstractDatabaseResource
      */
     public function deleting(object $model, Context $context): void
     {
+        /** @var SupportTicket $model */
         if ($model->deleted_at === null) {
             throw new BadRequestException(
                 $this->translator->trans('linkrobins-support.api.ticket_soft_delete_first')

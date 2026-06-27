@@ -6,12 +6,7 @@ import { tr } from '../utils/translate';
 import { BASE_PATH, showError } from '../utils/helpers';
 import { isUserSuspended, supportAppealBanned } from '../utils/permissions';
 import { loadCategories, createTicket, uploadFilesToBody } from '../utils/api';
-import {
-  supportComposerSupported,
-  supportComposerOpenFor,
-  openSupportComposer,
-  supportComposerPreview,
-} from '../utils/composer';
+import { supportComposerSupported, supportComposerOpenFor, openSupportComposer, supportComposerPreview } from '../utils/composer';
 
 export default class SupportComposePage extends Page {
   loading = true;
@@ -92,18 +87,11 @@ export default class SupportComposePage extends Page {
     if (supportAppealBanned() && isUserSuspended()) {
       return this._wrap(
         m('div', { className: 'LinkRobinsSupport-container' }, [
-          m(
-            'header',
-            { className: 'LinkRobinsSupport-header' },
-            m('h1', { className: 'LinkRobinsSupport-title' }, tr('nav', 'Support'))
-          ),
+          m('header', { className: 'LinkRobinsSupport-header' }, m('h1', { className: 'LinkRobinsSupport-title' }, tr('nav', 'Support'))),
           m(
             'div',
             { className: 'LinkRobinsSupport-empty LinkRobinsSupport-empty--blocked' },
-            tr(
-              'compose.appeal_banned',
-              'You are not permitted to file appeals. Please contact the site owner via another channel.'
-            )
+            tr('compose.appeal_banned', 'You are not permitted to file appeals. Please contact the site owner via another channel.')
           ),
         ])
       );
@@ -116,11 +104,7 @@ export default class SupportComposePage extends Page {
     if (this.categories.length === 0) {
       return this._wrap(
         m('div', { className: 'LinkRobinsSupport-container' }, [
-          m(
-            'header',
-            { className: 'LinkRobinsSupport-header' },
-            m('h1', { className: 'LinkRobinsSupport-title' }, tr('nav', 'Support'))
-          ),
+          m('header', { className: 'LinkRobinsSupport-header' }, m('h1', { className: 'LinkRobinsSupport-title' }, tr('nav', 'Support'))),
           m(
             'div',
             { className: 'LinkRobinsSupport-empty' },
@@ -146,9 +130,7 @@ export default class SupportComposePage extends Page {
       return this._wrap(
         m('div', { className: 'LinkRobinsSupport-container' }, [
           this._renderComposeHeader(),
-          this.error
-            ? m('div', { className: 'Alert Alert--danger' }, [m('span', { className: 'Alert-body' }, this._errorMessage())])
-            : null,
+          this.error ? m('div', { className: 'Alert Alert--danger' }, [m('span', { className: 'Alert-body' }, this._errorMessage())]) : null,
           m('div', { className: 'LinkRobinsSupport-form' }, [
             m('div', { className: 'Form-group' }, [
               m('label', null, tr('compose.subject_label', 'Subject')),
@@ -182,15 +164,12 @@ export default class SupportComposePage extends Page {
     }
 
     // Fallback (stripped install without the composer): full inline form.
-    const canSaveFallback =
-      !this.saving && this.subject.trim() !== '' && this.body.trim() !== '' && this.categoryId !== '';
+    const canSaveFallback = !this.saving && this.subject.trim() !== '' && this.body.trim() !== '' && this.categoryId !== '';
 
     return this._wrap(
       m('div', { className: 'LinkRobinsSupport-container' }, [
         this._renderComposeHeader(),
-        this.error
-          ? m('div', { className: 'Alert Alert--danger' }, [m('span', { className: 'Alert-body' }, this._errorMessage())])
-          : null,
+        this.error ? m('div', { className: 'Alert Alert--danger' }, [m('span', { className: 'Alert-body' }, this._errorMessage())]) : null,
         m('div', { className: 'LinkRobinsSupport-form' }, [
           m('div', { className: 'Form-group' }, [
             m('label', null, tr('compose.subject_label', 'Subject')),
@@ -225,9 +204,7 @@ export default class SupportComposePage extends Page {
                 }
               },
             }),
-            this.uploadError
-              ? m('div', { className: 'Alert Alert--danger LinkRobinsSupport-uploadAlert' }, this.uploadError)
-              : null,
+            this.uploadError ? m('div', { className: 'Alert Alert--danger LinkRobinsSupport-uploadAlert' }, this.uploadError) : null,
             this.uploadingCount > 0
               ? m(
                   'div',
@@ -337,9 +314,7 @@ export default class SupportComposePage extends Page {
             m('i', { className: (cat && cat.icon()) || 'fas fa-life-ring' }),
             ' ',
             this.subject || tr('compose.title', 'New support ticket'),
-            cat && cat.name()
-              ? m('span', { className: 'LinkRobinsSupport-composerTitle-cat' }, ' · ' + cat.name())
-              : null,
+            cat && cat.name() ? m('span', { className: 'LinkRobinsSupport-composerTitle-cat' }, ' · ' + cat.name()) : null,
           ]),
         },
       ],
@@ -392,9 +367,7 @@ export default class SupportComposePage extends Page {
                 ),
                 m('span', { className: 'LinkRobinsSupport-categoryCard-text' }, [
                   m('span', { className: 'LinkRobinsSupport-categoryCard-name' }, c.name() || ''),
-                  c.description()
-                    ? m('span', { className: 'LinkRobinsSupport-categoryCard-desc' }, c.description())
-                    : null,
+                  c.description() ? m('span', { className: 'LinkRobinsSupport-categoryCard-desc' }, c.description()) : null,
                 ]),
               ]
             )

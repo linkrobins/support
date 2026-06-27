@@ -79,10 +79,7 @@ export default class SupportIndexSidebar extends IndexSidebar {
     } catch (e) {}
 
     const canHandle = canHandleSupportTickets();
-    const currentFilter =
-      this.attrs && Object.prototype.hasOwnProperty.call(this.attrs, 'activeFilter')
-        ? this.attrs.activeFilter
-        : 'mine'; // may be null (= nothing active)
+    const currentFilter = this.attrs && Object.prototype.hasOwnProperty.call(this.attrs, 'activeFilter') ? this.attrs.activeFilter : 'mine'; // may be null (= nothing active)
 
     items.add('linkrobinsSupportSeparator', m(Separator), -11);
 

@@ -33,9 +33,7 @@ export function tr(key: string, fallback?: string, params?: Record<string, any>)
   // ourselves so an unresolved/missing key never leaks raw braces to the user.
   let tmpl = fallback != null ? fallback : key;
   if (params) {
-    tmpl = tmpl.replace(/\{(\w+)\}/g, (whole, name) =>
-      Object.prototype.hasOwnProperty.call(params, name) ? String(params[name]) : whole
-    );
+    tmpl = tmpl.replace(/\{(\w+)\}/g, (whole, name) => (Object.prototype.hasOwnProperty.call(params, name) ? String(params[name]) : whole));
   }
   return tmpl;
 }

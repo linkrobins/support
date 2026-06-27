@@ -69,52 +69,54 @@ export default class SupportAdminPage extends ExtensionPage {
   _renderCategoriesSection() {
     return [
       m('p', { className: 'helpText' }, tx('linkrobins-support.admin.categories.intro')),
-      this.catError
-        ? m('div', { className: 'Alert Alert--danger' }, tx('linkrobins-support.admin.category_editor.error_load'))
-        : null,
+      this.catError ? m('div', { className: 'Alert Alert--danger' }, tx('linkrobins-support.admin.category_editor.error_load')) : null,
       this.loadingCats
         ? m(LoadingIndicator)
         : this.categories.length === 0
-        ? m('div', { className: 'LinkRobinsSupportAdmin-empty' }, tx('linkrobins-support.admin.categories.empty'))
-        : m('div', { className: 'LinkRobinsSupportAdmin-tableWrap' }, m('table', { className: 'LinkRobinsSupportAdmin-catTable' }, [
-            m(
-              'thead',
-              null,
-              m('tr', null, [
-                m('th', null, tx('linkrobins-support.admin.categories.column_name')),
-                m('th', null, tx('linkrobins-support.admin.categories.column_tickets')),
-                m('th', null, ''),
+          ? m('div', { className: 'LinkRobinsSupportAdmin-empty' }, tx('linkrobins-support.admin.categories.empty'))
+          : m(
+              'div',
+              { className: 'LinkRobinsSupportAdmin-tableWrap' },
+              m('table', { className: 'LinkRobinsSupportAdmin-catTable' }, [
+                m(
+                  'thead',
+                  null,
+                  m('tr', null, [
+                    m('th', null, tx('linkrobins-support.admin.categories.column_name')),
+                    m('th', null, tx('linkrobins-support.admin.categories.column_tickets')),
+                    m('th', null, ''),
+                  ])
+                ),
+                m(
+                  'tbody',
+                  null,
+                  this.categories.map((c: any) =>
+                    m('tr', { key: 'cat-' + c.id() }, [
+                      m('td', null, [
+                        c.icon() ? m('i', { className: c.icon(), style: c.color() ? 'color: ' + c.color() : '' }) : null,
+                        ' ',
+                        m('strong', null, c.name()),
+                      ]),
+                      m('td', null, c.ticketCount() || 0),
+                      m(
+                        'td',
+                        { className: 'LinkRobinsSupportAdmin-actions' },
+                        m(
+                          Button,
+                          {
+                            className: 'Button',
+                            icon: 'fas fa-pencil-alt',
+                            title: tx('linkrobins-support.admin.categories.edit_button'),
+                            onclick: () => this._openEditor(c),
+                          },
+                          tx('linkrobins-support.admin.categories.edit_button')
+                        )
+                      ),
+                    ])
+                  )
+                ),
               ])
             ),
-            m(
-              'tbody',
-              null,
-              this.categories.map((c: any) =>
-                m('tr', { key: 'cat-' + c.id() }, [
-                  m('td', null, [
-                    c.icon() ? m('i', { className: c.icon(), style: c.color() ? 'color: ' + c.color() : '' }) : null,
-                    ' ',
-                    m('strong', null, c.name()),
-                  ]),
-                  m('td', null, c.ticketCount() || 0),
-                  m(
-                    'td',
-                    { className: 'LinkRobinsSupportAdmin-actions' },
-                    m(
-                      Button,
-                      {
-                        className: 'Button',
-                        icon: 'fas fa-pencil-alt',
-                        title: tx('linkrobins-support.admin.categories.edit_button'),
-                        onclick: () => this._openEditor(c),
-                      },
-                      tx('linkrobins-support.admin.categories.edit_button')
-                    )
-                  ),
-                ])
-              )
-            ),
-          ])),
       m(
         Button,
         {

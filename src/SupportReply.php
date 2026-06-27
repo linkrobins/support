@@ -9,6 +9,21 @@ use Flarum\User\User;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * @property int $id
+ * @property int $ticket_id
+ * @property int|null $user_id
+ * @property string $content
+ * @property bool $is_internal_note
+ * @property \Carbon\Carbon|null $edited_at
+ * @property int|null $edited_by_user_id
+ * @property \Carbon\Carbon|null $created_at
+ * @property \Carbon\Carbon|null $updated_at
+ * @property \Carbon\Carbon|null $deleted_at
+ * @property-read SupportTicket|null $ticket
+ * @property-read User|null $user
+ * @property-read User|null $editedBy
+ */
 class SupportReply extends AbstractModel implements Formattable
 {
     use HasFormattedContent;
@@ -31,6 +46,7 @@ class SupportReply extends AbstractModel implements Formattable
         'edited_at'        => 'datetime',
     ];
 
+    /** @var list<string> */
     protected $dates = [
         'deleted_at',
         'edited_at',

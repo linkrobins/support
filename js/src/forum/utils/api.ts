@@ -29,11 +29,7 @@ export function loadTicket(id: string | number): Promise<SupportTicket> {
   });
 }
 
-export function loadReplies(
-  ticketId: string | number,
-  offset = 0,
-  limit = 50
-): Promise<any> {
+export function loadReplies(ticketId: string | number, offset = 0, limit = 50): Promise<any> {
   // Paginated (oldest-first): the show page loads one page and appends more on
   // demand, so long tickets don't fetch every reply + rendered HTML at once.
   // The endpoint enforces paginate(50, 200), so limit is capped server-side.
@@ -54,28 +50,16 @@ export function loadCategories(): Promise<any> {
 
 // --- Writes (store records: cached, reactive, relationship-aware) --------
 
-export function createTicket(
-  subject: string,
-  category: SupportCategory,
-  body: string
-): Promise<SupportTicket> {
+export function createTicket(subject: string, category: SupportCategory, body: string): Promise<SupportTicket> {
   // Single atomic create: the opening message rides along as `firstPost` and
   // the backend posts it as the first reply in the same transaction. This used
   // to be two requests (save ticket, then postReply); if the second failed it
   // left a subject-only ticket the owner couldn't fix.
-  return app.store
-    .createRecord('linkrobins-support-tickets')
-    .save({ subject, firstPost: body, relationships: { category } });
+  return app.store.createRecord('linkrobins-support-tickets').save({ subject, firstPost: body, relationships: { category } });
 }
 
-export function postReply(
-  ticket: SupportTicket,
-  content: string,
-  isInternal: boolean
-): Promise<SupportReply> {
-  return app.store
-    .createRecord('linkrobins-support-replies')
-    .save({ content, isInternalNote: !!isInternal, relationships: { ticket } });
+export function postReply(ticket: SupportTicket, content: string, isInternal: boolean): Promise<SupportReply> {
+  return app.store.createRecord('linkrobins-support-replies').save({ content, isInternalNote: !!isInternal, relationships: { ticket } });
 }
 
 // --- File upload --------------------------------------------------------
@@ -87,12 +71,7 @@ export function postReply(
 // When the caller is backed by Flarum's TextEditor (which owns its own
 // textarea), pass `editorGetter` so we insert into the live editor (whose
 // oninput syncs target[bodyKey] back for us); plain-textarea callers omit it.
-export function uploadFilesToBody(
-  target: any,
-  files: FileList | File[],
-  bodyKey: string,
-  editorGetter?: () => any
-): Promise<void> {
+export function uploadFilesToBody(target: any, files: FileList | File[], bodyKey: string, editorGetter?: () => any): Promise<void> {
   target.uploadError = null;
   target.uploadingCount = (target.uploadingCount || 0) + files.length;
   m.redraw();

@@ -125,11 +125,7 @@ export default class SupportShowPage extends Page {
         sidebar: () =>
           m(SupportIndexSidebar, {
             className: 'LinkRobinsSupport-sidebar',
-            activeFilter: this.ticket
-              ? canHandleSupportTickets()
-                ? this.ticket.status()
-                : 'mine'
-              : null,
+            activeFilter: this.ticket ? (canHandleSupportTickets() ? this.ticket.status() : 'mine') : null,
           }),
       },
       inner
@@ -160,10 +156,7 @@ export default class SupportShowPage extends Page {
           m(
             'div',
             { className: 'LinkRobinsSupport-empty' },
-            tr(
-              'errors.load_ticket',
-              'Could not load this ticket. It may have been deleted, or you may not have permission to view it.'
-            )
+            tr('errors.load_ticket', 'Could not load this ticket. It may have been deleted, or you may not have permission to view it.')
           ),
         ])
       );
@@ -174,103 +167,99 @@ export default class SupportShowPage extends Page {
     const canModerate = !!ticket.canUpdate() || !!ticket.canDelete();
 
     return this._wrap(
-      m(
-        'div',
-        { className: 'LinkRobinsSupport-container' + (isDeleted ? ' LinkRobinsSupport-container--deleted' : '') },
-        [
-          m(TicketHeader, {
-            ticket,
-            canModerate,
-            ticketBusy: this._ticketBusy,
-            onSoftDelete: () => this._softDeleteTicket(),
-            onRestore: () => this._restoreTicket(),
-            onForceDelete: () => this._forceDeleteTicket(),
-          }),
+      m('div', { className: 'LinkRobinsSupport-container' + (isDeleted ? ' LinkRobinsSupport-container--deleted' : '') }, [
+        m(TicketHeader, {
+          ticket,
+          canModerate,
+          ticketBusy: this._ticketBusy,
+          onSoftDelete: () => this._softDeleteTicket(),
+          onRestore: () => this._restoreTicket(),
+          onForceDelete: () => this._forceDeleteTicket(),
+        }),
 
-          canHandleSupportTickets()
-            ? m(StaffControlBar, {
-                ticket,
-                updating: this.updating,
-                onSetStatus: (s: string) => this._setStatus(s),
-                onSetDecision: (d: string) => this._setDecision(d),
-                onClaim: () => this._claim(),
-                onUnassign: () => this._unassign(),
-                onReopen: () => this._reopen(),
-              })
-            : null,
+        canHandleSupportTickets()
+          ? m(StaffControlBar, {
+              ticket,
+              updating: this.updating,
+              onSetStatus: (s: string) => this._setStatus(s),
+              onSetDecision: (d: string) => this._setDecision(d),
+              onClaim: () => this._claim(),
+              onUnassign: () => this._unassign(),
+              onReopen: () => this._reopen(),
+            })
+          : null,
 
-          m(
-            'div',
-            { className: 'LinkRobinsSupport-replies' },
-            this.replies.map((r: any) =>
-              m(ReplyItem, {
-                key: 'reply-' + r.id(),
-                reply: r,
-                editState: this._replyEditState ? this._replyEditState[r.id()] : null,
-                onBeginEdit: (rep: any) => this._beginEditReply(rep),
-                onSaveEditInline: (rep: any) => this._saveEditReply(rep),
-                onCancelEdit: (rep: any) => this._cancelEditReply(rep),
-                onSoftDelete: (rep: any) => this._softDeleteReply(rep),
-                onRestore: (rep: any) => this._restoreReply(rep),
-                onForceDelete: (rep: any) => this._forceDeleteReply(rep),
-              })
-            )
-          ),
+        m(
+          'div',
+          { className: 'LinkRobinsSupport-replies' },
+          this.replies.map((r: any) =>
+            m(ReplyItem, {
+              key: 'reply-' + r.id(),
+              reply: r,
+              editState: this._replyEditState ? this._replyEditState[r.id()] : null,
+              onBeginEdit: (rep: any) => this._beginEditReply(rep),
+              onSaveEditInline: (rep: any) => this._saveEditReply(rep),
+              onCancelEdit: (rep: any) => this._cancelEditReply(rep),
+              onSoftDelete: (rep: any) => this._softDeleteReply(rep),
+              onRestore: (rep: any) => this._restoreReply(rep),
+              onForceDelete: (rep: any) => this._forceDeleteReply(rep),
+            })
+          )
+        ),
 
-          this._renderLoadMore(),
+        this._renderLoadMore(),
 
-          ticket.canReply()
-            ? m(ReplyComposer, {
-                ticket,
-                posting: this.posting,
-                replyText: this.replyText,
-                replyIsInternal: this.replyIsInternal,
-                uploadingCount: this.uploadingCount,
-                uploadError: this.uploadError,
-                onOpenComposer: (canPostInternal: boolean) => this._openReplyComposer(canPostInternal),
-                onSubmit: () => this._postReply(),
-                onReplyTextInput: (v: string) => {
-                  this.replyText = v;
-                },
-                onToggleInternal: (v: boolean) => {
-                  this.replyIsInternal = v;
-                },
-                onAttachClick: () => {
-                  if (this._replyFileInput) this._replyFileInput.click();
-                },
-                onFileInputCreate: (dom: any) => {
-                  this._replyFileInput = dom;
-                },
-                onFileInputRemove: () => {
-                  this._replyFileInput = null;
-                },
-                onFilesChosen: (files: any) => this._uploadFiles(files),
-              })
-            : m('div', { className: 'LinkRobinsSupport-empty' }, [
-                ticket.status() === 'closed'
-                  ? tr('show.closed_notice', 'This ticket has been closed and cannot be replied to.')
-                  : tr('show.cannot_reply', 'You cannot reply to this ticket.'),
-                // Owner-facing Reopen button on a closed ticket (staff use the
-                // status bar above instead). canReopen is false for appeals.
-                ticket.status() === 'closed' && ticket.canReopen() && !canHandleSupportTickets()
-                  ? m(
-                      'div',
-                      { className: 'LinkRobinsSupport-reopenRow' },
-                      m(
-                        'button',
-                        {
-                          type: 'button',
-                          className: 'Button Button--primary',
-                          disabled: this.updating,
-                          onclick: () => this._reopen(),
-                        },
-                        tr('action.reopen', 'Reopen ticket')
-                      )
+        ticket.canReply()
+          ? m(ReplyComposer, {
+              ticket,
+              posting: this.posting,
+              replyText: this.replyText,
+              replyIsInternal: this.replyIsInternal,
+              uploadingCount: this.uploadingCount,
+              uploadError: this.uploadError,
+              onOpenComposer: (canPostInternal: boolean) => this._openReplyComposer(canPostInternal),
+              onSubmit: () => this._postReply(),
+              onReplyTextInput: (v: string) => {
+                this.replyText = v;
+              },
+              onToggleInternal: (v: boolean) => {
+                this.replyIsInternal = v;
+              },
+              onAttachClick: () => {
+                if (this._replyFileInput) this._replyFileInput.click();
+              },
+              onFileInputCreate: (dom: any) => {
+                this._replyFileInput = dom;
+              },
+              onFileInputRemove: () => {
+                this._replyFileInput = null;
+              },
+              onFilesChosen: (files: any) => this._uploadFiles(files),
+            })
+          : m('div', { className: 'LinkRobinsSupport-empty' }, [
+              ticket.status() === 'closed'
+                ? tr('show.closed_notice', 'This ticket has been closed and cannot be replied to.')
+                : tr('show.cannot_reply', 'You cannot reply to this ticket.'),
+              // Owner-facing Reopen button on a closed ticket (staff use the
+              // status bar above instead). canReopen is false for appeals.
+              ticket.status() === 'closed' && ticket.canReopen() && !canHandleSupportTickets()
+                ? m(
+                    'div',
+                    { className: 'LinkRobinsSupport-reopenRow' },
+                    m(
+                      'button',
+                      {
+                        type: 'button',
+                        className: 'Button Button--primary',
+                        disabled: this.updating,
+                        onclick: () => this._reopen(),
+                      },
+                      tr('action.reopen', 'Reopen ticket')
                     )
-                  : null,
-              ]),
-        ]
-      )
+                  )
+                : null,
+            ]),
+      ])
     );
   }
 
@@ -448,11 +437,7 @@ export default class SupportShowPage extends Page {
       .save(
         { content: text },
         {
-          url:
-            app.forum.attribute('apiUrl') +
-            '/linkrobins-support-replies/' +
-            reply.id() +
-            '?include=user,editedBy',
+          url: app.forum.attribute('apiUrl') + '/linkrobins-support-replies/' + reply.id() + '?include=user,editedBy',
         }
       )
       .then(() => {
@@ -492,19 +477,14 @@ export default class SupportShowPage extends Page {
       .catch((err: any) => {
         this._setReplyBusy(reply.id(), false);
         console.error('[linkrobins/support] toggle delete failed:', err);
-        showError(
-          isDeleted
-            ? tr('errors.delete_reply', 'Could not delete the reply.')
-            : tr('errors.restore_reply', 'Could not restore the reply.')
-        );
+        showError(isDeleted ? tr('errors.delete_reply', 'Could not delete the reply.') : tr('errors.restore_reply', 'Could not restore the reply.'));
         m.redraw();
       });
   }
 
   _forceDeleteReply(reply: any) {
     try {
-      if (!window.confirm(tr('confirm.delete_reply_forever', 'Permanently delete this reply? This cannot be undone.')))
-        return;
+      if (!window.confirm(tr('confirm.delete_reply_forever', 'Permanently delete this reply? This cannot be undone.'))) return;
     } catch (e) {}
     this._setReplyBusy(reply.id(), true);
 
@@ -572,9 +552,7 @@ export default class SupportShowPage extends Page {
         this._ticketBusy = false;
         console.error('[linkrobins/support] ticket delete toggle failed:', err);
         showError(
-          isDeleted
-            ? tr('errors.delete_ticket', 'Could not delete the ticket.')
-            : tr('errors.restore_ticket', 'Could not restore the ticket.')
+          isDeleted ? tr('errors.delete_ticket', 'Could not delete the ticket.') : tr('errors.restore_ticket', 'Could not restore the ticket.')
         );
         m.redraw();
       });
@@ -583,12 +561,7 @@ export default class SupportShowPage extends Page {
   _forceDeleteTicket() {
     if (!this.ticket) return;
     try {
-      if (
-        !window.confirm(
-          tr('confirm.delete_ticket_forever', 'Permanently delete this ticket and all its replies? This cannot be undone.')
-        )
-      )
-        return;
+      if (!window.confirm(tr('confirm.delete_ticket_forever', 'Permanently delete this ticket and all its replies? This cannot be undone.'))) return;
     } catch (e) {}
     this._ticketBusy = true;
     m.redraw();
@@ -628,11 +601,7 @@ export default class SupportShowPage extends Page {
           {
             name: 'title',
             priority: 10,
-            content: m('h3', { className: 'LinkRobinsSupport-composerTitle' }, [
-              m('i', { className: 'fas fa-reply' }),
-              ' ',
-              subject,
-            ]),
+            content: m('h3', { className: 'LinkRobinsSupport-composerTitle' }, [m('i', { className: 'fas fa-reply' }), ' ', subject]),
           },
         ];
         if (canPostInternal) {

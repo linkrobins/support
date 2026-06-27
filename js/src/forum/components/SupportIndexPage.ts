@@ -80,10 +80,7 @@ export default class SupportIndexPage extends Page {
   }
 
   view() {
-    const content = m('div', { className: 'LinkRobinsSupport-container' }, [
-      this._renderHeader(),
-      this._renderList(),
-    ]);
+    const content = m('div', { className: 'LinkRobinsSupport-container' }, [this._renderHeader(), this._renderList()]);
 
     return m(
       PageStructure,
@@ -133,9 +130,7 @@ export default class SupportIndexPage extends Page {
       return m(
         'div',
         { className: 'LinkRobinsSupport-empty' },
-        canCreateSupportTicket()
-          ? tr('index.empty_own', 'No tickets yet. Click "New ticket" to open one.')
-          : tr('index.empty', 'No tickets to show.')
+        canCreateSupportTicket() ? tr('index.empty_own', 'No tickets yet. Click "New ticket" to open one.') : tr('index.empty', 'No tickets to show.')
       );
     }
     return m(
@@ -165,21 +160,11 @@ export default class SupportIndexPage extends Page {
         m('div', { className: 'LinkRobinsSupport-row-main' }, [
           m('div', { className: 'LinkRobinsSupport-row-subject' }, [
             ticket.subject() || tr('index.untitled', 'Untitled'),
-            isDeleted
-              ? m('span', { className: 'LinkRobinsSupport-row-deletedBadge' }, tr('index.deleted_badge', 'Deleted'))
-              : null,
+            isDeleted ? m('span', { className: 'LinkRobinsSupport-row-deletedBadge' }, tr('index.deleted_badge', 'Deleted')) : null,
           ]),
           m('div', { className: 'LinkRobinsSupport-row-meta' }, [
-            cat
-              ? m(
-                  'span',
-                  { className: 'LinkRobinsSupport-row-cat', style: 'color: ' + (cat.color() || 'inherit') },
-                  cat.name()
-                )
-              : null,
-            user
-              ? m('span', { className: 'LinkRobinsSupport-row-user' }, user.displayName() || user.username())
-              : null,
+            cat ? m('span', { className: 'LinkRobinsSupport-row-cat', style: 'color: ' + (cat.color() || 'inherit') }, cat.name()) : null,
+            user ? m('span', { className: 'LinkRobinsSupport-row-user' }, user.displayName() || user.username()) : null,
             m('span', { className: 'LinkRobinsSupport-row-date' }, formatDate(ticket.lastReplyAt() || ticket.createdAt())),
           ]),
         ]),

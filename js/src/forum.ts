@@ -79,9 +79,7 @@ app.initializers.add('linkrobins-support', () => {
               });
           },
         },
-        banned
-          ? tr('user_controls.allow_appeals', 'Allow support appeals')
-          : tr('user_controls.disallow_appeals', 'Disallow support appeals')
+        banned ? tr('user_controls.allow_appeals', 'Allow support appeals') : tr('user_controls.disallow_appeals', 'Disallow support appeals')
       )
     );
   });
@@ -89,10 +87,6 @@ app.initializers.add('linkrobins-support', () => {
   // Global "Support" link in the index sidebar nav (shown on every page).
   extend(IndexSidebar.prototype, 'navItems', (items: any) => {
     if (!app.session || !app.session.user) return;
-    items.add(
-      'linkrobins-support',
-      m(LinkButton, { href: basePath() + BASE_PATH, icon: 'fas fa-life-ring' }, tr('nav', 'Support')),
-      30
-    );
+    items.add('linkrobins-support', m(LinkButton, { href: basePath() + BASE_PATH, icon: 'fas fa-life-ring' }, tr('nav', 'Support')), 30);
   });
 });

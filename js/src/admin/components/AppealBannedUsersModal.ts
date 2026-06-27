@@ -38,37 +38,37 @@ export default class AppealBannedUsersModal extends Modal {
       this.loadingUsers && this.users.length === 0
         ? m(LoadingIndicator)
         : this.users.length > 0
-        ? [this._renderTable(), this._renderLoadMore()]
-        : m('div', { className: 'LinkRobinsSupportAdmin-empty' }, tx('linkrobins-support.admin.appeal_bans.banned_empty')),
+          ? [this._renderTable(), this._renderLoadMore()]
+          : m('div', { className: 'LinkRobinsSupportAdmin-empty' }, tx('linkrobins-support.admin.appeal_bans.banned_empty')),
     ]);
   }
 
   _renderTable() {
     const base = (app.forum && app.forum.attribute && app.forum.attribute('baseUrl')) || '';
-    return m('div', { className: 'LinkRobinsSupportAdmin-tableWrap' }, m('table', { className: 'LinkRobinsSupportAdmin-catTable' }, [
-      m(
-        'thead',
-        null,
-        m('tr', null, [
-          m('th', null, tx('linkrobins-support.admin.appeal_bans.column_username')),
-          m('th', null, tx('linkrobins-support.admin.appeal_bans.column_email')),
-        ])
-      ),
-      m(
-        'tbody',
-        null,
-        this.users.map((u: any) =>
-          m('tr', { key: u.id() }, [
-            m(
-              'td',
-              null,
-              m('a', { href: base + '/u/' + encodeURIComponent(u.username() || ''), target: '_blank' }, u.username() || '?')
-            ),
-            m('td', { className: 'LinkRobinsSupportAdmin-mono' }, u.email() || '—'),
+    return m(
+      'div',
+      { className: 'LinkRobinsSupportAdmin-tableWrap' },
+      m('table', { className: 'LinkRobinsSupportAdmin-catTable' }, [
+        m(
+          'thead',
+          null,
+          m('tr', null, [
+            m('th', null, tx('linkrobins-support.admin.appeal_bans.column_username')),
+            m('th', null, tx('linkrobins-support.admin.appeal_bans.column_email')),
           ])
-        )
-      ),
-    ]));
+        ),
+        m(
+          'tbody',
+          null,
+          this.users.map((u: any) =>
+            m('tr', { key: u.id() }, [
+              m('td', null, m('a', { href: base + '/u/' + encodeURIComponent(u.username() || ''), target: '_blank' }, u.username() || '?')),
+              m('td', { className: 'LinkRobinsSupportAdmin-mono' }, u.email() || '—'),
+            ])
+          )
+        ),
+      ])
+    );
   }
 
   _renderLoadMore() {

@@ -19,6 +19,12 @@
         "php": "^8.3",
         "flarum/core": "^2.0"
     },
+    "require-dev": {
+        "flarum/testing": "^2.0",
+        "flarum/phpstan": "^2.0"
+    },
+    "minimum-stability": "beta",
+    "prefer-stable": true,
     "suggest": {
         "fof/upload": "For file attachments on tickets and replies. The support extension automatically renders an 'Attach files' button when this is installed."
     },
@@ -26,6 +32,29 @@
         "psr-4": {
             "LinkRobins\\Support\\": "src/"
         }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "LinkRobins\\Support\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "analyse:phpstan": "phpstan analyse",
+        "clear-cache:phpstan": "phpstan clear-result-cache",
+        "test": [
+            "@test:unit",
+            "@test:integration"
+        ],
+        "test:unit": "phpunit -c tests/phpunit.unit.xml",
+        "test:integration": "phpunit -c tests/phpunit.integration.xml",
+        "test:setup": "@php tests/integration/setup.php"
+    },
+    "scripts-descriptions": {
+        "analyse:phpstan": "Run static analysis.",
+        "test": "Runs all tests.",
+        "test:unit": "Runs all unit tests.",
+        "test:integration": "Runs all integration tests.",
+        "test:setup": "Sets up a database for use with integration tests. Execute this only once."
     },
     "extra": {
         "flarum-extension": {
@@ -35,6 +64,12 @@
                 "name": "fas fa-life-ring",
                 "color": "#07adcc",
                 "backgroundColor": "#1a2535"
+            }
+        },
+        "flarum-cli": {
+            "modules": {
+                "githubActions": true,
+                "backendTesting": true
             }
         }
     }

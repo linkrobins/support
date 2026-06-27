@@ -30,13 +30,7 @@ export default class TicketHeader extends Component {
         canModerate ? this.actions(ticket, isDeleted) : null,
       ]),
       m('div', { className: 'LinkRobinsSupport-ticket-meta' }, [
-        category
-          ? m(
-              'span',
-              { className: 'LinkRobinsSupport-row-cat', style: 'color: ' + (category.color() || 'inherit') },
-              category.name()
-            )
-          : null,
+        category ? m('span', { className: 'LinkRobinsSupport-row-cat', style: 'color: ' + (category.color() || 'inherit') }, category.name()) : null,
         creator ? m('span', null, [tr('show.opened_by', 'Opened by'), ' ', userLink(creator)]) : null,
         m('span', null, formatDate(ticket.createdAt())),
       ]),
@@ -74,9 +68,7 @@ export default class TicketHeader extends Component {
       }
     } else {
       if (canUpdate) {
-        items.push(
-          m(Button, { icon: 'fas fa-undo', disabled: busy, onclick: () => onRestore() }, tr('ticket.restore', 'Restore ticket'))
-        );
+        items.push(m(Button, { icon: 'fas fa-undo', disabled: busy, onclick: () => onRestore() }, tr('ticket.restore', 'Restore ticket')));
       }
       if (canDelete) {
         items.push(
