@@ -493,6 +493,17 @@ export default class SupportShowPage extends Page {
       .then(() => {
         this.replies = (this.replies || []).filter((r: any) => String(r.id()) !== String(reply.id()));
         if (this._replyEditState) delete this._replyEditState[reply.id()];
+        // A permanent delete removes the row on the server, so its reply count
+        // drops too. Mirror that on the cached ticket, otherwise replyCount()
+        // still reflects the pre-delete total and _renderLoadMore shows a stray
+        // "Load more" button until the page is refreshed (support#5).
+        const ticket = this.ticket;
+        if (ticket && typeof ticket.replyCount === 'function') {
+          const current = ticket.replyCount();
+          if (typeof current === 'number') {
+            ticket.pushAttributes({ replyCount: Math.max(0, current - 1) });
+          }
+        }
         m.redraw();
       })
       .catch((err: any) => {
