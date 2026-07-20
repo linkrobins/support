@@ -85,8 +85,12 @@ app.initializers.add('linkrobins-support', () => {
   });
 
   // Global "Support" link in the index sidebar nav (shown on every page).
+  // Priority -11 slots it directly below flarum/tags' "Tags" link (-10) and
+  // above its separator (-12) + tag list (-14), so it doesn't sit oddly
+  // between "All Discussions" and the tags block. Without the tags extension
+  // it simply lands under the remaining nav links.
   extend(IndexSidebar.prototype, 'navItems', (items: any) => {
     if (!app.session || !app.session.user) return;
-    items.add('linkrobins-support', m(LinkButton, { href: basePath() + BASE_PATH, icon: 'fas fa-life-ring' }, tr('nav', 'Support')), 30);
+    items.add('linkrobins-support', m(LinkButton, { href: basePath() + BASE_PATH, icon: 'fas fa-life-ring' }, tr('nav', 'Support')), -11);
   });
 });

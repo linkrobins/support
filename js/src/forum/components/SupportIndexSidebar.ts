@@ -81,7 +81,11 @@ export default class SupportIndexSidebar extends IndexSidebar {
     const canHandle = canHandleSupportTickets();
     const currentFilter = this.attrs && Object.prototype.hasOwnProperty.call(this.attrs, 'activeFilter') ? this.attrs.activeFilter : 'mine'; // may be null (= nothing active)
 
-    items.add('linkrobinsSupportSeparator', m(Separator), -11);
+    // The support section starts at -20, safely below the global nav links
+    // (core's sit at 100..-10 and cross-extension ones like ours use -11), so
+    // the shared navigation block stays identical on every page instead of
+    // relying on insertion order to break the -11 tie.
+    items.add('linkrobinsSupportSeparator', m(Separator), -20);
 
     FILTER_OPTIONS.forEach((opt, i) => {
       if (opt.staffOnly && !canHandle) return;
@@ -96,7 +100,7 @@ export default class SupportIndexSidebar extends IndexSidebar {
           },
           filterLabel(opt)
         ),
-        -12 - i
+        -21 - i
       );
     });
 
