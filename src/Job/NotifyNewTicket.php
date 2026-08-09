@@ -18,7 +18,12 @@ class NotifyNewTicket extends AbstractJob
 
     public function handle(SupportNotifier $notifier): void
     {
-        $ticket = SupportTicket::query()->find($this->ticketId);
+        // The notifier only needs `user_id`, but NewSupportTicketBlueprint
+        // reads the submitter to attribute the notification, so load it here
+        // rather than paying a separate lookup for a row already in memory.
+        $ticket = SupportTicket::query()
+            ->with('user')
+            ->find($this->ticketId);
 
         if ($ticket) {
             $notifier->notifyNewTicket($ticket);
