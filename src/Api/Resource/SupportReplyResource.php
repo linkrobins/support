@@ -310,6 +310,11 @@ class SupportReplyResource extends AbstractDatabaseResource
         // Force user_id to actor. No relationship impersonation.
         $model->user_id = $actor->id;
 
+        // Hand the already-loaded actor to the model as its `user` relation.
+        // The SupportReply::created hook reads $reply->user for its staff
+        // check, which would otherwise re-read the row we are holding.
+        $model->setRelation('user', $actor);
+
         // Resolve ticket from the relationship in the request body.
         $body = $context->body();
         $ticketRel = data_get($body, 'data.relationships.ticket.data.id');

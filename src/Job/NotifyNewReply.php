@@ -18,7 +18,14 @@ class NotifyNewReply extends AbstractJob
 
     public function handle(SupportNotifier $notifier): void
     {
-        $reply = SupportReply::query()->find($this->replyId);
+        // Eager-load what the notifier and the blueprint go on to read:
+        // the author (staff check), the ticket, and the ticket's owner
+        // (the recipient when staff reply). Loading the reply bare meant
+        // each of those resolved as its own primary-key lookup, re-reading
+        // rows the request had already read moments earlier.
+        $reply = SupportReply::query()
+            ->with(['user', 'ticket', 'ticket.user'])
+            ->find($this->replyId);
 
         if ($reply) {
             $notifier->notifyNewReply($reply);
