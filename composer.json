@@ -4,7 +4,7 @@
     "type": "flarum-extension",
     "license": "MIT",
     "keywords": ["flarum", "support", "tickets", "helpdesk", "appeals"],
-    "homepage": "https://linkrobins.com",
+    "homepage": "https://linkrobins.com/extensions/support",
     "support": {
         "issues": "https://github.com/linkrobins/support/issues",
         "source": "https://github.com/linkrobins/support"
