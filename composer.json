@@ -3,7 +3,13 @@
     "description": "Support ticket system for Flarum. Users open tickets, staff handle them in a private threaded view. Banned users can submit ban appeals with rate limits.",
     "type": "flarum-extension",
     "license": "MIT",
-    "keywords": ["flarum", "support", "tickets", "helpdesk", "appeals"],
+    "keywords": [
+        "flarum",
+        "support",
+        "tickets",
+        "helpdesk",
+        "appeals"
+    ],
     "homepage": "https://linkrobins.com/extensions/support",
     "support": {
         "issues": "https://github.com/linkrobins/support/issues",
@@ -11,7 +17,7 @@
     },
     "authors": [
         {
-            "name": "Karl Bullock",
+            "name": "Link Robins",
             "email": "karl@linkrobins.com"
         }
     ],
