@@ -13,6 +13,28 @@ export function readForumAttribute(key: string): any {
   return null;
 }
 
+/**
+ * Where the Support link may appear, and whether the forum's own navigation is
+ * shown on support pages. All three are admin switches.
+ *
+ * The two link switches default ON when the setting has never been stored,
+ * matching the server side: only an absent value means "not set", while '' and
+ * '0' both mean off.
+ */
+export function showNavInSidebar(): boolean {
+  const value = readForumAttribute('linkrobinsSupportNavInSidebar');
+  return value === undefined || value === null ? true : !!value;
+}
+
+export function showNavInAccountMenu(): boolean {
+  const value = readForumAttribute('linkrobinsSupportNavInAccountMenu');
+  return value === undefined || value === null ? true : !!value;
+}
+
+export function showForumNavOnSupportPages(): boolean {
+  return !!readForumAttribute('linkrobinsSupportForumNavOnSupportPages');
+}
+
 export function basePath(): string {
   try {
     return (app.forum && app.forum.attribute && app.forum.attribute('basePath')) || '';

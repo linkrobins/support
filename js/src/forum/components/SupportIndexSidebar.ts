@@ -3,8 +3,9 @@ import LinkButton from 'flarum/common/components/LinkButton';
 import Button from 'flarum/common/components/Button';
 import SelectDropdown from 'flarum/common/components/SelectDropdown';
 import ItemList from 'flarum/common/utils/ItemList';
+import Separator from 'flarum/common/components/Separator';
 import { tr } from '../utils/translate';
-import { basePath, BASE_PATH, safeNavigate } from '../utils/helpers';
+import { basePath, BASE_PATH, safeNavigate, showForumNavOnSupportPages } from '../utils/helpers';
 import { canCreateSupportTicket, canHandleSupportTickets } from '../utils/permissions';
 import { FILTER_OPTIONS, filterLabel, filterHrefFor } from '../utils/status';
 
@@ -53,20 +54,25 @@ export default class SupportIndexSidebar extends IndexSidebar {
   }
 
   /**
-   * The support filters, and nothing else.
+   * The support filters, and the forum's own navigation above them only if an
+   * admin has asked for it.
    *
-   * Deliberately NOT built on super.navItems(): subclassing IndexSidebar used
-   * to inherit the forum's own navigation (All Discussions, Following, the
-   * Tags block) into the support sidebar, which meant the support pages
-   * advertised the forum rather than the tickets somebody came here for.
-   * Starting from an empty list also means a tags or flags extension adding
-   * itself to IndexSidebar cannot reappear here later.
+   * This subclasses IndexSidebar, so super.navItems() carries the forum's
+   * navigation (All Discussions, Following, the Tags block) into the support
+   * sidebar. Off by default, because support pages are for the tickets
+   * somebody came here for; starting from an empty list also means an
+   * extension that adds itself to IndexSidebar cannot reappear here.
    */
   navItems() {
-    const items = new ItemList();
+    const items = showForumNavOnSupportPages() ? this.forumNavItems() : new ItemList();
 
     const canHandle = canHandleSupportTickets();
     const currentFilter = this.attrs && Object.prototype.hasOwnProperty.call(this.attrs, 'activeFilter') ? this.attrs.activeFilter : 'mine'; // may be null (= nothing active)
+
+    // Only worth a divider when there is something above to divide from.
+    if (showForumNavOnSupportPages()) {
+      items.add('linkrobinsSupportSeparator', m(Separator), -20);
+    }
 
     FILTER_OPTIONS.forEach((opt, i) => {
       if (opt.staffOnly && !canHandle) return;
@@ -84,6 +90,40 @@ export default class SupportIndexSidebar extends IndexSidebar {
         -21 - i
       );
     });
+
+    return items;
+  }
+
+  /**
+   * The forum's navigation, minus the per-tag clutter.
+   *
+   * The Tags extension injects the individual tags, a "More" link and a
+   * separator into IndexSidebar.navItems. The top-level "Tags" link is kept so
+   * there is still a way back to the tags page; the rest is noise beside a
+   * ticket list.
+   */
+  forumNavItems() {
+    let items;
+
+    try {
+      items = super.navItems();
+    } catch (e) {
+      console.warn('[linkrobins/support] super.navItems() threw, falling back:', e);
+      items = new ItemList();
+    }
+
+    if (!items) return new ItemList();
+
+    try {
+      const all = (items as any)._items || {};
+      Object.keys(all).forEach((key) => {
+        // Our own Support link comes back through super.navItems(), pointing at
+        // the page it is already on.
+        if (key === 'linkrobins-support' || key === 'moreTags' || key === 'separator' || /^tag\d+$/.test(key)) {
+          if (typeof items.remove === 'function') items.remove(key);
+        }
+      });
+    } catch (e) {}
 
     return items;
   }
