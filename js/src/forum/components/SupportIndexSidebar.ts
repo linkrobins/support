@@ -2,7 +2,6 @@ import IndexSidebar from 'flarum/forum/components/IndexSidebar';
 import LinkButton from 'flarum/common/components/LinkButton';
 import Button from 'flarum/common/components/Button';
 import SelectDropdown from 'flarum/common/components/SelectDropdown';
-import Separator from 'flarum/common/components/Separator';
 import ItemList from 'flarum/common/utils/ItemList';
 import { tr } from '../utils/translate';
 import { basePath, BASE_PATH, safeNavigate } from '../utils/helpers';
@@ -53,39 +52,21 @@ export default class SupportIndexSidebar extends IndexSidebar {
     return items;
   }
 
+  /**
+   * The support filters, and nothing else.
+   *
+   * Deliberately NOT built on super.navItems(): subclassing IndexSidebar used
+   * to inherit the forum's own navigation (All Discussions, Following, the
+   * Tags block) into the support sidebar, which meant the support pages
+   * advertised the forum rather than the tickets somebody came here for.
+   * Starting from an empty list also means a tags or flags extension adding
+   * itself to IndexSidebar cannot reappear here later.
+   */
   navItems() {
-    let items;
-    try {
-      items = super.navItems();
-    } catch (e) {
-      console.warn('[linkrobins/support] super.navItems() threw, falling back:', e);
-      items = new ItemList();
-    }
-    if (!items) return new ItemList();
-
-    // The Tags extension injects a tag list (the "Tags" link, a separator, one
-    // item per tag, and a "More" link) into IndexSidebar.navItems via extend().
-    // Because we subclass IndexSidebar, super.navItems() inherits all of those.
-    // Strip the per-tag clutter (the individual tags, the "More" link and the
-    // separator that precedes them) but KEEP the top-level "Tags" link so users
-    // still have a way back to the tags page from the support sidebar.
-    try {
-      const all = (items as any)._items || {};
-      Object.keys(all).forEach((key) => {
-        if (key === 'moreTags' || key === 'separator' || /^tag\d+$/.test(key)) {
-          if (typeof items.remove === 'function') items.remove(key);
-        }
-      });
-    } catch (e) {}
+    const items = new ItemList();
 
     const canHandle = canHandleSupportTickets();
     const currentFilter = this.attrs && Object.prototype.hasOwnProperty.call(this.attrs, 'activeFilter') ? this.attrs.activeFilter : 'mine'; // may be null (= nothing active)
-
-    // The support section starts at -20, safely below the global nav links
-    // (core's sit at 100..-10 and cross-extension ones like ours use -11), so
-    // the shared navigation block stays identical on every page instead of
-    // relying on insertion order to break the -11 tie.
-    items.add('linkrobinsSupportSeparator', m(Separator), -20);
 
     FILTER_OPTIONS.forEach((opt, i) => {
       if (opt.staffOnly && !canHandle) return;
