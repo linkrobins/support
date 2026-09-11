@@ -1,5 +1,4 @@
 import { extend } from 'flarum/common/extend';
-import IndexSidebar from 'flarum/forum/components/IndexSidebar';
 import UserControls from 'flarum/forum/utils/UserControls';
 import LinkButton from 'flarum/common/components/LinkButton';
 import Button from 'flarum/common/components/Button';
@@ -84,13 +83,13 @@ app.initializers.add('linkrobins-support', () => {
     );
   });
 
-  // Global "Support" link in the index sidebar nav (shown on every page).
-  // Priority -11 slots it directly below flarum/tags' "Tags" link (-10) and
-  // above its separator (-12) + tag list (-14), so it doesn't sit oddly
-  // between "All Discussions" and the tags block. Without the tags extension
-  // it simply lands under the remaining nav links.
-  extend(IndexSidebar.prototype, 'navItems', (items: any) => {
+  // "Support" lives in the account menu rather than the forum's sidebar nav.
+  // Priority 40 puts it directly under Settings (50) and above Administration
+  // (0), so it sits with the other things that are about you rather than about
+  // the forum. String-path extend for the same reason as NotificationGrid
+  // above: it defers resolution until the module is actually loaded.
+  extend('flarum/forum/components/SessionDropdown' as any, 'items', (items: any) => {
     if (!app.session || !app.session.user) return;
-    items.add('linkrobins-support', m(LinkButton, { href: basePath() + BASE_PATH, icon: 'fas fa-life-ring' }, tr('nav', 'Support')), -11);
+    items.add('linkrobins-support', m(LinkButton, { href: basePath() + BASE_PATH, icon: 'fas fa-life-ring' }, tr('nav', 'Support')), 40);
   });
 });
