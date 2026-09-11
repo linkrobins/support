@@ -8,6 +8,20 @@ import CategoryEditorModal from './CategoryEditorModal';
 import AppealBannedUsersModal from './AppealBannedUsersModal';
 import { tx, loadCategoriesList } from '../utils';
 
+/**
+ * A switch's stored value. Only an absent setting takes the default: '' and
+ * '0' are both off, which is what a Flarum boolean actually stores when
+ * unticked (MariaDB lands a false as '').
+ */
+function settingsBool(key: string, fallback: boolean): boolean {
+  try {
+    const v = app.data && app.data.settings && app.data.settings[key];
+    return v === undefined || v === null ? fallback : !(v === '' || v === '0' || v === false);
+  } catch (e) {
+    return fallback;
+  }
+}
+
 function settingsGet(key: string, fallback: string): any {
   try {
     const v = app.data && app.data.settings && app.data.settings[key];
@@ -59,6 +73,7 @@ export default class SupportAdminPage extends ExtensionPage {
         { className: 'container' },
         m(FormSectionGroup, null, [
           m(FormSection, { label: tx('linkrobins-support.admin.categories.heading') }, this._renderCategoriesSection()),
+          m(FormSection, { label: tx('linkrobins-support.admin.navigation.heading') }, this._renderNavigationSection()),
           m(FormSection, { label: tx('linkrobins-support.admin.rate_limits.heading') }, this._renderSettingsSection()),
           m(FormSection, { label: tx('linkrobins-support.admin.appeal_bans.heading_alt') }, this._renderAppealBansSection()),
         ])
@@ -140,6 +155,50 @@ export default class SupportAdminPage extends ExtensionPage {
   }
 
   // --- Settings section ---
+
+  _renderNavigationSection() {
+    const switches = [
+      {
+        key: 'linkrobins-support.nav_in_sidebar',
+        labelKey: 'linkrobins-support.admin.navigation.in_sidebar',
+        helpKey: 'linkrobins-support.admin.navigation.in_sidebar_help',
+        fallback: true,
+      },
+      {
+        key: 'linkrobins-support.nav_in_account_menu',
+        labelKey: 'linkrobins-support.admin.navigation.in_account_menu',
+        helpKey: 'linkrobins-support.admin.navigation.in_account_menu_help',
+        fallback: true,
+      },
+      {
+        key: 'linkrobins-support.forum_nav_on_support_pages',
+        labelKey: 'linkrobins-support.admin.navigation.forum_nav',
+        helpKey: 'linkrobins-support.admin.navigation.forum_nav_help',
+        fallback: false,
+      },
+    ];
+
+    return m(Form, null, [
+      m('p', { className: 'helpText' }, tx('linkrobins-support.admin.navigation.intro')),
+      switches.map((sw) =>
+        m('div', { className: 'Form-group', key: sw.key }, [
+          m('label', { className: 'checkbox' }, [
+            m('input', {
+              type: 'checkbox',
+              checked: settingsBool(sw.key, sw.fallback),
+              onchange: (e: any) => {
+                this.setting(sw.key)(e.target.checked ? '1' : '0');
+              },
+            }),
+            ' ',
+            tx(sw.labelKey),
+          ]),
+          m('div', { className: 'helpText' }, tx(sw.helpKey)),
+        ])
+      ),
+      m('div', { className: 'Form-group Form-controls' }, this.submitButton()),
+    ]);
+  }
 
   _renderSettingsSection() {
     const fields = [

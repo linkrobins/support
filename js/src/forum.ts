@@ -1,4 +1,5 @@
 import { extend } from 'flarum/common/extend';
+import IndexSidebar from 'flarum/forum/components/IndexSidebar';
 import UserControls from 'flarum/forum/utils/UserControls';
 import LinkButton from 'flarum/common/components/LinkButton';
 import Button from 'flarum/common/components/Button';
@@ -13,7 +14,7 @@ import SupportShowPage from './forum/components/SupportShowPage';
 import { NewSupportReplyNotification, NewSupportTicketNotification, installSupportNotificationGrouping } from './forum/components/notifications';
 
 import { tr } from './forum/utils/translate';
-import { basePath, BASE_PATH, readForumAttribute, showError } from './forum/utils/helpers';
+import { basePath, BASE_PATH, showNavInSidebar, showNavInAccountMenu, readForumAttribute, showError } from './forum/utils/helpers';
 
 app.initializers.add('linkrobins-support', () => {
   // Register the store models so app.store.find()/createRecord() return typed,
@@ -83,13 +84,24 @@ app.initializers.add('linkrobins-support', () => {
     );
   });
 
-  // "Support" lives in the account menu rather than the forum's sidebar nav.
-  // Priority 40 puts it directly under Settings (50) and above Administration
-  // (0), so it sits with the other things that are about you rather than about
-  // the forum. String-path extend for the same reason as NotificationGrid
-  // above: it defers resolution until the module is actually loaded.
+  const supportLink = () => m(LinkButton, { href: basePath() + BASE_PATH, icon: 'fas fa-life-ring' }, tr('nav', 'Support'));
+
+  // Support link in the forum's sidebar nav. Priority -11 slots it directly
+  // below flarum/tags' "Tags" link (-10) and above its separator (-12) and tag
+  // list (-14), so it doesn't sit oddly between "All Discussions" and the tags
+  // block. Without the tags extension it simply lands under the remaining nav
+  // links.
+  extend(IndexSidebar.prototype, 'navItems', (items: any) => {
+    if (!app.session || !app.session.user || !showNavInSidebar()) return;
+    items.add('linkrobins-support', supportLink(), -11);
+  });
+
+  // And in the account menu, under Settings (50) and above Administration (0),
+  // with the other entries that are about you rather than about the forum.
+  // String-path extend for the same reason as NotificationGrid above: it
+  // defers resolution until the module is actually loaded.
   extend('flarum/forum/components/SessionDropdown' as any, 'items', (items: any) => {
-    if (!app.session || !app.session.user) return;
-    items.add('linkrobins-support', m(LinkButton, { href: basePath() + BASE_PATH, icon: 'fas fa-life-ring' }, tr('nav', 'Support')), 40);
+    if (!app.session || !app.session.user || !showNavInAccountMenu()) return;
+    items.add('linkrobins-support', supportLink(), 40);
   });
 });

@@ -150,7 +150,30 @@ return [
                 }),
         ]),
 
+    // Navigation switches. Two of these default ON, which is the case the
+    // Serializing listener below exists for: a `false` arrives as '' and an
+    // empty stored value would otherwise fall back to the default, so the
+    // checkbox would spring back on while the forum treated it as off.
+    (new Extend\Event())
+        ->listen(\Flarum\Settings\Event\Serializing::class, function (\Flarum\Settings\Event\Serializing $event) {
+            if (in_array($event->key, [
+                'linkrobins-support.nav_in_sidebar',
+                'linkrobins-support.nav_in_account_menu',
+                'linkrobins-support.forum_nav_on_support_pages',
+            ], true)) {
+                $event->value = $event->value === '' || $event->value === '0' ? '0' : '1';
+            }
+        }),
+
     (new Extend\Settings())
+        ->default('linkrobins-support.nav_in_sidebar',             '1')
+        ->default('linkrobins-support.nav_in_account_menu',        '1')
+        ->default('linkrobins-support.forum_nav_on_support_pages', '0')
+        // Only an absent value means "never set", so it takes the default.
+        // Anything stored is read for what it is: '' and '0' are both off.
+        ->serializeToForum('linkrobinsSupportNavInSidebar', 'linkrobins-support.nav_in_sidebar', fn ($value) => $value === null ? true : (bool) $value)
+        ->serializeToForum('linkrobinsSupportNavInAccountMenu', 'linkrobins-support.nav_in_account_menu', fn ($value) => $value === null ? true : (bool) $value)
+        ->serializeToForum('linkrobinsSupportForumNavOnSupportPages', 'linkrobins-support.forum_nav_on_support_pages', fn ($value) => (bool) $value)
         ->default('linkrobins-support.appeal_limit_per_window',    '3')
         ->default('linkrobins-support.appeal_window_days',         '30')
         ->default('linkrobins-support.appeal_max_concurrent_open', '1')
