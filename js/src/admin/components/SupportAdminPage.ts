@@ -8,29 +8,6 @@ import CategoryEditorModal from './CategoryEditorModal';
 import AppealBannedUsersModal from './AppealBannedUsersModal';
 import { tx, loadCategoriesList } from '../utils';
 
-/**
- * A switch's stored value. Only an absent setting takes the default: '' and
- * '0' are both off, which is what a Flarum boolean actually stores when
- * unticked (MariaDB lands a false as '').
- */
-function settingsBool(key: string, fallback: boolean): boolean {
-  try {
-    const v = app.data && app.data.settings && app.data.settings[key];
-    return v === undefined || v === null ? fallback : !(v === '' || v === '0' || v === false);
-  } catch (e) {
-    return fallback;
-  }
-}
-
-function settingsGet(key: string, fallback: string): any {
-  try {
-    const v = app.data && app.data.settings && app.data.settings[key];
-    return v === undefined || v === null || v === '' ? fallback : v;
-  } catch (e) {
-    return fallback;
-  }
-}
-
 export default class SupportAdminPage extends ExtensionPage {
   categories: any[] = [];
   loadingCats = true;
@@ -180,22 +157,27 @@ export default class SupportAdminPage extends ExtensionPage {
 
     return m(Form, null, [
       m('p', { className: 'helpText' }, tx('linkrobins-support.admin.navigation.intro')),
-      switches.map((sw) =>
-        m('div', { className: 'Form-group', key: sw.key }, [
+      switches.map((sw) => {
+        // Read AND write the page's own setting stream. Reading app.data
+        // instead leaves the input controlled by the saved value, so a click
+        // is undone by the very next redraw and the switch looks dead.
+        const value = this.setting(sw.key, sw.fallback ? '1' : '0');
+
+        return m('div', { className: 'Form-group', key: sw.key }, [
           m('label', { className: 'checkbox' }, [
             m('input', {
               type: 'checkbox',
-              checked: settingsBool(sw.key, sw.fallback),
+              checked: !(value() === '' || value() === '0'),
               onchange: (e: any) => {
-                this.setting(sw.key)(e.target.checked ? '1' : '0');
+                value(e.target.checked ? '1' : '0');
               },
             }),
             ' ',
             tx(sw.labelKey),
           ]),
           m('div', { className: 'helpText' }, tx(sw.helpKey)),
-        ])
-      ),
+        ]);
+      }),
       m('div', { className: 'Form-group Form-controls' }, this.submitButton()),
     ]);
   }
@@ -248,9 +230,10 @@ export default class SupportAdminPage extends ExtensionPage {
             type: 'number',
             className: 'FormControl',
             min: f.min,
-            value: settingsGet(f.key, f.defaultValue),
+            // Same rule as the switches above: the stream is the live value.
+            value: this.setting(f.key, f.defaultValue)(),
             oninput: (e: any) => {
-              this.setting(f.key)(e.target.value);
+              this.setting(f.key, f.defaultValue)(e.target.value);
             },
           }),
           m('div', { className: 'helpText' }, tx(f.helpKey)),
