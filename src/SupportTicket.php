@@ -45,6 +45,29 @@ class SupportTicket extends AbstractModel
     public const DECISION_ACCEPTED = 'accepted';
     public const DECISION_REJECTED = 'rejected';
 
+    /**
+     * Full translation key for a status label, for server-side use (emails).
+     *
+     * Not `status.$status`: the locale calls STATUS_AWAITING_USER
+     * "awaiting_response", because the label is written from the reader's
+     * point of view while the constant is written from the ticket's. Building
+     * the key by string concatenation puts a raw `...status.awaiting_user` in
+     * front of a customer for that one status, which is exactly the kind of
+     * untranslated-key bug this extension has shipped before.
+     */
+    public static function statusLabelKey(string $status): string
+    {
+        $names = [
+            self::STATUS_OPEN          => 'open',
+            self::STATUS_IN_PROGRESS   => 'in_progress',
+            self::STATUS_AWAITING_USER => 'awaiting_response',
+            self::STATUS_RESOLVED      => 'resolved',
+            self::STATUS_CLOSED        => 'closed',
+        ];
+
+        return 'linkrobins-support.forum.status.'.($names[$status] ?? $status);
+    }
+
     public const ALL_STATUSES = [
         self::STATUS_OPEN,
         self::STATUS_IN_PROGRESS,

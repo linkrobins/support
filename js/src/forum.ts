@@ -11,7 +11,13 @@ import SupportReply from './common/models/SupportReply';
 import SupportIndexPage from './forum/components/SupportIndexPage';
 import SupportComposePage from './forum/components/SupportComposePage';
 import SupportShowPage from './forum/components/SupportShowPage';
-import { NewSupportReplyNotification, NewSupportTicketNotification, installSupportNotificationGrouping } from './forum/components/notifications';
+import {
+  NewSupportReplyNotification,
+  NewSupportTicketNotification,
+  TicketAssignedNotification,
+  TicketStatusChangedNotification,
+  installSupportNotificationGrouping,
+} from './forum/components/notifications';
 
 import { tr } from './forum/utils/translate';
 import { basePath, BASE_PATH, showNavInSidebar, showNavInAccountMenu, readForumAttribute, showError } from './forum/utils/helpers';
@@ -31,6 +37,8 @@ app.initializers.add('linkrobins-support', () => {
   if (app.notificationComponents) {
     app.notificationComponents['linkrobinsSupportNewReply'] = NewSupportReplyNotification;
     app.notificationComponents['linkrobinsSupportNewTicket'] = NewSupportTicketNotification;
+    app.notificationComponents['linkrobinsSupportTicketStatusChanged'] = TicketStatusChangedNotification;
+    app.notificationComponents['linkrobinsSupportTicketAssigned'] = TicketAssignedNotification;
   }
 
   // Group support notifications under a translatable "Support" heading in the
@@ -51,6 +59,16 @@ app.initializers.add('linkrobins-support', () => {
       name: 'linkrobinsSupportNewTicket',
       icon: 'fas fa-ticket-alt',
       label: tr('settings.notify_new_ticket_label', 'A new support ticket is opened'),
+    });
+    items.add('linkrobinsSupportTicketStatusChanged', {
+      name: 'linkrobinsSupportTicketStatusChanged',
+      icon: 'fas fa-exchange-alt',
+      label: tr('settings.notify_status_changed_label', "A support ticket's status changes"),
+    });
+    items.add('linkrobinsSupportTicketAssigned', {
+      name: 'linkrobinsSupportTicketAssigned',
+      icon: 'fas fa-user-check',
+      label: tr('settings.notify_assigned_label', 'A support ticket is assigned to you'),
     });
   });
 

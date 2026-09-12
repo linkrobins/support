@@ -8,6 +8,8 @@ use Flarum\User\User;
 use LinkRobins\Support\Access\SupportAbilities;
 use LinkRobins\Support\Notification\NewSupportReplyBlueprint;
 use LinkRobins\Support\Notification\NewSupportTicketBlueprint;
+use LinkRobins\Support\Notification\TicketAssignedBlueprint;
+use LinkRobins\Support\Notification\TicketStatusChangedBlueprint;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -80,10 +82,77 @@ class SupportNotifier
     }
 
     /**
+     * A deliberate status change: closed, reopened, resolved, or moved from
+     * the staff bar. Replying also moves the status, but that is a side effect
+     * of a message the other side is already told about, so those transitions
+     * do not come through here.
+     *
+     * Whoever made the change never hears about their own change. Otherwise:
+     *
+     *   - staff changed it  → the person who opened the ticket. It is their
+     *     ticket; being closed or marked resolved is the single most useful
+     *     thing to be told about it.
+     *   - the owner changed it (reopening their own ticket is the only status
+     *     change a member can make) → the same radius a new ticket uses: the
+     *     assignee if it has one, otherwise the whole staff list. A reopened
+     *     ticket is new work and somebody has to see it.
+     */
+    public function notifyStatusChanged(SupportTicket $ticket, string $status, ?string $previousStatus, ?User $actor): void
+    {
+        $recipients = $this->statusChangeRecipients($ticket, $actor);
+
+        if (! empty($recipients)) {
+            $this->trySync(
+                new TicketStatusChangedBlueprint($ticket, $status, $previousStatus, $actor),
+                $recipients,
+                'status change'
+            );
+        }
+    }
+
+    /**
+     * A ticket handed to a staff member by somebody else. Claiming one
+     * yourself notifies nobody -- you already know.
+     */
+    public function notifyAssigned(SupportTicket $ticket, ?User $actor): void
+    {
+        $assignee = $ticket->assignedStaff;
+
+        if (! $assignee || ! $this->isStaff($assignee)) {
+            return;
+        }
+
+        if ($actor && (int) $actor->id === (int) $assignee->id) {
+            return;
+        }
+
+        $this->trySync(new TicketAssignedBlueprint($ticket, $actor), [$assignee], 'assignment');
+    }
+
+    /**
      * @return list<User>
      */
-    protected function newTicketRecipients(SupportTicket $ticket): array
+    protected function statusChangeRecipients(SupportTicket $ticket, ?User $actor): array
     {
+        $actorId = $actor ? (int) $actor->id : null;
+
+        if ($actor && $this->isStaff($actor)) {
+            $owner = $ticket->user;
+
+            return ($owner && (int) $owner->id !== $actorId) ? [$owner] : [];
+        }
+
+        // A member reopening their own ticket. Same radius as a new ticket,
+        // and for the same reason: somebody has to pick the work up.
+        return $this->newTicketRecipients($ticket, $actorId);
+    }
+
+    /**
+     * @return list<User>
+     */
+    protected function newTicketRecipients(SupportTicket $ticket, ?int $exceptId = null): array
+    {
+        $exceptId ??= $ticket->user_id === null ? null : (int) $ticket->user_id;
         $assignee = $ticket->assignedStaff;
 
         // Re-check the permission rather than trusting the stored id. The
@@ -93,10 +162,10 @@ class SupportNotifier
         // a person who can no longer open the ticket would lose it silently,
         // so fall back to telling everyone.
         if ($assignee && $this->isStaff($assignee)) {
-            return ((int) $assignee->id === (int) $ticket->user_id) ? [] : [$assignee];
+            return ((int) $assignee->id === $exceptId) ? [] : [$assignee];
         }
 
-        return $this->staffRecipients($ticket->user_id);
+        return $this->staffRecipients($exceptId);
     }
 
     /**
@@ -133,9 +202,25 @@ class SupportNotifier
                 || stripos($msg, 'mailer') !== false
                 || stripos($msg, 'mail server') !== false;
 
-            $this->log->warning($isMailerError
-                ? "[linkrobins/support] {$kind} notification stored, but email send failed: {$msg}"
-                : "[linkrobins/support] {$kind} notification sync failed: {$msg}");
+            // A lost notification is invisible from the outside: staff simply
+            // never hear about a ticket, and nobody can tell the difference
+            // between "nothing happened" and "the notification failed". Log it
+            // at error level with the recipients and the exception, so it is
+            // findable when somebody reports exactly that.
+            $context = [
+                'kind' => $kind,
+                'recipients' => array_map(fn (User $user) => (int) $user->id, $recipients),
+                'blueprint' => $blueprint::getType(),
+                'exception' => $e,
+            ];
+
+            if ($isMailerError) {
+                // The alert rows are written before mail is sent, so the
+                // bell-icon notification survived; only the email did not.
+                $this->log->error("[linkrobins/support] {$kind} notification stored, but email send failed: {$msg}", $context);
+            } else {
+                $this->log->error("[linkrobins/support] {$kind} notification was NOT delivered: {$msg}", $context);
+            }
         }
     }
 

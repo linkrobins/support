@@ -103,9 +103,16 @@ linkrobins-support:
       reply_generic: 'Support replied to your ticket'
       new_ticket: '{name} opened a new support ticket'
       new_appeal: '{name} opened a new appeal'
+      status_changed: 'Your ticket was marked {status}'
+      status_changed_generic: 'A ticket was marked {status}'
+      reopened_by_owner: '{name} reopened their ticket'
+      assigned: '{name} assigned a ticket to you'
+      assigned_generic: 'A ticket was assigned to you'
     settings:
       notify_new_reply_label: 'Someone replies to my support ticket'
       notify_new_ticket_label: 'A new support ticket is opened (staff)'
+      notify_status_changed_label: "A support ticket's status changes"
+      notify_assigned_label: 'A support ticket is assigned to me'
     status:
       in_progress: 'In progress'
       awaiting_response: 'Awaiting response'
@@ -232,6 +239,10 @@ linkrobins-support:
     ticket_type_general: 'support ticket'
     new_ticket_body: 'A new {type} was just opened by {name}:'
     open_ticket: 'Open the ticket'
+    status_changed_subject: '[{subject}] marked {status}'
+    status_changed_body: 'Your support ticket has been marked {status}.'
+    assigned_subject: 'Assigned to you: {subject}'
+    assigned_body: '{name} assigned this support ticket to you.'
   # Server-resolved messages (API error details + rate-limit reasons). Only
   # used backend-side, so they live outside the forum/admin namespaces.
   api:
