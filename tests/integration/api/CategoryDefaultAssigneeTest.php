@@ -36,14 +36,21 @@ class CategoryDefaultAssigneeTest extends TestCase
      * not ours. The extension's own contribution to this shape is a single
      * lookup of the category's configured assignee, and only when one is set.
      *
-     * Scoped to that one shape so everything else in these requests stays
-     * covered by the detector.
+     * Matched on the primary-key lookup itself rather than on `from `users``:
+     * the shape is compared against the raw SQL, so it has to survive both
+     * identifier quoting styles (backticks on MySQL/MariaDB, double quotes on
+     * PostgreSQL and SQLite) and the prefixed-table runs, where the table is
+     * no longer called `users`. Everything else in these requests -- list
+     * queries, joins, per-record relation loads -- stays covered.
      *
      * @return string[]
      */
     protected function allowedRepeatedQueries(): array
     {
-        return ['from `users` where `users`.`id` ='];
+        return [
+            '`id` = ? limit ?',
+            '"id" = ? limit ?',
+        ];
     }
 
     public function setUp(): void
