@@ -75,6 +75,7 @@ export default class SupportAdminPage extends ExtensionPage {
                   null,
                   m('tr', null, [
                     m('th', null, tx('linkrobins-support.admin.categories.column_name')),
+                    m('th', null, tx('linkrobins-support.admin.categories.column_assignee')),
                     m('th', null, tx('linkrobins-support.admin.categories.column_tickets')),
                     m('th', null, ''),
                   ])
@@ -89,6 +90,7 @@ export default class SupportAdminPage extends ExtensionPage {
                         ' ',
                         m('strong', null, c.name()),
                       ]),
+                      m('td', null, this._assigneeLabel(c)),
                       m('td', null, c.ticketCount() || 0),
                       m(
                         'td',
@@ -119,6 +121,18 @@ export default class SupportAdminPage extends ExtensionPage {
         tx('linkrobins-support.admin.categories.new_button')
       ),
     ];
+  }
+
+  /**
+   * Who a category routes to, or a muted "all staff" when it routes to nobody
+   * -- an empty cell would read as missing data rather than as the default.
+   */
+  _assigneeLabel(category: any) {
+    const user = category.defaultAssignee && category.defaultAssignee();
+    if (!user) {
+      return m('span', { className: 'LinkRobinsSupportAdmin-noAssignee' }, tx('linkrobins-support.admin.categories.assignee_all_staff'));
+    }
+    return user.displayName() || user.username();
   }
 
   _openEditor(category: any) {

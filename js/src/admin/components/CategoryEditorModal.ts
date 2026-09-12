@@ -2,7 +2,13 @@ import FormModal from 'flarum/common/components/FormModal';
 import Form from 'flarum/common/components/Form';
 import Button from 'flarum/common/components/Button';
 import ColorPreviewInput from 'flarum/common/components/ColorPreviewInput';
-import { tx, saveCategory, deleteCategory } from '../utils';
+import Select from 'flarum/common/components/Select';
+import { tx, saveCategory, deleteCategory, loadStaffUsers } from '../utils';
+
+/** See _assigneeOptions(): '' stays '', a user id becomes a non-numeric key. */
+function optionKey(id: string | number | null): string {
+  return id ? 'u' + id : '';
+}
 
 /**
  * Create/edit a support category. Built on core's FormModal so it matches the
@@ -19,6 +25,11 @@ export default class CategoryEditorModal extends FormModal {
   icon = 'fas fa-folder';
   position = 0;
   isAppeal = false;
+  // '' means nobody -- no auto-assign, all staff notified.
+  defaultAssigneeId = '';
+  staff: any[] = [];
+  loadingStaff = true;
+  staffError = false;
   saving = false;
   error: any = null;
 
@@ -34,8 +45,29 @@ export default class CategoryEditorModal extends FormModal {
     this.icon = (category && category.icon()) || 'fas fa-folder';
     this.position = category && category.position() !== undefined ? category.position() : 0;
     this.isAppeal = !!(category && category.isAppeal());
+    const assignee = category && category.defaultAssignee && category.defaultAssignee();
+    this.defaultAssigneeId = assignee ? String(assignee.id()) : '';
     this.saving = false;
     this.error = null;
+
+    this.staff = [];
+    this.loadingStaff = true;
+    this.staffError = false;
+    loadStaffUsers()
+      .then((users: any[]) => {
+        this.staff = users || [];
+        this.loadingStaff = false;
+        m.redraw();
+      })
+      .catch((err: any) => {
+        // Not fatal: the select falls back to showing only the current value,
+        // so an admin editing a category's colour is not blocked by it, and
+        // saving keeps whoever was already configured.
+        this.staffError = true;
+        this.loadingStaff = false;
+        console.error('[linkrobins/support] could not load staff list:', err);
+        m.redraw();
+      });
   }
 
   className() {
@@ -156,6 +188,21 @@ export default class CategoryEditorModal extends FormModal {
         m('div', { className: 'helpText' }, tx('linkrobins-support.admin.category_editor.field_is_appeal_help')),
       ]),
 
+      m('div', { className: 'Form-group' }, [
+        m('label', null, tx('linkrobins-support.admin.category_editor.field_default_assignee')),
+        m(Select, {
+          value: optionKey(this.defaultAssigneeId),
+          disabled: this.saving || this.loadingStaff,
+          options: this._assigneeOptions(),
+          onchange: (value: string) => {
+            this.defaultAssigneeId = value ? String(value).replace(/^u/, '') : '';
+          },
+        }),
+        this.staffError
+          ? m('div', { className: 'helpText' }, tx('linkrobins-support.admin.category_editor.field_default_assignee_error'))
+          : m('div', { className: 'helpText' }, tx('linkrobins-support.admin.category_editor.field_default_assignee_help')),
+      ]),
+
       m('div', { className: 'Form-group Form-controls' }, [
         m(
           Button,
@@ -189,6 +236,49 @@ export default class CategoryEditorModal extends FormModal {
       this.error ? m('div', { className: 'Alert Alert--danger' }, this._errorMessage()) : null,
       m(Form, null, groups),
     ]);
+  }
+
+  /**
+   * Nobody, then every staff member. A user who is configured on this category
+   * but is no longer staff would otherwise vanish from the list and silently
+   * reset to "nobody" on the next save, so they are kept as a labelled option
+   * -- the label is how an admin finds out the routing has gone stale.
+   *
+   * Keys are `u<id>`, not the bare id: JavaScript enumerates integer-like
+   * object keys first, in numeric order, whatever order they were inserted
+   * in -- which sorted "Nobody" (key '') to the bottom of the list, under
+   * the staff. Prefixing keeps every key a plain string, so the order here
+   * is the order rendered.
+   */
+  _assigneeOptions(): Record<string, string> {
+    const options: Record<string, string> = {
+      '': this.loadingStaff
+        ? tx('linkrobins-support.admin.category_editor.field_default_assignee_loading')
+        : tx('linkrobins-support.admin.category_editor.field_default_assignee_none'),
+    };
+
+    this.staff.forEach((user: any) => {
+      options[optionKey(user.id())] = user.displayName() || user.username();
+    });
+
+    const currentKey = optionKey(this.defaultAssigneeId);
+    if (this.defaultAssigneeId && !options[currentKey] && !this.loadingStaff) {
+      const current = this._currentAssignee();
+      const name = (current && (current.displayName() || current.username())) || '#' + this.defaultAssigneeId;
+      options[currentKey] = tx('linkrobins-support.admin.category_editor.field_default_assignee_unavailable', { name });
+    }
+
+    return options;
+  }
+
+  _currentAssignee(): any {
+    const fromCategory = this.category && this.category.defaultAssignee && this.category.defaultAssignee();
+    if (fromCategory) return fromCategory;
+    try {
+      return app.store.getById('users', this.defaultAssigneeId) || null;
+    } catch (e) {
+      return null;
+    }
   }
 
   onsubmit(e: any) {
@@ -226,6 +316,17 @@ export default class CategoryEditorModal extends FormModal {
       attrs.slug = this.slug.trim();
     }
 
+    // Clearing is sent as the literal JSON:API payload `{ data: null }`, not
+    // as `null`. Model.save() skips any relationship whose value is null
+    // (`null !== value && ...`), so passing null leaves the field out of the
+    // request entirely and the server keeps whoever was already configured --
+    // "Nobody" looked like it saved and silently did nothing. Anything else is
+    // run through Model.getIdentifier(), which maps this shape to `data: null`
+    // and a model to its {type, id}.
+    attrs.relationships = {
+      defaultAssignee: this.defaultAssigneeId ? this._assigneeModel(this.defaultAssigneeId) : { data: null },
+    };
+
     saveCategory(this.category, attrs)
       .then(() => {
         this.saving = false;
@@ -242,6 +343,13 @@ export default class CategoryEditorModal extends FormModal {
         console.error('[linkrobins/support] save category failed:', err);
         m.redraw();
       });
+  }
+
+  _assigneeModel(id: string): any {
+    for (let i = 0; i < this.staff.length; i++) {
+      if (String(this.staff[i].id()) === String(id)) return this.staff[i];
+    }
+    return this._currentAssignee();
   }
 
   // Delete from within the editor (parity with the Tags "New Tag" modal).

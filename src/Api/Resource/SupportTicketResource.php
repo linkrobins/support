@@ -443,6 +443,20 @@ class SupportTicketResource extends AbstractDatabaseResource
             );
         }
 
+        // Auto-assign, when the category routes to someone. effective...()
+        // returns null if that user is no longer staff, which leaves the
+        // ticket unassigned -- and SupportNotifier then notifies the whole
+        // staff list rather than one person who cannot act on it.
+        //
+        // This runs in creating(), not created(), so assigned_staff_id is part
+        // of the insert. The notification job is dispatched from the created
+        // hook and reads the row back; on the default sync queue it runs
+        // inline, so an assignment written afterwards would arrive too late to
+        // steer the radius.
+        if ($assignee = $category->effectiveDefaultAssignee()) {
+            $model->assigned_staff_id = $assignee->id;
+        }
+
         // Initial status. For appeal tickets we also set decision=pending so
         // the staff list shows it explicitly as awaiting decision.
         $model->status = SupportTicket::STATUS_OPEN;

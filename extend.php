@@ -56,7 +56,10 @@ return [
         // Enables filter[supportAppealBanned]=1 on the core user list (powers
         // the read-only admin appeal-bans list). Without this the filter was
         // ignored and every user was returned.
-        ->addFilter(UserSearcher::class, Filters\AppealBannedFilter::class),
+        ->addFilter(UserSearcher::class, Filters\AppealBannedFilter::class)
+        // Enables filter[supportStaff]=1 on the same list, which is how the
+        // admin category editor populates its default-assignee picker.
+        ->addFilter(UserSearcher::class, Filters\StaffFilter::class),
 
     (new Extend\Notification())
         ->type(NewSupportReplyBlueprint::class,  ['alert', 'email'])

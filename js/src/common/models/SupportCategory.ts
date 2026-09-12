@@ -1,4 +1,5 @@
 import Model from 'flarum/common/Model';
+import type User from 'flarum/common/models/User';
 
 /**
  * A support category (e.g. "Billing", "Appeals"). `isAppeal` categories are
@@ -13,6 +14,11 @@ export default class SupportCategory extends Model {
   position = Model.attribute<number>('position');
   isAppeal = Model.attribute<boolean>('isAppeal');
   ticketCount = Model.attribute<number>('ticketCount');
+
+  // The staff member new tickets here are assigned to, and the only person
+  // notified about them. Null means no auto-assign: all staff are notified.
+  // Serialized to staff only, so it reads as null for everyone else.
+  defaultAssignee = Model.hasOne<User>('defaultAssignee');
 
   createdAt = Model.attribute('createdAt', Model.transformDate);
   updatedAt = Model.attribute('updatedAt', Model.transformDate);

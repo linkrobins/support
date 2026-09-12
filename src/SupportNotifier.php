@@ -56,13 +56,47 @@ class SupportNotifier
         }
     }
 
-    /** New-ticket notification to all staff, excluding the submitter. */
+    /**
+     * New-ticket notification. The radius depends on whether the ticket
+     * arrived with an assignee:
+     *
+     *   - auto-assigned (the category has a default assignee) → only that
+     *     person hears about it. That is the point of routing a category to
+     *     someone: the rest of the staff should not have to read past it.
+     *   - unassigned → every staff member, so somebody picks it up.
+     *
+     * The submitter is excluded either way, so a staff member filing their
+     * own ticket is not notified about it. When the assignee *is* the
+     * submitter that leaves nobody, which is correct -- the one person who
+     * would be told already knows, they wrote it.
+     */
     public function notifyNewTicket(SupportTicket $ticket): void
     {
-        $recipients = $this->staffRecipients($ticket->user_id);
+        $recipients = $this->newTicketRecipients($ticket);
+
         if (! empty($recipients)) {
             $this->trySync(new NewSupportTicketBlueprint($ticket), $recipients, 'ticket');
         }
+    }
+
+    /**
+     * @return list<User>
+     */
+    protected function newTicketRecipients(SupportTicket $ticket): array
+    {
+        $assignee = $ticket->assignedStaff;
+
+        // Re-check the permission rather than trusting the stored id. The
+        // assignment was validated when the ticket was created, but this runs
+        // from a queued job -- on a busy queue that can be minutes later, and
+        // the account may have lost its staff group in between. Notifying only
+        // a person who can no longer open the ticket would lose it silently,
+        // so fall back to telling everyone.
+        if ($assignee && $this->isStaff($assignee)) {
+            return ((int) $assignee->id === (int) $ticket->user_id) ? [] : [$assignee];
+        }
+
+        return $this->staffRecipients($ticket->user_id);
     }
 
     /**
