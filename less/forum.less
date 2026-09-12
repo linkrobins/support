@@ -1,16 +1,33 @@
 
 
+// --- Layout ----------------------------------------------------------
+
+// Flarum's .Page-content is a flex item, and the default `min-width: auto`
+// means it refuses to shrink below the widest thing inside it -- one long
+// code line or a wide table in a reply then pushes the whole column past the
+// right edge of a phone. Scoped to our pages so nothing else on the forum
+// moves. (Same fix the wiki needed for its article grid.)
+.LinkRobinsSupport-page .Page-content {
+    min-width: 0;
+}
+
 // --- Header ----------------------------------------------------------
 
+// One column, never a row. A header holds a back link, a title and a line of
+// meta, and side-by-side they fight over a phone's width: the title was left
+// with ~65px between "Back to categories" and the category chip and broke
+// across three lines. Stacked, each gets the full width on every screen, and
+// the title reads as the heading it is instead of a squeezed middle column.
+// Anything that should not stretch to the full width sets its own
+// `align-self: flex-start`.
 .LinkRobinsSupport-header {
     display: flex;
-    align-items: flex-start;
-    gap: 16px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
     margin-bottom: 24px;
-
-    > h1, > .LinkRobinsSupport-title {
-        flex: 1;
-    }
+    // Moderation controls are positioned against this box.
+    position: relative;
 }
 
 // ---- Docked composer ------------------------------------------------------
@@ -181,7 +198,11 @@
     letter-spacing: 0.03em;
     text-decoration: none;
     vertical-align: middle;
-    color: var(--alert-error-color, #b71c1c);
+    // --alert-error-color is the text-on-alert colour (white), not a red: over
+    // this pale tint it was white on pink and unreadable. The alert variables
+    // are a bg/fg pair, so a tinted badge has to bring its own foreground --
+    // the same red the reply badge already uses.
+    color: #c0392b;
     background: fade(#b71c1c, 12%);
     border-radius: 3px;
 }
@@ -268,30 +289,27 @@
 // --- Ticket view ----------------------------------------------------
 
 .LinkRobinsSupport-ticket-header {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 12px;
+    gap: 8px;
     margin-bottom: 32px;
     padding-bottom: 16px;
     border-bottom: 1px solid var(--control-bg, rgba(0,0,0,0.08));
 }
 
-.LinkRobinsSupport-ticket-titleRow {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-
-    .LinkRobinsSupport-title {
-        flex: 1;
-        font-size: calc(1.5rem * var(--lr-text-scale, 1));
-        margin: 0;
-    }
+// The moderation menu is one icon, so it rides in the header's top-right
+// corner (out of the flow) instead of competing with the subject for width.
+// Same shape as the wiki's article header.
+.LinkRobinsSupport-ticket-actions {
+    position: absolute;
+    top: 0;
+    right: 0;
+    display: inline-flex;
 }
 
-
-.LinkRobinsSupport-ticket-actions {
-    display: inline-flex;
+// Out of the flow means the title has to keep clear of the menu by itself, and
+// only when there is one -- the selector relies on the menu being rendered
+// before the title.
+.LinkRobinsSupport-ticket-actions + .LinkRobinsSupport-title {
+    padding-right: 40px;
 }
 
 .LinkRobinsSupport-container--deleted {
@@ -305,10 +323,14 @@
     }
 }
 
+// Status pill, category, author and date on one wrapping line under the title.
+// The pill sits here rather than beside the subject so the subject always gets
+// the full width -- on a phone the two together left it three lines tall.
 .LinkRobinsSupport-ticket-meta {
     display: flex;
     flex-wrap: wrap;
-    gap: 12px;
+    align-items: center;
+    gap: 6px 12px;
     font-size: 0.85rem;
     color: var(--muted-color, #888);
 }
@@ -412,16 +434,25 @@
 .LinkRobinsSupport-staffBtn {
     font-size: 0.8rem !important;
     padding: 5px 12px !important;
+    // A default Button paints itself --control-bg, which is exactly the bar's
+    // own background: Claim / Unassign / Reopen had no edges at all and read
+    // as stray lines of text. Give them the page background and a border, the
+    // same treatment the status select beside them already gets.
+    background-color: var(--body-bg, #fff);
+    border: 1px solid var(--control-bg, rgba(0, 0, 0, 0.15));
+    transition: border-color 0.12s;
+
+    &:hover:not(:disabled),
+    &:focus {
+        border-color: var(--primary-color, #07adcc);
+    }
 }
 
 @media (max-width: 767px) {
-    // Shrink the ticket title on narrow screens so a normal subject doesn't
-    // wrap onto two lines next to the status badge / actions.
+    // A phone gives a heading the whole width now, so it only needs to come
+    // down a step rather than shrink out of the way of anything.
     .LinkRobinsSupport-title {
-        font-size: calc(1.2rem * var(--lr-text-scale, 1));
-    }
-    .LinkRobinsSupport-ticket-titleRow .LinkRobinsSupport-title {
-        font-size: calc(1.2rem * var(--lr-text-scale, 1));
+        font-size: calc(1.3rem * var(--lr-text-scale, 1));
     }
     .LinkRobinsSupport-staffBar {
         flex-direction: column;
@@ -442,6 +473,67 @@
         padding-top: 8px;
         border-top: 1px solid rgba(127,127,127,0.18);
         width: 100%;
+    }
+
+    // --- Ticket list ---
+    // Buy the subject back the width the desktop padding spends, and align the
+    // status pill with the subject's first line now that the subject can wrap.
+    .LinkRobinsSupport-row {
+        align-items: flex-start;
+        gap: 10px;
+        padding: 12px 14px;
+    }
+    // One ellipsised line is roughly four words on a phone, which is not
+    // enough of a subject to pick a ticket out of a list. Two wrapped lines
+    // are, and the clamp still keeps every row about the same height.
+    .LinkRobinsSupport-row-subject {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        white-space: normal;
+        overflow: hidden;
+    }
+    .LinkRobinsSupport-row-meta {
+        gap: 4px 10px;
+        font-size: 0.75rem;
+    }
+    .LinkRobinsSupport-status {
+        padding: 2px 8px;
+        font-size: 0.7rem;
+    }
+
+    // --- Replies and cards ---
+    // Narrower gutters everywhere a card holds body text: 18px each side is
+    // nearly a tenth of the screen.
+    .LinkRobinsSupport-reply {
+        padding: 12px 14px;
+    }
+    .LinkRobinsSupport-categoryCard {
+        gap: 12px;
+        padding: 14px 14px;
+    }
+    .LinkRobinsSupport-empty {
+        padding: 24px 16px;
+    }
+
+    // --- Forms ---
+    // A right-aligned button row runs out of room once there is an attach
+    // button beside the submit; full-width stacked buttons are also the
+    // easier tap target.
+    .LinkRobinsSupport-form-actions,
+    .LinkRobinsSupport-reply-editor-actions {
+        flex-direction: column-reverse;
+        align-items: stretch;
+        gap: 8px;
+    }
+    .LinkRobinsSupport-form-actions > *,
+    .LinkRobinsSupport-attachBtnWrap,
+    .LinkRobinsSupport-attachBtn {
+        width: 100%;
+    }
+    .LinkRobinsSupport-replyForm-actions {
+        flex-wrap: wrap;
+        gap: 10px;
     }
 }
 
@@ -506,6 +598,26 @@
 
     > *:first-child { margin-top: 0; }
     > *:last-child  { margin-bottom: 0; }
+
+    // People paste logs and error tables into tickets. `word-wrap` handles a
+    // long word, but nothing wraps a table or a code block -- without this
+    // they stretch the reply card past the screen on a phone. Scroll them in
+    // place, the way GitHub does.
+    table {
+        display: block;
+        max-width: 100%;
+        overflow-x: auto;
+    }
+
+    pre {
+        max-width: 100%;
+        overflow-x: auto;
+    }
+
+    img {
+        max-width: 100%;
+        height: auto;
+    }
 }
 
 .LinkRobinsSupport-reply-edited {
@@ -619,9 +731,8 @@
 
 // --- Category picker (new-ticket step 1) -----------------------------
 
+// Title and its one-line hint belong together, tighter than the default gap.
 .LinkRobinsSupport-header--picker {
-    flex-direction: column;
-    align-items: stretch;
     gap: 4px;
 }
 
@@ -699,13 +810,16 @@
 
 // --- Selected-category chip (new-ticket step 2) ----------------------
 
+// A breadcrumb on its own line above the title. `flex-start` keeps it at its
+// own width inside the stretch-aligned header column.
 .LinkRobinsSupport-backBtn {
     padding-left: 0;
-    align-self: center;
+    align-self: flex-start;
 }
 
 .LinkRobinsSupport-chosenCategory {
     display: inline-flex;
+    align-self: flex-start;
     align-items: center;
     gap: 8px;
     padding: 4px 12px;
