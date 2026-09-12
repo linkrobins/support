@@ -117,9 +117,11 @@ export default class SupportIndexSidebar extends IndexSidebar {
     try {
       const all = (items as any)._items || {};
       Object.keys(all).forEach((key) => {
-        // Our own Support link comes back through super.navItems(), pointing at
-        // the page it is already on.
-        if (key === 'linkrobins-support' || key === 'moreTags' || key === 'separator' || /^tag\d+$/.test(key)) {
+        // Our own Support link stays. It points at the page it is already on,
+        // which is exactly what All Discussions does on the index: Flarum marks
+        // the current one active, and dropping it would make the navigation
+        // change shape depending on which page you are looking at.
+        if (key === 'moreTags' || key === 'separator' || /^tag\d+$/.test(key)) {
           if (typeof items.remove === 'function') items.remove(key);
         }
       });
