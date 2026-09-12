@@ -27,6 +27,25 @@ class CategoryDefaultAssigneeTest extends TestCase
 {
     use RetrievesAuthorizedUsers;
 
+    /**
+     * Notifying N people costs N user lookups inside Flarum itself:
+     * EmailNotificationDriver walks the recipient list and queues a mail job
+     * per user, each of which loads that user. This is the first test case
+     * here to notify a whole staff list rather than one or two people, so it
+     * is the first to cross the repeated-query threshold -- on core's query,
+     * not ours. The extension's own contribution to this shape is a single
+     * lookup of the category's configured assignee, and only when one is set.
+     *
+     * Scoped to that one shape so everything else in these requests stays
+     * covered by the detector.
+     *
+     * @return string[]
+     */
+    protected function allowedRepeatedQueries(): array
+    {
+        return ['from `users` where `users`.`id` ='];
+    }
+
     public function setUp(): void
     {
         parent::setUp();
