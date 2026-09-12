@@ -25,7 +25,10 @@ export default class AppealBannedUsersModal extends Modal {
   }
 
   className() {
-    return 'LinkRobinsSupportAppealBannedModal Modal--medium';
+    // `Modal--medium` was never a thing -- core defines only --small and
+    // --large -- so this has always rendered at the default 600px. Say that
+    // outright instead of carrying a class name that does nothing.
+    return 'LinkRobinsSupportAppealBannedModal';
   }
 
   title() {

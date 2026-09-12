@@ -71,7 +71,11 @@ export default class CategoryEditorModal extends FormModal {
   }
 
   className() {
-    return 'LinkRobinsSupportCategoryEditorModal Modal--small';
+    // Flarum's default modal width (600px), not `Modal--small` (375px). The
+    // tag editor this was modelled on is small because it holds three fields;
+    // this one holds eight, and at 375px every label sat above a field barely
+    // wider than its own help text.
+    return 'LinkRobinsSupportCategoryEditorModal';
   }
 
   title() {
