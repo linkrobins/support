@@ -9,7 +9,46 @@ import listItems from 'flarum/common/helpers/listItems';
 import { tr } from '../utils/translate';
 import { basePath, BASE_PATH } from '../utils/helpers';
 
-const SUPPORT_NOTIFICATION_TYPES = ['linkrobinsSupportNewReply', 'linkrobinsSupportNewTicket'];
+const SUPPORT_NOTIFICATION_TYPES = [
+  'linkrobinsSupportNewReply',
+  'linkrobinsSupportNewTicket',
+  'linkrobinsSupportTicketStatusChanged',
+  'linkrobinsSupportTicketAssigned',
+];
+
+/** Status labels live in one place; the locale calls awaiting_user "awaiting_response". */
+function statusLabel(status: string): string {
+  switch (status) {
+    case 'open':
+      return tr('status.open', 'Open');
+    case 'in_progress':
+      return tr('status.in_progress', 'In progress');
+    case 'awaiting_user':
+      return tr('status.awaiting_response', 'Awaiting response');
+    case 'resolved':
+      return tr('status.resolved', 'Resolved');
+    case 'closed':
+      return tr('status.closed', 'Closed');
+    default:
+      return status;
+  }
+}
+
+/** Every support notification points at its ticket. */
+function ticketHref(notification: any): string {
+  const subj = notification ? notification.subject() : null;
+  const bp = basePath();
+  return subj && subj.id ? bp + BASE_PATH + '/' + subj.id() : bp + BASE_PATH;
+}
+
+/** Ticket subject, used as every support notification's excerpt line. */
+function ticketExcerpt(notification: any): string {
+  const subj = notification ? notification.subject() : null;
+  if (subj && subj.attribute) {
+    return subj.attribute('subject') || '';
+  }
+  return '';
+}
 
 /**
  * Core's NotificationList groups notifications by discussion, and lumps anything
@@ -132,5 +171,54 @@ export class NewSupportTicketNotification extends Notification {
       if (s) return s;
     }
     return '';
+  }
+}
+
+export class TicketStatusChangedNotification extends Notification {
+  icon() {
+    return '';
+  }
+  href() {
+    return ticketHref(this.attrs && this.attrs.notification);
+  }
+  content() {
+    const n = this.attrs && this.attrs.notification;
+    const data = (n && n.content && n.content()) || {};
+    const status = statusLabel(data.status || '');
+    const from = n && n.fromUser && n.fromUser();
+    const me = app.session && app.session.user;
+    const subj = n && n.subject();
+
+    // A member reopening their own ticket reads as an event by that person;
+    // everything else is something that happened to the reader's ticket.
+    const ownTicket = !!(subj && subj.user && me && subj.user() && String(subj.user().id()) === String(me.id()));
+    if (!ownTicket && from && from.displayName && data.status === 'open') {
+      return tr('notifications.reopened_by_owner', '{name} reopened their ticket', { name: from.displayName() });
+    }
+    return ownTicket
+      ? tr('notifications.status_changed', 'Your ticket was marked {status}', { status })
+      : tr('notifications.status_changed_generic', 'A ticket was marked {status}', { status });
+  }
+  excerpt() {
+    return ticketExcerpt(this.attrs && this.attrs.notification);
+  }
+}
+
+export class TicketAssignedNotification extends Notification {
+  icon() {
+    return '';
+  }
+  href() {
+    return ticketHref(this.attrs && this.attrs.notification);
+  }
+  content() {
+    const n = this.attrs && this.attrs.notification;
+    const from = n && n.fromUser && n.fromUser();
+    return from && from.displayName
+      ? tr('notifications.assigned', '{name} assigned a ticket to you', { name: from.displayName() })
+      : tr('notifications.assigned_generic', 'A ticket was assigned to you');
+  }
+  excerpt() {
+    return ticketExcerpt(this.attrs && this.attrs.notification);
   }
 }
