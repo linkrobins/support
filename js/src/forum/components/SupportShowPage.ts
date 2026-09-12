@@ -140,18 +140,20 @@ export default class SupportShowPage extends Page {
       return this._wrap(
         m('div', { className: 'LinkRobinsSupport-container' }, [
           m('header', { className: 'LinkRobinsSupport-header' }, [
-            m('h1', { className: 'LinkRobinsSupport-title' }, tr('show.title', 'Ticket')),
+            // Back link first: the header is a column, so this reads as a
+            // breadcrumb above the title instead of a second column beside it.
             m(
               'a',
               {
                 href: basePath() + BASE_PATH,
-                className: 'Button Button--text',
+                className: 'Button Button--text LinkRobinsSupport-backBtn',
                 onclick: (e: any) => {
                   safeNavigate(basePath() + BASE_PATH, e);
                 },
               },
               [m('i', { className: 'fas fa-arrow-left' }), ' ', tr('action.back', 'Back')]
             ),
+            m('h1', { className: 'LinkRobinsSupport-title' }, tr('show.title', 'Ticket')),
           ]),
           m(
             'div',
