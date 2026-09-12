@@ -7,13 +7,22 @@ use Flarum\Api\Endpoint;
 use Flarum\Api\Resource\AbstractDatabaseResource;
 use Flarum\Api\Schema;
 use Flarum\Api\Sort\SortColumn;
+use Flarum\Locale\TranslatorInterface;
+use Flarum\User\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
+use LinkRobins\Support\Access\SupportAbilities;
 use LinkRobins\Support\SupportCategory;
 use Tobyz\JsonApiServer\Context;
+use Tobyz\JsonApiServer\Exception\BadRequestException;
 
 class SupportCategoryResource extends AbstractDatabaseResource
 {
+    public function __construct(
+        protected TranslatorInterface $translator,
+    ) {
+    }
+
     public function type(): string
     {
         return 'linkrobins-support-categories';
@@ -142,6 +151,51 @@ class SupportCategoryResource extends AbstractDatabaseResource
                 ->property('created_at'),
             Schema\DateTime::make('updatedAt')
                 ->property('updated_at'),
+
+            // Who new tickets in this category are handed to, and therefore
+            // the only person notified about them. Null (the default, and what
+            // every category has after upgrading) means no auto-assign:
+            // tickets arrive unassigned and all staff are notified.
+            //
+            // Staff-only: which human is behind a queue is internal routing,
+            // and the category list is public to anyone opening a ticket.
+            Schema\Relationship\ToOne::make('defaultAssignee')
+                ->type('users')
+                ->includable()
+                ->visible(fn (SupportCategory $cat, FlarumContext $context) => SupportAbilities::isStaff($context->getActor()))
+                ->writable(fn (SupportCategory $cat, FlarumContext $context) => $context->getActor()->can('manageCategories'))
+                ->set(function (SupportCategory $cat, $value, FlarumContext $context) {
+                    if ($value === null) {
+                        $cat->default_assignee_id = null;
+
+                        return;
+                    }
+
+                    $targetId = null;
+                    if (is_object($value) && isset($value->id)) {
+                        $targetId = (int) $value->id;
+                    } elseif (is_numeric($value)) {
+                        $targetId = (int) $value;
+                    }
+
+                    if (! $targetId) {
+                        $cat->default_assignee_id = null;
+
+                        return;
+                    }
+
+                    // Same guard the ticket's assignedStaff setter applies:
+                    // routing a category at a non-staff account would hand
+                    // every ticket in it to someone who cannot open it, and
+                    // notify only them. Reject it loudly at configuration
+                    // time rather than discovering it one lost ticket later.
+                    $target = User::query()->find($targetId);
+                    if (! $target || ! SupportAbilities::isStaff($target)) {
+                        throw new BadRequestException($this->translator->trans('linkrobins-support.api.default_assignee_staff_only'));
+                    }
+
+                    $cat->default_assignee_id = $targetId;
+                }),
         ];
     }
 }

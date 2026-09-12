@@ -80,7 +80,16 @@ class SupportServiceProvider extends AbstractServiceProvider
                 // Notifications: dispatched only for user-facing replies.
                 // Internal notes are staff coordination -- the ticket
                 // owner shouldn't see they exist.
-                if (! $reply->is_internal_note) {
+                //
+                // The opening message is also a reply (the ticket resource
+                // posts it through SupportReplyResource so it gets the same
+                // validation and formatting as any other), but it is already
+                // covered by the new-ticket notification. Without this guard
+                // every new ticket sent staff two alerts and two emails for
+                // the same words -- and, now that a category can route its
+                // tickets to one person, the reply notification would go to
+                // the whole staff list and undo that routing.
+                if (! $reply->is_internal_note && ! static::isOpeningMessage($reply)) {
                     $bus->dispatch(new NotifyNewReply($reply->id));
                 }
             } catch (\Throwable $e) {
@@ -108,5 +117,23 @@ class SupportServiceProvider extends AbstractServiceProvider
     protected static function actorIsStaff(?User $user): bool
     {
         return $user !== null && SupportAbilities::isStaff($user);
+    }
+
+    /**
+     * Whether this reply is the ticket's opening message.
+     *
+     * Determined by asking whether anything came before it rather than by a
+     * flag the caller sets, so it holds however the reply was created -- the
+     * ticket resource's createFirstReply() today, a seeder or an import
+     * tomorrow. withTrashed() matters: if the real first reply has been
+     * soft-deleted, the second one must not start counting as the opener and
+     * lose its notification.
+     */
+    protected static function isOpeningMessage(SupportReply $reply): bool
+    {
+        return ! SupportReply::withTrashed()
+            ->where('ticket_id', $reply->ticket_id)
+            ->where('id', '<', $reply->id)
+            ->exists();
     }
 }

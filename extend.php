@@ -10,6 +10,8 @@ use LinkRobins\Support\Api\Resource\SupportReplyResource;
 use LinkRobins\Support\Api\Resource\SupportTicketResource;
 use LinkRobins\Support\Notification\NewSupportReplyBlueprint;
 use LinkRobins\Support\Notification\NewSupportTicketBlueprint;
+use LinkRobins\Support\Notification\TicketAssignedBlueprint;
+use LinkRobins\Support\Notification\TicketStatusChangedBlueprint;
 use LinkRobins\Support\Search\Filter as Filters;
 use LinkRobins\Support\Search\ReplySearcher;
 use LinkRobins\Support\Search\TicketSearcher;
@@ -56,11 +58,21 @@ return [
         // Enables filter[supportAppealBanned]=1 on the core user list (powers
         // the read-only admin appeal-bans list). Without this the filter was
         // ignored and every user was returned.
-        ->addFilter(UserSearcher::class, Filters\AppealBannedFilter::class),
+        ->addFilter(UserSearcher::class, Filters\AppealBannedFilter::class)
+        // Enables filter[supportStaff]=1 on the same list, which is how the
+        // admin category editor populates its default-assignee picker.
+        ->addFilter(UserSearcher::class, Filters\StaffFilter::class),
 
     (new Extend\Notification())
         ->type(NewSupportReplyBlueprint::class,  ['alert', 'email'])
-        ->type(NewSupportTicketBlueprint::class, ['alert', 'email']),
+        ->type(NewSupportTicketBlueprint::class, ['alert', 'email'])
+        // Status changes alert by default but do not email: a ticket can move
+        // through several statuses in a day, and an inbox copy of each one is
+        // the kind of noise that makes people mute support mail altogether.
+        // Anyone who wants the emails can switch them on per-type in their
+        // own notification settings.
+        ->type(TicketStatusChangedBlueprint::class, ['alert'])
+        ->type(TicketAssignedBlueprint::class, ['alert', 'email']),
 
     (new Extend\View())
         ->namespace('linkrobins-support', __DIR__ . '/views'),

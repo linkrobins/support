@@ -9,9 +9,12 @@ use Flarum\Api\Resource\AbstractDatabaseResource;
 use Flarum\Api\Schema;
 use Flarum\Api\Sort\SortColumn;
 use Flarum\Locale\TranslatorInterface;
+use Illuminate\Contracts\Bus\Dispatcher;
 use Flarum\User\User;
 use Illuminate\Database\Eloquent\Builder;
 use LinkRobins\Support\Access\SupportAbilities;
+use LinkRobins\Support\Job\NotifyAssigned;
+use LinkRobins\Support\Job\NotifyStatusChanged;
 use LinkRobins\Support\RateLimiter;
 use LinkRobins\Support\SupportCategory;
 use LinkRobins\Support\SupportTicket;
@@ -22,9 +25,20 @@ use Tobyz\JsonApiServer\Exception\ForbiddenException;
 
 class SupportTicketResource extends AbstractDatabaseResource
 {
+    /**
+     * Status and assignment as they were when this request's update began,
+     * keyed by ticket id. Captured in updating() because Eloquent re-syncs
+     * originals during save(), so by the time saved() runs the previous values
+     * are gone -- and the notification wording depends on knowing them.
+     *
+     * @var array<int, array{status: ?string, assignee: ?int}>
+     */
+    protected array $before = [];
+
     public function __construct(
         protected RateLimiter $rateLimiter,
         protected TranslatorInterface $translator,
+        protected Dispatcher $bus,
     ) {
     }
 
@@ -443,6 +457,20 @@ class SupportTicketResource extends AbstractDatabaseResource
             );
         }
 
+        // Auto-assign, when the category routes to someone. effective...()
+        // returns null if that user is no longer staff, which leaves the
+        // ticket unassigned -- and SupportNotifier then notifies the whole
+        // staff list rather than one person who cannot act on it.
+        //
+        // This runs in creating(), not created(), so assigned_staff_id is part
+        // of the insert. The notification job is dispatched from the created
+        // hook and reads the row back; on the default sync queue it runs
+        // inline, so an assignment written afterwards would arrive too late to
+        // steer the radius.
+        if ($assignee = $category->effectiveDefaultAssignee()) {
+            $model->assigned_staff_id = $assignee->id;
+        }
+
         // Initial status. For appeal tickets we also set decision=pending so
         // the staff list shows it explicitly as awaiting decision.
         $model->status = SupportTicket::STATUS_OPEN;
@@ -556,6 +584,59 @@ class SupportTicketResource extends AbstractDatabaseResource
         $actor = $context->getActor();
         if (! $actor->isGuest() && ! SupportAbilities::isStaff($actor) && $model->isDirty('subject')) {
             $model->subject = $model->getOriginal('subject');
+        }
+
+        $this->before[(int) $model->id] = [
+            'status' => $model->getOriginal('status'),
+            'assignee' => $model->getOriginal('assigned_staff_id') === null
+                ? null
+                : (int) $model->getOriginal('assigned_staff_id'),
+        ];
+
+        return $model;
+    }
+
+    /**
+     * Announce deliberate changes once the row is safely written.
+     *
+     * This hook is the reason status notifications do not double up with reply
+     * notifications: replying also moves a ticket's status, but that happens on
+     * the model inside SupportReply::created and never comes through the API
+     * resource, so it cannot reach this code. Only a human picking a status --
+     * the staff bar, closing, an owner reopening -- lands here.
+     */
+    public function saved(object $model, Context $context): ?object
+    {
+        /** @var SupportTicket $model */
+        $before = $this->before[(int) $model->id] ?? null;
+        unset($this->before[(int) $model->id]);
+
+        if ($before === null) {
+            return $model; // a create, not an update
+        }
+
+        $actor = $context->getActor();
+        $actorId = $actor->isGuest() ? null : (int) $actor->id;
+        $changes = $model->getChanges();
+
+        if (array_key_exists('status', $changes) && $changes['status'] !== $before['status']) {
+            $this->bus->dispatch(new NotifyStatusChanged(
+                (int) $model->id,
+                (string) $changes['status'],
+                $before['status'],
+                $actorId,
+            ));
+        }
+
+        $assignee = array_key_exists('assigned_staff_id', $changes)
+            ? ($changes['assigned_staff_id'] === null ? null : (int) $changes['assigned_staff_id'])
+            : null;
+
+        // Only a new assignee is worth announcing. Unassigning tells nobody --
+        // there is no one to tell -- and re-saving the same assignee is not a
+        // handover.
+        if ($assignee !== null && $assignee !== $before['assignee']) {
+            $this->bus->dispatch(new NotifyAssigned((int) $model->id, $actorId));
         }
 
         return $model;
