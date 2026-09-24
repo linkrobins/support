@@ -12,7 +12,7 @@ use LinkRobins\Support\SupportTicket;
 
 /**
  * Notification fired when a new ticket is opened. Goes out to all
- * staff (admins + users with `linkrobins-support.handle_tickets`).
+ * staff (admins + users with `lr-support.handle_tickets`).
  * Staff can opt out per-driver in their notification preferences.
  *
  * Self-notification: if a staff member opens a ticket themselves

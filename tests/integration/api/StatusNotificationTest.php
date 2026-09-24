@@ -61,7 +61,7 @@ class StatusNotificationTest extends TestCase
                 ['user_id' => 4, 'group_id' => 100],
             ],
             'group_permission' => [
-                ['group_id' => 100, 'permission' => 'linkrobins-support.handle_tickets'],
+                ['group_id' => 100, 'permission' => 'lr-support.handle_tickets'],
             ],
             'linkrobins_support_categories' => [
                 ['id' => 1, 'name' => 'General', 'slug' => 'general', 'is_appeal' => 0, 'position' => 0, 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()],

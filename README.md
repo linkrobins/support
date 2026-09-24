@@ -76,7 +76,7 @@ Then enable the extension in admin → Extensions.
 
 The extension adds one permission:
 
-- `linkrobins-support.handle_tickets` (default: moderate group) -- grants
+- `lr-support.handle_tickets` (default: moderate group) -- grants
   the ability to see all tickets, reply on any ticket, post internal
   notes, change ticket status, set decisions, and claim tickets.
 

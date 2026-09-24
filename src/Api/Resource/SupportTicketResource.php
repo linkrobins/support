@@ -63,7 +63,7 @@ class SupportTicketResource extends AbstractDatabaseResource
      *
      * Rules (mirrored in TicketSearcher::getQuery):
      *   - Admins: all tickets
-     *   - Staff (`linkrobins-support.handle_tickets`): all tickets
+     *   - Staff (`lr-support.handle_tickets`): all tickets
      *   - Authenticated users: only their own tickets
      *   - Guests: nothing
      */

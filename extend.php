@@ -85,12 +85,12 @@ return [
                     // Moderators with the permission (and admins, who have all
                     // permissions) can toggle a user's appeal-ban from the
                     // user's profile controls.
-                    return $context->getActor()->hasPermission('linkrobins-support.manage_appeal_bans');
+                    return $context->getActor()->hasPermission('lr-support.manage_appeal_bans');
                 })
                 ->visible(function ($model, \Flarum\Api\Context $context) {
                     $actor = $context->getActor();
                     if ($actor->isGuest()) return false;
-                    return $actor->hasPermission('linkrobins-support.manage_appeal_bans')
+                    return $actor->hasPermission('lr-support.manage_appeal_bans')
                         || (int) $actor->id === (int) $model->id;
                 }),
         ]),
@@ -102,7 +102,7 @@ return [
             \Flarum\Api\Schema\Boolean::make('canManageSupportAppealBans')
                 ->get(fn ($model, \Flarum\Api\Context $context) =>
                     ! $context->getActor()->isGuest()
-                    && $context->getActor()->hasPermission('linkrobins-support.manage_appeal_bans')),
+                    && $context->getActor()->hasPermission('lr-support.manage_appeal_bans')),
 
             \Flarum\Api\Schema\Boolean::make('canCreateSupportTicket')
                 ->get(function ($model, \Flarum\Api\Context $context) {

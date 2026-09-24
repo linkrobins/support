@@ -32,7 +32,7 @@ class AppealBannedFilter implements FilterInterface
         // internal fact) via filter[supportAppealBanned]=1. The matching
         // attribute on UserResource is already restricted to managers/self;
         // this closes the same leak on the filter side.
-        if (! $state->getActor()->hasPermission('linkrobins-support.manage_appeal_bans')) {
+        if (! $state->getActor()->hasPermission('lr-support.manage_appeal_bans')) {
             return;
         }
 

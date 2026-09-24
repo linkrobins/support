@@ -8,7 +8,7 @@ use Flarum\User\User;
 /**
  * Global support permissions.
  *
- *   linkrobins-support.handle_tickets -- staff: see and respond to all tickets,
+ *   lr-support.handle_tickets -- staff: see and respond to all tickets,
  *                                        change status, add internal notes,
  *                                        assign tickets
  *

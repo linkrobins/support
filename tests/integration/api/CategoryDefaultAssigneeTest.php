@@ -77,7 +77,7 @@ class CategoryDefaultAssigneeTest extends TestCase
                 ['user_id' => 4, 'group_id' => 100],
             ],
             'group_permission' => [
-                ['group_id' => 100, 'permission' => 'linkrobins-support.handle_tickets'],
+                ['group_id' => 100, 'permission' => 'lr-support.handle_tickets'],
             ],
             'linkrobins_support_categories' => [
                 ['id' => 1, 'name' => 'Unrouted', 'slug' => 'unrouted', 'is_appeal' => 0, 'position' => 0, 'default_assignee_id' => null, 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()],

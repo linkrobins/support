@@ -15,9 +15,9 @@ use Flarum\User\User;
  */
 class SupportAbilities
 {
-    public const HANDLE_TICKETS = 'linkrobins-support.handle_tickets';
-    public const MANAGE_APPEAL_BANS = 'linkrobins-support.manage_appeal_bans';
-    public const FORCE_DELETE_TICKETS = 'linkrobins-support.force_delete_tickets';
+    public const HANDLE_TICKETS = 'lr-support.handle_tickets';
+    public const MANAGE_APPEAL_BANS = 'lr-support.manage_appeal_bans';
+    public const FORCE_DELETE_TICKETS = 'lr-support.force_delete_tickets';
 
     /**
      * Whether the actor may see and act on all tickets (admins always do).

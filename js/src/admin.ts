@@ -15,7 +15,7 @@ app.initializers.add('linkrobins-support', () => {
     if (typeof app.registry.registerPermission === 'function') {
       app.registry.registerPermission(
         {
-          permission: 'linkrobins-support.handle_tickets',
+          permission: 'lr-support.handle_tickets',
           icon: 'fas fa-life-ring',
           label: tx('linkrobins-support.admin.permissions.handle_tickets'),
         },
@@ -24,7 +24,7 @@ app.initializers.add('linkrobins-support', () => {
       );
       app.registry.registerPermission(
         {
-          permission: 'linkrobins-support.manage_appeal_bans',
+          permission: 'lr-support.manage_appeal_bans',
           icon: 'fas fa-ban',
           label: tx('linkrobins-support.admin.permissions.manage_appeal_bans'),
         },
@@ -33,7 +33,7 @@ app.initializers.add('linkrobins-support', () => {
       );
       app.registry.registerPermission(
         {
-          permission: 'linkrobins-support.force_delete_tickets',
+          permission: 'lr-support.force_delete_tickets',
           icon: 'fas fa-trash',
           label: tx('linkrobins-support.admin.permissions.force_delete_tickets'),
         },

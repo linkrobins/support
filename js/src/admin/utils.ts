@@ -54,7 +54,7 @@ export function deleteCategory(category: any): Promise<any> {
 
 /**
  * Everyone who can be a category's default assignee: administrators plus
- * anyone holding `linkrobins-support.handle_tickets`. `filter[supportStaff]`
+ * anyone holding `lr-support.handle_tickets`. `filter[supportStaff]`
  * is served by the extension's StaffFilter on the core user list, and is
  * itself staff-gated.
  */
