@@ -64,7 +64,7 @@
     },
     "extra": {
         "flarum-extension": {
-            "title": "Link Robins Support",
+            "title": "LR Support",
             "category": "feature",
             "icon": {
                 "name": "fas fa-life-ring",
