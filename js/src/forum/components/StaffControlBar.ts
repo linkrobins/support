@@ -1,4 +1,6 @@
 import Component from 'flarum/common/Component';
+import ItemList from 'flarum/common/utils/ItemList';
+import type Mithril from 'mithril';
 import { tr } from '../utils/translate';
 import { statusLabel, decisionLabel } from '../utils/status';
 
@@ -7,13 +9,24 @@ import { statusLabel, decisionLabel } from '../utils/status';
 // the actor can handle tickets. State lives in the parent; this emits callbacks.
 export default class StaffControlBar extends Component {
   view() {
+    return m('div', { className: 'LinkRobinsSupport-staffBar' }, this.actionItems().toArray());
+  }
+
+  actionItems(): ItemList<Mithril.Children> {
+    const items = new ItemList<Mithril.Children>();
     const { ticket, updating } = this.attrs as any;
+
+    if (!ticket) {
+      return items;
+    }
 
     if (ticket.status() === 'closed') {
       // A closed ticket hides the status dropdown, so offer an explicit Reopen
       // button -- otherwise an accidental close is unrecoverable from the UI.
-      return m('div', { className: 'LinkRobinsSupport-staffBar' }, [
-        m('span', { className: 'LinkRobinsSupport-staffBar-label' }, tr('show.closed_badge', 'Closed ticket')),
+      items.add('closedBadge', m('span', { className: 'LinkRobinsSupport-staffBar-label' }, tr('show.closed_badge', 'Closed ticket')), 100);
+
+      items.add(
+        'reopen',
         m(
           'button',
           {
@@ -24,14 +37,23 @@ export default class StaffControlBar extends Component {
           },
           tr('action.reopen', 'Reopen ticket')
         ),
-        this.decisionGroup(ticket),
-        this.assignmentRow(false),
-      ]);
+        90
+      );
+
+      const decision = this.decisionGroup(ticket);
+      if (decision) {
+        items.add('decision', decision, 80);
+      }
+
+      items.add('assignment', this.assignmentRow(false), -10);
+
+      return items;
     }
 
     const statuses = ['open', 'in_progress', 'awaiting_user', 'resolved', 'closed'];
 
-    return m('div', { className: 'LinkRobinsSupport-staffBar' }, [
+    items.add(
+      'status',
       m('label', { className: 'LinkRobinsSupport-staffBar-statusGroup' }, [
         m('span', { className: 'LinkRobinsSupport-staffBar-label' }, tr('staff.set_status', 'Set status:')),
         m(
@@ -50,9 +72,17 @@ export default class StaffControlBar extends Component {
           statuses.map((s) => m('option', { value: s }, statusLabel(s)))
         ),
       ]),
-      this.decisionGroup(ticket),
-      this.assignmentRow(true),
-    ]);
+      100
+    );
+
+    const decision = this.decisionGroup(ticket);
+    if (decision) {
+      items.add('decision', decision, 80);
+    }
+
+    items.add('assignment', this.assignmentRow(true), -10);
+
+    return items;
   }
 
   // Appeal tickets carry a decision (pending/accepted/rejected); regular tickets

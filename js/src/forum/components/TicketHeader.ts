@@ -1,6 +1,8 @@
 import Component from 'flarum/common/Component';
 import Button from 'flarum/common/components/Button';
 import Dropdown from 'flarum/common/components/Dropdown';
+import ItemList from 'flarum/common/utils/ItemList';
+import type Mithril from 'mithril';
 import { tr } from '../utils/translate';
 import { formatDate, userLink } from '../utils/helpers';
 import { statusBadge, decisionLabel } from '../utils/status';
@@ -45,48 +47,9 @@ export default class TicketHeader extends Component {
   }
 
   actions(ticket: any, isDeleted: boolean) {
-    const { ticketBusy, onSoftDelete, onRestore, onForceDelete } = this.attrs as any;
-    const canUpdate = !!ticket.canUpdate();
-    const canDelete = !!ticket.canDelete();
-    const busy = !!ticketBusy;
+    const items = this.actionItems(ticket, isDeleted);
 
-    const items: any[] = [];
-    if (!isDeleted) {
-      if (canUpdate) {
-        items.push(
-          m(
-            Button,
-            {
-              icon: 'fas fa-trash',
-              className: 'LinkRobinsSupport-reply-action--danger',
-              disabled: busy,
-              onclick: () => onSoftDelete(),
-            },
-            tr('ticket.delete', 'Delete ticket')
-          )
-        );
-      }
-    } else {
-      if (canUpdate) {
-        items.push(m(Button, { icon: 'fas fa-undo', disabled: busy, onclick: () => onRestore() }, tr('ticket.restore', 'Restore ticket')));
-      }
-      if (canDelete) {
-        items.push(
-          m(
-            Button,
-            {
-              icon: 'fas fa-times',
-              className: 'LinkRobinsSupport-reply-action--danger',
-              disabled: busy,
-              onclick: () => onForceDelete(),
-            },
-            tr('action.delete_forever', 'Delete forever')
-          )
-        );
-      }
-    }
-
-    if (items.length === 0) return null;
+    if (items.isEmpty()) return null;
 
     return m(
       'span',
@@ -99,8 +62,62 @@ export default class TicketHeader extends Component {
           icon: 'fas fa-ellipsis-h',
           accessibleToggleLabel: tr('ticket.mod_actions', 'Ticket moderation actions'),
         },
-        items
+        items.toArray()
       )
     );
+  }
+
+  actionItems(ticket: any, isDeleted: boolean): ItemList<Mithril.Children> {
+    const { ticketBusy, onSoftDelete, onRestore, onForceDelete } = this.attrs as any;
+    const canUpdate = !!ticket.canUpdate();
+    const canDelete = !!ticket.canDelete();
+    const busy = !!ticketBusy;
+
+    const items = new ItemList<Mithril.Children>();
+
+    if (!isDeleted) {
+      if (canUpdate) {
+        items.add(
+          'delete',
+          m(
+            Button,
+            {
+              icon: 'fas fa-trash',
+              className: 'LinkRobinsSupport-reply-action--danger',
+              disabled: busy,
+              onclick: () => onSoftDelete(),
+            },
+            tr('ticket.delete', 'Delete ticket')
+          ),
+          -10
+        );
+      }
+    } else {
+      if (canUpdate) {
+        items.add(
+          'restore',
+          m(Button, { icon: 'fas fa-undo', disabled: busy, onclick: () => onRestore() }, tr('ticket.restore', 'Restore ticket')),
+          -10
+        );
+      }
+      if (canDelete) {
+        items.add(
+          'forceDelete',
+          m(
+            Button,
+            {
+              icon: 'fas fa-times',
+              className: 'LinkRobinsSupport-reply-action--danger',
+              disabled: busy,
+              onclick: () => onForceDelete(),
+            },
+            tr('action.delete_forever', 'Delete forever')
+          ),
+          -100
+        );
+      }
+    }
+
+    return items;
   }
 }

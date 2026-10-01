@@ -1,6 +1,8 @@
 import Component from 'flarum/common/Component';
 import Button from 'flarum/common/components/Button';
 import Dropdown from 'flarum/common/components/Dropdown';
+import ItemList from 'flarum/common/utils/ItemList';
+import type Mithril from 'mithril';
 import { tr, trText } from '../utils/translate';
 import { formatDate, userLink } from '../utils/helpers';
 
@@ -83,52 +85,13 @@ export default class ReplyItem extends Component {
   }
 
   actions(reply: any, isDeleted: boolean, editing: boolean, busy: boolean) {
-    const { onBeginEdit, onSoftDelete, onRestore, onForceDelete } = this.attrs as any;
-    const canEdit = !!reply.canEdit();
-    const canDelete = !!reply.canDelete();
-
     if (editing) {
       return null;
     }
 
-    const items: any[] = [];
-    if (!isDeleted) {
-      if (canEdit) {
-        items.push(m(Button, { icon: 'fas fa-pencil-alt', disabled: busy, onclick: () => onBeginEdit(reply) }, tr('action.edit', 'Edit')));
-      }
-      if (canDelete) {
-        items.push(
-          m(
-            Button,
-            {
-              icon: 'fas fa-trash',
-              className: 'LinkRobinsSupport-reply-action--danger',
-              disabled: busy,
-              onclick: () => onSoftDelete(reply),
-            },
-            tr('action.delete', 'Delete')
-          )
-        );
-      }
-    } else {
-      if (canDelete) {
-        items.push(m(Button, { icon: 'fas fa-undo', disabled: busy, onclick: () => onRestore(reply) }, tr('action.restore', 'Restore')));
-        items.push(
-          m(
-            Button,
-            {
-              icon: 'fas fa-times',
-              className: 'LinkRobinsSupport-reply-action--danger',
-              disabled: busy,
-              onclick: () => onForceDelete(reply),
-            },
-            tr('action.delete_forever', 'Delete forever')
-          )
-        );
-      }
-    }
+    const items = this.actionItems(reply, isDeleted, editing, busy);
 
-    if (items.length === 0) return null;
+    if (items.isEmpty()) return null;
 
     return m(
       'span',
@@ -141,9 +104,67 @@ export default class ReplyItem extends Component {
           icon: 'fas fa-ellipsis-h',
           accessibleToggleLabel: tr('reply.mod_actions', 'Moderation actions'),
         },
-        items
+        items.toArray()
       )
     );
+  }
+
+  actionItems(reply: any, isDeleted: boolean, editing: boolean, busy: boolean): ItemList<Mithril.Children> {
+    const { onBeginEdit, onSoftDelete, onRestore, onForceDelete } = this.attrs as any;
+    const canEdit = !!reply.canEdit();
+    const canDelete = !!reply.canDelete();
+
+    const items = new ItemList<Mithril.Children>();
+
+    if (!isDeleted) {
+      if (canEdit) {
+        items.add(
+          'edit',
+          m(Button, { icon: 'fas fa-pencil-alt', disabled: busy, onclick: () => onBeginEdit(reply) }, tr('action.edit', 'Edit')),
+          100
+        );
+      }
+      if (canDelete) {
+        items.add(
+          'delete',
+          m(
+            Button,
+            {
+              icon: 'fas fa-trash',
+              className: 'LinkRobinsSupport-reply-action--danger',
+              disabled: busy,
+              onclick: () => onSoftDelete(reply),
+            },
+            tr('action.delete', 'Delete')
+          ),
+          -10
+        );
+      }
+    } else {
+      if (canDelete) {
+        items.add(
+          'restore',
+          m(Button, { icon: 'fas fa-undo', disabled: busy, onclick: () => onRestore(reply) }, tr('action.restore', 'Restore')),
+          -10
+        );
+        items.add(
+          'forceDelete',
+          m(
+            Button,
+            {
+              icon: 'fas fa-times',
+              className: 'LinkRobinsSupport-reply-action--danger',
+              disabled: busy,
+              onclick: () => onForceDelete(reply),
+            },
+            tr('action.delete_forever', 'Delete forever')
+          ),
+          -100
+        );
+      }
+    }
+
+    return items;
   }
 
   // Inline edit-reply editor. Only a fallback on stripped installs without the

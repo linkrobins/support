@@ -1,6 +1,8 @@
 import Page from 'flarum/common/components/Page';
 import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
 import PageStructure from 'flarum/forum/components/PageStructure';
+import ItemList from 'flarum/common/utils/ItemList';
+import type Mithril from 'mithril';
 import SupportIndexSidebar from './SupportIndexSidebar';
 import { tr } from '../utils/translate';
 import { BASE_PATH, showError } from '../utils/helpers';
@@ -122,153 +124,151 @@ export default class SupportComposePage extends Page {
       return this._wrap(this._renderPicker());
     }
 
-    const composerOpen = supportComposerOpenFor('new-ticket');
-
-    // With the real composer: keep the subject field on the page and use the
-    // same discussion-style "reply placeholder" box for the message.
-    if (supportComposerSupported()) {
-      return this._wrap(
-        m('div', { className: 'LinkRobinsSupport-container' }, [
-          this._renderComposeHeader(),
-          this.error ? m('div', { className: 'Alert Alert--danger' }, [m('span', { className: 'Alert-body' }, this._errorMessage())]) : null,
-          m('div', { className: 'LinkRobinsSupport-form' }, [
-            m('div', { className: 'Form-group' }, [
-              m('label', null, tr('compose.subject_label', 'Subject')),
-              m('input', {
-                type: 'text',
-                className: 'FormControl',
-                value: this.subject,
-                disabled: this.saving,
-                placeholder: tr('compose.subject_placeholder', 'Short summary of your issue'),
-                maxlength: 200,
-                oninput: (e: any) => {
-                  this.subject = e.target.value;
-                },
-              }),
-            ]),
-            m('div', { className: 'Form-group' }, [
-              m('label', null, tr('compose.message_label', 'Message')),
-              m(
-                'div',
-                { className: 'LinkRobinsSupport-composePreview' },
-                supportComposerPreview({
-                  composing: composerOpen,
-                  placeholder: tr('compose.message_placeholder_click', 'Click to write your message…'),
-                  onclick: () => this._openComposeComposer(),
-                })
-              ),
-            ]),
-          ]),
-        ])
-      );
-    }
-
-    // Fallback (stripped install without the composer): full inline form.
-    const canSaveFallback = !this.saving && this.subject.trim() !== '' && this.body.trim() !== '' && this.categoryId !== '';
-
     return this._wrap(
       m('div', { className: 'LinkRobinsSupport-container' }, [
         this._renderComposeHeader(),
         this.error ? m('div', { className: 'Alert Alert--danger' }, [m('span', { className: 'Alert-body' }, this._errorMessage())]) : null,
-        m('div', { className: 'LinkRobinsSupport-form' }, [
-          m('div', { className: 'Form-group' }, [
-            m('label', null, tr('compose.subject_label', 'Subject')),
-            m('input', {
-              type: 'text',
-              className: 'FormControl',
-              value: this.subject,
-              disabled: this.saving,
-              placeholder: tr('compose.subject_placeholder', 'Short summary of your issue'),
-              maxlength: 200,
-              oninput: (e: any) => {
-                this.subject = e.target.value;
-              },
-            }),
-          ]),
-          m('div', { className: 'Form-group' }, [
-            m('label', null, tr('compose.message_label', 'Message')),
-            m('textarea', {
-              className: 'FormControl LinkRobinsSupport-body',
-              rows: 10,
-              value: this.body,
-              disabled: this.saving,
-              placeholder: tr('compose.body_placeholder', 'Describe the issue in detail. Markdown is supported.'),
-              oninput: (e: any) => {
-                this.body = e.target.value;
-              },
-              onkeydown: (e: any) => {
-                const isSubmit = (e.key === 'Enter' || e.keyCode === 13) && (e.ctrlKey || e.metaKey);
-                if (isSubmit && canSaveFallback) {
-                  e.preventDefault();
-                  this._submit();
-                }
-              },
-            }),
-            this.uploadError ? m('div', { className: 'Alert Alert--danger LinkRobinsSupport-uploadAlert' }, this.uploadError) : null,
-            this.uploadingCount > 0
-              ? m(
-                  'div',
-                  { className: 'LinkRobinsSupport-uploadStatus' },
-                  this.uploadingCount === 1
-                    ? tr('common.uploading_one', 'Uploading 1 file…')
-                    : tr('common.uploading_many', 'Uploading {count} files…', { count: this.uploadingCount })
-                )
-              : null,
-          ]),
-          m('div', { className: 'LinkRobinsSupport-form-actions' }, [
-            app.forum && app.forum.attribute('fof-upload.canUpload')
-              ? m('span', { className: 'LinkRobinsSupport-attachBtnWrap' }, [
-                  m(
-                    'button',
-                    {
-                      type: 'button',
-                      className: 'Button Button--default LinkRobinsSupport-attachBtn',
-                      disabled: this.saving || this.uploadingCount > 0,
-                      onclick: () => {
-                        if (this._composeFileInput) this._composeFileInput.click();
-                      },
-                    },
-                    [m('i', { className: 'fas fa-paperclip' }), ' ', tr('action.attach_files', 'Attach files')]
-                  ),
-                  m('input', {
-                    type: 'file',
-                    multiple: true,
-                    style: 'display:none;',
-                    disabled: this.saving || this.uploadingCount > 0,
-                    oncreate: (vnode: any) => {
-                      this._composeFileInput = vnode.dom;
-                    },
-                    onremove: () => {
-                      this._composeFileInput = null;
-                    },
-                    onchange: (e: any) => {
-                      const files = e.target.files;
-                      if (files && files.length) {
-                        this._uploadFiles(files);
-                      }
-                      try {
-                        e.target.value = '';
-                      } catch (err) {}
-                    },
-                  }),
-                ])
-              : null,
-            m(
-              'button',
-              {
-                type: 'button',
-                className: 'Button Button--primary',
-                disabled: !canSaveFallback,
-                onclick: () => {
-                  this._submit();
-                },
-              },
-              this.saving ? tr('compose.submitting', 'Submitting…') : tr('compose.submit', 'Submit ticket')
-            ),
-          ]),
-        ]),
+        m('div', { className: 'LinkRobinsSupport-form' }, this.fields().toArray()),
       ])
     );
+  }
+
+  fields(): ItemList<Mithril.Children> {
+    const items = new ItemList<Mithril.Children>();
+
+    items.add(
+      'subject',
+      m('div', { className: 'Form-group' }, [
+        m('label', null, tr('compose.subject_label', 'Subject')),
+        m('input', {
+          type: 'text',
+          className: 'FormControl',
+          value: this.subject,
+          disabled: this.saving,
+          placeholder: tr('compose.subject_placeholder', 'Short summary of your issue'),
+          maxlength: 200,
+          oninput: (e: any) => {
+            this.subject = e.target.value;
+          },
+        }),
+      ]),
+      100
+    );
+
+    if (supportComposerSupported()) {
+      const composerOpen = supportComposerOpenFor('new-ticket');
+      items.add(
+        'message',
+        m('div', { className: 'Form-group' }, [
+          m('label', null, tr('compose.message_label', 'Message')),
+          m(
+            'div',
+            { className: 'LinkRobinsSupport-composePreview' },
+            supportComposerPreview({
+              composing: composerOpen,
+              placeholder: tr('compose.message_placeholder_click', 'Click to write your message…'),
+              onclick: () => this._openComposeComposer(),
+            })
+          ),
+        ]),
+        50
+      );
+    } else {
+      const canSaveFallback = !this.saving && this.subject.trim() !== '' && this.body.trim() !== '' && this.categoryId !== '';
+
+      items.add(
+        'message',
+        m('div', { className: 'Form-group' }, [
+          m('label', null, tr('compose.message_label', 'Message')),
+          m('textarea', {
+            className: 'FormControl LinkRobinsSupport-body',
+            rows: 10,
+            value: this.body,
+            disabled: this.saving,
+            placeholder: tr('compose.body_placeholder', 'Describe the issue in detail. Markdown is supported.'),
+            oninput: (e: any) => {
+              this.body = e.target.value;
+            },
+            onkeydown: (e: any) => {
+              const isSubmit = (e.key === 'Enter' || e.keyCode === 13) && (e.ctrlKey || e.metaKey);
+              if (isSubmit && canSaveFallback) {
+                e.preventDefault();
+                this._submit();
+              }
+            },
+          }),
+          this.uploadError ? m('div', { className: 'Alert Alert--danger LinkRobinsSupport-uploadAlert' }, this.uploadError) : null,
+          this.uploadingCount > 0
+            ? m(
+                'div',
+                { className: 'LinkRobinsSupport-uploadStatus' },
+                this.uploadingCount === 1
+                  ? tr('common.uploading_one', 'Uploading 1 file…')
+                  : tr('common.uploading_many', 'Uploading {count} files…', { count: this.uploadingCount })
+              )
+            : null,
+        ]),
+        50
+      );
+
+      items.add(
+        'actions',
+        m('div', { className: 'LinkRobinsSupport-form-actions' }, [
+          app.forum && app.forum.attribute('fof-upload.canUpload')
+            ? m('span', { className: 'LinkRobinsSupport-attachBtnWrap' }, [
+                m(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'Button Button--default LinkRobinsSupport-attachBtn',
+                    disabled: this.saving || this.uploadingCount > 0,
+                    onclick: () => {
+                      if (this._composeFileInput) this._composeFileInput.click();
+                    },
+                  },
+                  [m('i', { className: 'fas fa-paperclip' }), ' ', tr('action.attach_files', 'Attach files')]
+                ),
+                m('input', {
+                  type: 'file',
+                  multiple: true,
+                  style: 'display:none;',
+                  disabled: this.saving || this.uploadingCount > 0,
+                  oncreate: (vnode: any) => {
+                    this._composeFileInput = vnode.dom;
+                  },
+                  onremove: () => {
+                    this._composeFileInput = null;
+                  },
+                  onchange: (e: any) => {
+                    const files = e.target.files;
+                    if (files && files.length) {
+                      this._uploadFiles(files);
+                    }
+                    try {
+                      e.target.value = '';
+                    } catch (err) {}
+                  },
+                }),
+              ])
+            : null,
+          m(
+            'button',
+            {
+              type: 'button',
+              className: 'Button Button--primary',
+              disabled: !canSaveFallback,
+              onclick: () => {
+                this._submit();
+              },
+            },
+            this.saving ? tr('compose.submitting', 'Submitting…') : tr('compose.submit', 'Submit ticket')
+          ),
+        ]),
+        -100
+      );
+    }
+
+    return items;
   }
 
   _renderComposeHeader() {
