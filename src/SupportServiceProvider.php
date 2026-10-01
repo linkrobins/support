@@ -7,14 +7,18 @@ use Flarum\Foundation\AbstractServiceProvider;
 use Flarum\Formatter\Formatter;
 use Flarum\User\User;
 use Illuminate\Contracts\Bus\Dispatcher;
+use Illuminate\Contracts\Events\Dispatcher as EventDispatcher;
 use LinkRobins\Support\Access\SupportAbilities;
+use LinkRobins\Support\Event\ReplyCreated;
+use LinkRobins\Support\Event\TicketAssigned;
+use LinkRobins\Support\Event\TicketStatusChanged;
 use LinkRobins\Support\Job\NotifyNewReply;
 use LinkRobins\Support\Job\NotifyNewTicket;
 use Psr\Log\LoggerInterface;
 
 class SupportServiceProvider extends AbstractServiceProvider
 {
-    public function boot(Formatter $formatter, Dispatcher $bus, LoggerInterface $log): void
+    public function boot(Formatter $formatter, Dispatcher $bus, LoggerInterface $log, EventDispatcher $events): void
     {
         // Plug Flarum's formatter into the reply model so calling
         // setContentAttribute() runs Markdown/BBCode through the same
@@ -35,7 +39,7 @@ class SupportServiceProvider extends AbstractServiceProvider
         //   - If anyone replies to a `resolved` ticket, reopen it to
         //     `in_progress`. Closed tickets reject replies at the policy
         //     level, so we never see them here.
-        SupportReply::created(function (SupportReply $reply) use ($bus, $log) {
+        SupportReply::created(function (SupportReply $reply) use ($bus, $log, $events) {
             try {
                 $ticket = $reply->ticket;
                 if (! $ticket) {
@@ -44,6 +48,8 @@ class SupportServiceProvider extends AbstractServiceProvider
                 $ticket->last_reply_at = Carbon::now();
 
                 $isStaff = static::actorIsStaff($reply->user);
+                $oldStatus = $ticket->status;
+                $oldAssigneeId = $ticket->assigned_staff_id;
 
                 if (! $reply->is_internal_note) {
                     if ($ticket->status === SupportTicket::STATUS_RESOLVED) {
@@ -77,6 +83,30 @@ class SupportServiceProvider extends AbstractServiceProvider
 
                 $ticket->save();
 
+                $isOpening = static::isOpeningMessage($reply);
+
+                if (! $isOpening && $oldStatus !== $ticket->status) {
+                    $events->dispatch(new TicketStatusChanged(
+                        $ticket,
+                        $reply->user,
+                        $oldStatus,
+                        $ticket->status
+                    ));
+                }
+
+                if (! $isOpening && $oldAssigneeId !== $ticket->assigned_staff_id) {
+                    $events->dispatch(new TicketAssigned(
+                        $ticket,
+                        $reply->user,
+                        $reply->user,
+                        null
+                    ));
+                }
+
+                if (! $isOpening) {
+                    $events->dispatch(new ReplyCreated($reply, $reply->user));
+                }
+
                 // Notifications: dispatched only for user-facing replies.
                 // Internal notes are staff coordination -- the ticket
                 // owner shouldn't see they exist.
@@ -89,7 +119,7 @@ class SupportServiceProvider extends AbstractServiceProvider
                 // the same words -- and, now that a category can route its
                 // tickets to one person, the reply notification would go to
                 // the whole staff list and undo that routing.
-                if (! $reply->is_internal_note && ! static::isOpeningMessage($reply)) {
+                if (! $reply->is_internal_note && ! $isOpening) {
                     $bus->dispatch(new NotifyNewReply($reply->id));
                 }
             } catch (\Throwable $e) {
