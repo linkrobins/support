@@ -1,12 +1,14 @@
 import Page from 'flarum/common/components/Page';
 import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
+import Avatar from 'flarum/common/components/Avatar';
 import PageStructure from 'flarum/forum/components/PageStructure';
 import SupportIndexSidebar from './SupportIndexSidebar';
-import { tr } from '../utils/translate';
+import { tr, trText } from '../utils/translate';
 import { basePath, BASE_PATH, formatDate, safeNavigate } from '../utils/helpers';
 import { canCreateSupportTicket, canHandleSupportTickets } from '../utils/permissions';
-import { statusBadge, FILTER_OPTIONS, filterLabel } from '../utils/status';
+import { statusBadge, FILTER_OPTIONS, filterLabel, emptyLabel } from '../utils/status';
 import { loadTickets } from '../utils/api';
+import { onLive } from '../utils/live';
 
 export default class SupportIndexPage extends Page {
   loading = true;
@@ -14,6 +16,8 @@ export default class SupportIndexPage extends Page {
   tickets: any[] = [];
   filter: string | null = 'mine';
   _lastLoadedFilter: string | null = 'mine';
+  _stopLive: (() => void) | null = null;
+  _liveTimer: any = null;
 
   oninit(vnode: any) {
     super.oninit(vnode);
@@ -26,6 +30,25 @@ export default class SupportIndexPage extends Page {
     } catch (e) {}
     this._lastLoadedFilter = this.filter;
     this._load();
+  }
+
+  oncreate(vnode: any) {
+    super.oncreate(vnode);
+    // A ticket opened or moved somewhere: refetch the list in place so new
+    // tickets appear and moved ones leave this view. Debounced, since one
+    // action can produce a few pushes in a row (a reply, then its status).
+    this._stopLive = onLive((kind) => {
+      if (kind !== 'ticket') return;
+      clearTimeout(this._liveTimer);
+      this._liveTimer = setTimeout(() => this._load(true), 500);
+    });
+  }
+
+  onremove(vnode: any) {
+    if (this._stopLive) this._stopLive();
+    this._stopLive = null;
+    clearTimeout(this._liveTimer);
+    super.onremove(vnode);
   }
 
   onbeforeupdate(vnode: any) {
@@ -48,13 +71,20 @@ export default class SupportIndexPage extends Page {
     return defaultFilter;
   }
 
-  _load() {
-    this.loading = true;
-    m.redraw();
+  _load(quiet = false) {
+    // A quiet reload keeps the current list on screen instead of a spinner.
+    if (!quiet) {
+      this.loading = true;
+      m.redraw();
+    }
 
     const filter: any = {};
     if (canHandleSupportTickets() && this.filter !== 'mine') {
-      if (this.filter && this.filter !== 'all') {
+      if (this.filter === 'assigned_to_me' || this.filter === 'unassigned') {
+        // Work queues: what is still to be done, so closed tickets drop out.
+        filter.assigned = this.filter === 'assigned_to_me' ? 'me' : 'none';
+        filter['-status'] = 'closed';
+      } else if (this.filter && this.filter !== 'all') {
         filter.status = this.filter;
       }
     } else {
@@ -130,7 +160,7 @@ export default class SupportIndexPage extends Page {
       return m(
         'div',
         { className: 'LinkRobinsSupport-empty' },
-        canCreateSupportTicket() ? tr('index.empty_own', 'No tickets yet. Click "New ticket" to open one.') : tr('index.empty', 'No tickets to show.')
+        emptyLabel(this.filter, canCreateSupportTicket())
       );
     }
     return m(
@@ -138,6 +168,29 @@ export default class SupportIndexPage extends Page {
       { className: 'LinkRobinsSupport-list' },
       this.tickets.map((t: any) => this._renderRow(t))
     );
+  }
+
+  /**
+   * Who has the ticket, for staff scanning the queue: their avatar and name,
+   * or an "Unassigned" marker. Members see their own tickets only and do not
+   * need routing detail, so it is staff-only.
+   */
+  _renderAssignee(ticket: any) {
+    if (!canHandleSupportTickets()) return null;
+    const assignee = ticket.assignedStaff && ticket.assignedStaff();
+    if (!assignee) {
+      return m('span', { className: 'LinkRobinsSupport-row-assignee is-unassigned' }, [
+        m('i', { className: 'fas fa-user-slash', 'aria-hidden': 'true' }),
+        ' ',
+        tr('index.unassigned', 'Unassigned'),
+      ]);
+    }
+    const name = assignee.displayName() || assignee.username();
+    return m('span', { className: 'LinkRobinsSupport-row-assignee', title: trText('index.assigned_to', 'Assigned to {name}', { name }) }, [
+      m(Avatar, { user: assignee, className: 'LinkRobinsSupport-row-assigneeAvatar' }),
+      ' ',
+      name,
+    ]);
   }
 
   _renderRow(ticket: any) {
@@ -166,6 +219,7 @@ export default class SupportIndexPage extends Page {
             cat ? m('span', { className: 'LinkRobinsSupport-row-cat', style: 'color: ' + (cat.color() || 'inherit') }, cat.name()) : null,
             user ? m('span', { className: 'LinkRobinsSupport-row-user' }, user.displayName() || user.username()) : null,
             m('span', { className: 'LinkRobinsSupport-row-date' }, formatDate(ticket.lastReplyAt() || ticket.createdAt())),
+            this._renderAssignee(ticket),
           ]),
         ]),
         m('div', { className: 'LinkRobinsSupport-row-status' }, statusBadge(ticket.status())),

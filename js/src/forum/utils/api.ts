@@ -41,6 +41,18 @@ export function loadReplies(ticketId: string | number, offset = 0, limit = 50): 
   });
 }
 
+export function loadEvents(ticketId: string | number): Promise<any> {
+  // Status and assignment history for one ticket, oldest first. Bounded by
+  // the endpoint's paginate(200, 200); a ticket with more changes than that
+  // shows its first 200, which is far past what anyone scrolls through.
+  return app.store.find('linkrobins-support-events', {
+    sort: 'createdAt',
+    filter: { ticketId },
+    page: { limit: 200 },
+    include: 'user,fromUser,toUser',
+  });
+}
+
 export function loadCategories(): Promise<any> {
   return app.store.find('linkrobins-support-categories', {
     sort: 'position',

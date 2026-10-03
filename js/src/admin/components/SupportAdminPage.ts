@@ -51,6 +51,7 @@ export default class SupportAdminPage extends ExtensionPage {
         m(FormSectionGroup, null, [
           m(FormSection, { label: tx('linkrobins-support.admin.categories.heading') }, this._renderCategoriesSection()),
           m(FormSection, { label: tx('linkrobins-support.admin.navigation.heading') }, this._renderNavigationSection()),
+          m(FormSection, { label: tx('linkrobins-support.admin.auto_close.heading') }, this._renderAutoCloseSection()),
           m(FormSection, { label: tx('linkrobins-support.admin.rate_limits.heading') }, this._renderSettingsSection()),
           m(FormSection, { label: tx('linkrobins-support.admin.appeal_bans.heading_alt') }, this._renderAppealBansSection()),
         ])
@@ -253,6 +254,27 @@ export default class SupportAdminPage extends ExtensionPage {
           m('div', { className: 'helpText' }, tx(f.helpKey)),
         ])
       ),
+      m('div', { className: 'Form-group Form-controls' }, this.submitButton()),
+    ]);
+  }
+
+  _renderAutoCloseSection() {
+    const key = 'linkrobins-support.auto_close_resolved_days';
+    return m(Form, null, [
+      m('p', { className: 'helpText' }, tx('linkrobins-support.admin.auto_close.intro')),
+      m('div', { className: 'Form-group' }, [
+        m('label', null, tx('linkrobins-support.admin.auto_close.days')),
+        m('input', {
+          type: 'number',
+          className: 'FormControl',
+          min: 0,
+          value: this.setting(key, '7')(),
+          oninput: (e: any) => {
+            this.setting(key, '7')(e.target.value);
+          },
+        }),
+        m('div', { className: 'helpText' }, tx('linkrobins-support.admin.auto_close.days_help')),
+      ]),
       m('div', { className: 'Form-group Form-controls' }, this.submitButton()),
     ]);
   }

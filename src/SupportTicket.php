@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string $status
  * @property string|null $decision
  * @property \Carbon\Carbon|null $last_reply_at
+ * @property \Carbon\Carbon|null $status_changed_at
  * @property \Carbon\Carbon|null $created_at
  * @property \Carbon\Carbon|null $updated_at
  * @property \Carbon\Carbon|null $deleted_at
@@ -34,6 +35,16 @@ class SupportTicket extends AbstractModel
     protected $table = 'linkrobins_support_tickets';
 
     public $timestamps = true;
+
+    /**
+     * Who is making the change being saved, for the ticket timeline.
+     *
+     * Not a column. Model events cannot see the request, so each place that
+     * changes a ticket says who is doing it before saving: the API resource
+     * sets the acting user, a reply sets its author, and the auto-close
+     * command leaves it null so the change reads as the forum's own.
+     */
+    public ?int $eventActorId = null;
 
     public const STATUS_OPEN          = 'open';
     public const STATUS_IN_PROGRESS   = 'in_progress';
@@ -92,7 +103,8 @@ class SupportTicket extends AbstractModel
     ];
 
     protected $casts = [
-        'last_reply_at' => 'datetime',
+        'last_reply_at'     => 'datetime',
+        'status_changed_at' => 'datetime',
     ];
 
     /** @var list<string> */

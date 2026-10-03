@@ -7,6 +7,7 @@ import Button from 'flarum/common/components/Button';
 import SupportCategory from './common/models/SupportCategory';
 import SupportTicket from './common/models/SupportTicket';
 import SupportReply from './common/models/SupportReply';
+import SupportEvent from './common/models/SupportEvent';
 
 import SupportIndexPage from './forum/components/SupportIndexPage';
 import SupportComposePage from './forum/components/SupportComposePage';
@@ -20,6 +21,7 @@ import {
 } from './forum/components/notifications';
 
 import { tr } from './forum/utils/translate';
+import { installRealtime } from './forum/utils/live';
 import { basePath, BASE_PATH, showNavInSidebar, showNavInAccountMenu, readForumAttribute, showError } from './forum/utils/helpers';
 
 app.initializers.add('linkrobins-support', () => {
@@ -28,6 +30,7 @@ app.initializers.add('linkrobins-support', () => {
   app.store.models['linkrobins-support-categories'] = SupportCategory;
   app.store.models['linkrobins-support-tickets'] = SupportTicket;
   app.store.models['linkrobins-support-replies'] = SupportReply;
+  app.store.models['linkrobins-support-events'] = SupportEvent;
 
   app.routes['linkrobins-support.index'] = { path: BASE_PATH, component: SupportIndexPage };
   app.routes['linkrobins-support.compose'] = { path: BASE_PATH + '/new', component: SupportComposePage };
@@ -44,6 +47,9 @@ app.initializers.add('linkrobins-support', () => {
   // Group support notifications under a translatable "Support" heading in the
   // notifications dropdown, instead of the generic forum-title group.
   installSupportNotificationGrouping();
+
+  // Live replies and ticket updates, when flarum/realtime is enabled.
+  installRealtime();
 
   // NotificationGrid lives in a lazily-loaded chunk, so it isn't in the
   // registry at init time -- a direct import resolves to undefined. Use the

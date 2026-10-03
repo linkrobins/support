@@ -5,11 +5,13 @@ import SupportIndexSidebar from './SupportIndexSidebar';
 import TicketHeader from './TicketHeader';
 import StaffControlBar from './StaffControlBar';
 import ReplyItem from './ReplyItem';
+import TicketEventItem from './TicketEventItem';
 import ReplyComposer from './ReplyComposer';
 import { tr } from '../utils/translate';
 import { basePath, BASE_PATH, safeNavigate, showError } from '../utils/helpers';
 import { canHandleSupportTickets } from '../utils/permissions';
-import { loadTicket, loadReplies, postReply, uploadFilesToBody } from '../utils/api';
+import { loadTicket, loadReplies, loadEvents, postReply, uploadFilesToBody } from '../utils/api';
+import { onLive } from '../utils/live';
 import { openSupportComposer, supportComposerSupported } from '../utils/composer';
 
 // Orchestrates the ticket detail page: owns loading/error state, the ticket and
@@ -22,6 +24,9 @@ export default class SupportShowPage extends Page {
   error: any = null;
   ticket: any = null;
   replies: any[] = [];
+  // Status and assignment changes, shown between the replies by time.
+  events: any[] = [];
+  _stopLive: (() => void) | null = null;
   replyText = '';
   replyIsInternal = false;
   posting = false;
@@ -43,6 +48,7 @@ export default class SupportShowPage extends Page {
     this.error = null;
     this.ticket = null;
     this.replies = [];
+    this.events = [];
     this.replyText = '';
     this.replyIsInternal = false;
     this.posting = false;
@@ -56,6 +62,17 @@ export default class SupportShowPage extends Page {
     if (this._ticketId) this._load();
   }
 
+  oncreate(vnode: any) {
+    super.oncreate(vnode);
+    this._stopLive = onLive((kind, id) => this._onLive(kind, id));
+  }
+
+  onremove(vnode: any) {
+    if (this._stopLive) this._stopLive();
+    this._stopLive = null;
+    super.onremove(vnode);
+  }
+
   onupdate(vnode: any) {
     if (super.onupdate) super.onupdate(vnode);
     const newId = (this.attrs && this.attrs.id) || null;
@@ -64,6 +81,7 @@ export default class SupportShowPage extends Page {
       this.loading = true;
       this.ticket = null;
       this.replies = [];
+      this.events = [];
       if (newId) this._load();
     }
   }
@@ -72,10 +90,16 @@ export default class SupportShowPage extends Page {
     this.loading = true;
     m.redraw();
 
-    Promise.all([loadTicket(this._ticketId), loadReplies(this._ticketId, 0, this._replyLimit)])
+    Promise.all([
+      loadTicket(this._ticketId),
+      loadReplies(this._ticketId, 0, this._replyLimit),
+      // History is a nicety: if it fails to load, the ticket still shows.
+      loadEvents(this._ticketId).catch(() => []),
+    ])
       .then((results: any[]) => {
         this.ticket = results[0];
         this.replies = results[1] || [];
+        this.events = results[2] || [];
         this.loading = false;
         try {
           const t = this.ticket && this.ticket.subject();
@@ -194,18 +218,10 @@ export default class SupportShowPage extends Page {
         m(
           'div',
           { className: 'LinkRobinsSupport-replies' },
-          this.replies.map((r: any) =>
-            m(ReplyItem, {
-              key: 'reply-' + r.id(),
-              reply: r,
-              editState: this._replyEditState ? this._replyEditState[r.id()] : null,
-              onBeginEdit: (rep: any) => this._beginEditReply(rep),
-              onSaveEditInline: (rep: any) => this._saveEditReply(rep),
-              onCancelEdit: (rep: any) => this._cancelEditReply(rep),
-              onSoftDelete: (rep: any) => this._softDeleteReply(rep),
-              onRestore: (rep: any) => this._restoreReply(rep),
-              onForceDelete: (rep: any) => this._forceDeleteReply(rep),
-            })
+          this._timeline().map((entry: any) =>
+            entry.kind === 'event'
+              ? m(TicketEventItem, { key: 'event-' + entry.item.id(), event: entry.item })
+              : this._renderReply(entry.item)
           )
         ),
 
@@ -265,6 +281,86 @@ export default class SupportShowPage extends Page {
     );
   }
 
+  _renderReply(r: any) {
+    return m(ReplyItem, {
+      key: 'reply-' + r.id(),
+      reply: r,
+      editState: this._replyEditState ? this._replyEditState[r.id()] : null,
+      onBeginEdit: (rep: any) => this._beginEditReply(rep),
+      onSaveEditInline: (rep: any) => this._saveEditReply(rep),
+      onCancelEdit: (rep: any) => this._cancelEditReply(rep),
+      onSoftDelete: (rep: any) => this._softDeleteReply(rep),
+      onRestore: (rep: any) => this._restoreReply(rep),
+      onForceDelete: (rep: any) => this._forceDeleteReply(rep),
+    });
+  }
+
+  /**
+   * Replies and history entries in time order. While older replies are still
+   * waiting behind "Load more", history after the last loaded reply is held
+   * back too, so an entry never appears above a reply that came before it.
+   */
+  _timeline(): Array<{ kind: 'reply' | 'event'; item: any }> {
+    const replies = this.replies || [];
+    const total = this.ticket && typeof this.ticket.replyCount === 'function' ? this.ticket.replyCount() : null;
+    const moreToLoad = total != null && replies.length < total;
+    const last = replies.length ? replies[replies.length - 1].createdAt() : null;
+    const time = (d: any) => (d instanceof Date ? d.getTime() : 0);
+
+    const events = (this.events || []).filter((e: any) => !moreToLoad || (last && time(e.createdAt()) <= time(last)));
+
+    const entries: Array<{ kind: 'reply' | 'event'; item: any; at: number; order: number }> = [];
+    replies.forEach((r: any, i: number) => entries.push({ kind: 'reply', item: r, at: time(r.createdAt()), order: i }));
+    events.forEach((e: any, i: number) => entries.push({ kind: 'event', item: e, at: time(e.createdAt()), order: i }));
+
+    // A reply that moves the status writes its history entry in the same
+    // second; keep the reply first so the line reads as its consequence.
+    return entries.sort((a, b) => a.at - b.at || (a.kind === b.kind ? a.order - b.order : a.kind === 'reply' ? -1 : 1));
+  }
+
+  _refreshEvents() {
+    if (!this._ticketId) return;
+    loadEvents(this._ticketId)
+      .then((events: any[]) => {
+        this.events = events || [];
+        m.redraw();
+      })
+      .catch(() => {});
+  }
+
+  /**
+   * A live update arrived. A ticket push has already been merged into the
+   * store, so the header and status bar redraw on their own; only its history
+   * needs refetching. A reply push cannot say which ticket it belongs to, so
+   * fetch whatever is new on this one: the next page if every reply so far is
+   * loaded, otherwise just the ticket, so the reply count and "Load more"
+   * catch up.
+   */
+  _onLive(kind: string, id: string | null) {
+    if (!this.ticket || this.loading) return;
+
+    if (kind === 'ticket') {
+      if (id === String(this.ticket.id())) this._refreshEvents();
+      return;
+    }
+
+    const total = typeof this.ticket.replyCount === 'function' ? this.ticket.replyCount() : null;
+    const allLoaded = total == null || this.replies.length >= total;
+    if (!allLoaded) {
+      this._refreshTicket();
+      return;
+    }
+    loadReplies(this._ticketId, this.replies.length, this._replyLimit)
+      .then((more: any[]) => {
+        const seen = new Set((this.replies || []).map((r: any) => String(r.id())));
+        const fresh = (more || []).filter((r: any) => !seen.has(String(r.id())));
+        if (fresh.length) this.replies = this.replies.concat(fresh);
+        m.redraw();
+        this._refreshTicket();
+      })
+      .catch(() => {});
+  }
+
   // "Load more replies" button, shown while fewer replies are loaded than the
   // ticket's reply count (which respects the same visibility as the list).
   _renderLoadMore() {
@@ -316,6 +412,7 @@ export default class SupportShowPage extends Page {
         }
         this.updating = false;
         m.redraw();
+        this._refreshEvents();
       })
       .catch((err: any) => {
         this.updating = false;
@@ -351,6 +448,7 @@ export default class SupportShowPage extends Page {
       .then(() => {
         this.updating = false;
         m.redraw();
+        this._refreshEvents();
       })
       .catch((err: any) => {
         this.updating = false;
@@ -652,6 +750,8 @@ export default class SupportShowPage extends Page {
         m.redraw();
       })
       .catch(() => {});
+    // A reply can move the status or claim the ticket; show that in history.
+    this._refreshEvents();
   }
 
   // Post a reply. Called from the docked composer with (content, isInternal,

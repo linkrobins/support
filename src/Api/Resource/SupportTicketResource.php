@@ -586,6 +586,10 @@ class SupportTicketResource extends AbstractDatabaseResource
             $model->subject = $model->getOriginal('subject');
         }
 
+        // Credit status and assignment changes in the ticket timeline to the
+        // person making this request (see SupportEvent::recordChanges).
+        $model->eventActorId = $actor->isGuest() ? null : (int) $actor->id;
+
         $this->before[(int) $model->id] = [
             'status' => $model->getOriginal('status'),
             'assignee' => $model->getOriginal('assigned_staff_id') === null

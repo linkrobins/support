@@ -832,3 +832,47 @@
 .LinkRobinsSupport-chosenCategory-icon {
     color: var(--primary-color, #07adcc);
 }
+
+// Who has the ticket, in the staff list. The avatar is sized to the meta line
+// so rows keep their height.
+.LinkRobinsSupport-row-assignee {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+
+    &.is-unassigned {
+        font-style: italic;
+    }
+}
+.LinkRobinsSupport-row-assigneeAvatar {
+    --size: 16px;
+    width: 16px;
+    height: 16px;
+    font-size: 8px;
+    line-height: 16px;
+}
+
+// Status and assignment changes in the ticket timeline: one quiet line
+// between replies, not a card of its own.
+.LinkRobinsSupport-event {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 4px 0 4px 12px;
+    padding: 4px 0;
+    color: var(--muted-color, #888);
+    font-size: calc(0.85rem * var(--lr-text-scale, 1));
+}
+.LinkRobinsSupport-event-icon {
+    width: 14px;
+    text-align: center;
+}
+.LinkRobinsSupport-event-date {
+    opacity: 0.8;
+
+    &::before {
+        content: '\00B7';
+        margin-right: 6px;
+    }
+}
