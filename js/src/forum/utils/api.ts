@@ -1,4 +1,5 @@
 import { tr } from './translate';
+import { refreshCounts } from './counts';
 import type SupportTicket from '../../common/models/SupportTicket';
 import type SupportReply from '../../common/models/SupportReply';
 import type SupportCategory from '../../common/models/SupportCategory';
@@ -81,6 +82,7 @@ export function markTicketRead(ticket: any): void {
     .request({ method: 'POST', url: apiUrl() + '/linkrobins-support-tickets/' + ticket.id() + '/read' })
     .then(() => {
       if (typeof ticket.pushAttributes === 'function') ticket.pushAttributes({ isUnread: false });
+      refreshCounts();
     })
     .catch(() => {});
 }

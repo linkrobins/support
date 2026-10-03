@@ -49,7 +49,8 @@ return [
 
     (new Extend\Routes('api'))
         ->get('/linkrobins-support-staff', 'linkrobins-support.staff', \LinkRobins\Support\Api\Controller\ListStaffController::class)
-        ->post('/linkrobins-support-tickets/{id}/read', 'linkrobins-support.tickets.read', \LinkRobins\Support\Api\Controller\MarkTicketReadController::class),
+        ->post('/linkrobins-support-tickets/{id}/read', 'linkrobins-support.tickets.read', \LinkRobins\Support\Api\Controller\MarkTicketReadController::class)
+        ->get('/linkrobins-support-counts', 'linkrobins-support.counts', \LinkRobins\Support\Api\Controller\TicketCountsController::class),
 
     (new Extend\Policy())
         ->modelPolicy(SupportTicket::class,   Access\SupportTicketPolicy::class)

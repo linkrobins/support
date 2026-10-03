@@ -934,3 +934,18 @@ button.LinkRobinsSupport-chip {
     background: var(--primary-color, #07adcc);
     vertical-align: middle;
 }
+
+// Counts beside the sidebar links: small, muted, right-aligned, the way core
+// shows numbers in its own navigation. Unread own tickets use the primary
+// colour, since that one asks for attention.
+.LinkRobinsSupport-navCount {
+    margin-left: auto;
+    padding-left: 8px;
+    font-size: 0.8em;
+    font-weight: 600;
+    color: var(--muted-color, #888);
+
+    &.is-unread {
+        color: var(--primary-color, #07adcc);
+    }
+}

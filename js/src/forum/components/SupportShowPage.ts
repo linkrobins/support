@@ -11,6 +11,7 @@ import { basePath, BASE_PATH, safeNavigate, showError } from '../utils/helpers';
 import { canHandleSupportTickets } from '../utils/permissions';
 import { loadTicket, loadReplies, loadEvents, markTicketRead, postReply, uploadFilesToBody } from '../utils/api';
 import { onLive } from '../utils/live';
+import { refreshCounts } from '../utils/counts';
 import { openSupportComposer, supportComposerSupported } from '../utils/composer';
 
 // Orchestrates the ticket detail page: owns loading/error state, the ticket and
@@ -434,6 +435,7 @@ export default class SupportShowPage extends Page {
         this.updating = false;
         m.redraw();
         this._refreshEvents();
+        refreshCounts();
       })
       .catch((err: any) => {
         this.updating = false;
@@ -470,6 +472,7 @@ export default class SupportShowPage extends Page {
         this.updating = false;
         m.redraw();
         this._refreshEvents();
+        refreshCounts();
       })
       .catch((err: any) => {
         this.updating = false;
