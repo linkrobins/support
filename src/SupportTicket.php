@@ -20,6 +20,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string $priority
  * @property \Carbon\Carbon|null $last_reply_at
  * @property \Carbon\Carbon|null $status_changed_at
+ * @property \Carbon\Carbon|null $reminded_at
  * @property \Carbon\Carbon|null $created_at
  * @property \Carbon\Carbon|null $updated_at
  * @property \Carbon\Carbon|null $deleted_at
@@ -118,6 +119,7 @@ class SupportTicket extends AbstractModel
     protected $casts = [
         'last_reply_at'     => 'datetime',
         'status_changed_at' => 'datetime',
+        'reminded_at'       => 'datetime',
     ];
 
     /** @var list<string> */

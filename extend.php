@@ -90,13 +90,18 @@ return [
         // Anyone who wants the emails can switch them on per-type in their
         // own notification settings.
         ->type(TicketStatusChangedBlueprint::class, ['alert'])
-        ->type(TicketAssignedBlueprint::class, ['alert', 'email']),
+        ->type(TicketAssignedBlueprint::class, ['alert', 'email'])
+        // One nudge per wait, so both on by default: a member who does not
+        // check the forum still hears that staff are waiting on them.
+        ->type(\LinkRobins\Support\Notification\AwaitingReplyReminderBlueprint::class, ['alert', 'email']),
 
     // Close tickets left Resolved and quiet for the configured number of days.
     // Needs `php flarum schedule:run` in cron, like every scheduled task.
     (new Extend\Console())
         ->command(CloseResolvedTicketsCommand::class)
-        ->schedule(CloseResolvedTicketsCommand::class, HourlySchedule::class),
+        ->schedule(CloseResolvedTicketsCommand::class, HourlySchedule::class)
+        ->command(\LinkRobins\Support\Console\RemindAwaitingTicketsCommand::class)
+        ->schedule(\LinkRobins\Support\Console\RemindAwaitingTicketsCommand::class, HourlySchedule::class),
 
     // Live updates when flarum/realtime is installed: ticket changes and new
     // replies are pushed to whoever has the ticket in view. Each recipient's
@@ -239,7 +244,8 @@ return [
         ->default('linkrobins-support.appeal_max_concurrent_open', '1')
         ->default('linkrobins-support.general_limit_per_window',   '10')
         ->default('linkrobins-support.general_window_hours',       '24')
-        ->default(CloseResolvedTicketsCommand::SETTING,            '7'),
+        ->default(CloseResolvedTicketsCommand::SETTING,            '7')
+        ->default(\LinkRobins\Support\Console\RemindAwaitingTicketsCommand::SETTING, '3'),
         // Note: these settings are consumed server-side by RateLimiter; they
         // are intentionally NOT serialized to the forum frontend (the JS never
         // reads them).

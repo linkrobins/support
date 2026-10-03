@@ -94,10 +94,12 @@ linkrobins-support:
       delete_confirm: 'Delete the saved reply "{name}"?'
       error_save: 'Could not save the saved reply.'
     auto_close:
-      heading: 'Automatic closing'
+      heading: 'Reminders and automatic closing'
       intro: 'Close tickets that stay Resolved with no further activity. A reply from either side reopens a resolved ticket, so this only closes tickets nobody came back to. Nobody is notified; the ticket history shows it was closed automatically, and the owner can still reopen it.'
       days: 'Close resolved tickets after (days)'
       days_help: 'Counted from when the ticket was resolved or last replied to, whichever is later. Set to 0 to turn this off. Runs once an hour, and needs the Flarum scheduler (php flarum schedule:run) set up in cron.'
+      reminder_days: 'Remind the owner after (days)'
+      reminder_days_help: 'When a ticket has been waiting on its owner (Awaiting response) this long with no activity, they get one reminder by notification and email. Once per wait. Set to 0 to turn this off.'
     rate_limits:
       heading: 'Rate limits'
       intro: 'Limit how often users can open support tickets and ban appeals.'
@@ -131,12 +133,14 @@ linkrobins-support:
       status_changed_generic: 'A ticket was marked {status}'
       reopened_by_owner: '{name} reopened their ticket'
       confirmed_solved_by_owner: '{name} confirmed their ticket was solved'
+      awaiting_reminder: 'Support is waiting for your reply'
       assigned: '{name} assigned a ticket to you'
       assigned_generic: 'A ticket was assigned to you'
     settings:
       notify_new_reply_label: 'Someone replies to my support ticket'
       notify_new_ticket_label: 'A new support ticket is opened (staff)'
       notify_status_changed_label: "A support ticket's status changes"
+      notify_awaiting_reminder_label: 'Support has been waiting a few days for my reply'
       notify_assigned_label: 'A support ticket is assigned to me'
     status:
       in_progress: 'In progress'
@@ -311,6 +315,8 @@ linkrobins-support:
     status_changed_body_generic: 'A support ticket was marked {status}.'
     reopened_by_owner_body: '{name} reopened their ticket.'
     confirmed_solved_body: '{name} confirmed their ticket was solved and closed it.'
+    awaiting_reminder_subject: '[{subject}] Waiting for your reply'
+    awaiting_reminder_body: 'Our support team is waiting for your reply on this ticket. Answer when you can and we will pick it straight back up.'
     assigned_subject: 'Assigned to you: {subject}'
     assigned_body: '{name} assigned this support ticket to you.'
   # Server-resolved messages (API error details + rate-limit reasons). Only

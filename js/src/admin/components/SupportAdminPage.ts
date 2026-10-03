@@ -339,6 +339,19 @@ export default class SupportAdminPage extends ExtensionPage {
         }),
         m('div', { className: 'helpText' }, tx('linkrobins-support.admin.auto_close.days_help')),
       ]),
+      m('div', { className: 'Form-group' }, [
+        m('label', null, tx('linkrobins-support.admin.auto_close.reminder_days')),
+        m('input', {
+          type: 'number',
+          className: 'FormControl',
+          min: 0,
+          value: this.setting('linkrobins-support.awaiting_reminder_days', '3')(),
+          oninput: (e: any) => {
+            this.setting('linkrobins-support.awaiting_reminder_days', '3')(e.target.value);
+          },
+        }),
+        m('div', { className: 'helpText' }, tx('linkrobins-support.admin.auto_close.reminder_days_help')),
+      ]),
       m('div', { className: 'Form-group Form-controls' }, this.submitButton()),
     ]);
   }

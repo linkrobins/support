@@ -17,6 +17,7 @@ import {
   NewSupportReplyNotification,
   NewSupportTicketNotification,
   TicketAssignedNotification,
+  AwaitingReminderNotification,
   TicketStatusChangedNotification,
   installSupportNotificationGrouping,
 } from './forum/components/notifications';
@@ -44,6 +45,7 @@ app.initializers.add('linkrobins-support', () => {
     app.notificationComponents['linkrobinsSupportNewTicket'] = NewSupportTicketNotification;
     app.notificationComponents['linkrobinsSupportTicketStatusChanged'] = TicketStatusChangedNotification;
     app.notificationComponents['linkrobinsSupportTicketAssigned'] = TicketAssignedNotification;
+    app.notificationComponents['linkrobinsSupportAwaitingReminder'] = AwaitingReminderNotification;
   }
 
   // Group support notifications under a translatable "Support" heading in the
@@ -77,6 +79,11 @@ app.initializers.add('linkrobins-support', () => {
       name: 'linkrobinsSupportTicketAssigned',
       icon: 'fas fa-user-check',
       label: tr('settings.notify_assigned_label', 'A support ticket is assigned to you'),
+    });
+    items.add('linkrobinsSupportAwaitingReminder', {
+      name: 'linkrobinsSupportAwaitingReminder',
+      icon: 'fas fa-hourglass-half',
+      label: tr('settings.notify_awaiting_reminder_label', 'Support has been waiting a few days for my reply'),
     });
   });
 

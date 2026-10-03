@@ -227,3 +227,19 @@ export class TicketAssignedNotification extends Notification {
     return ticketExcerpt(this.attrs && this.attrs.notification);
   }
 }
+
+/** The forum's one-off nudge: staff have been waiting on the owner's reply. */
+export class AwaitingReminderNotification extends Notification {
+  icon() {
+    return '';
+  }
+  href() {
+    return ticketHref(this.attrs && this.attrs.notification);
+  }
+  content() {
+    return tr('notifications.awaiting_reminder', 'Support is waiting for your reply');
+  }
+  excerpt() {
+    return ticketExcerpt(this.attrs && this.attrs.notification);
+  }
+}
