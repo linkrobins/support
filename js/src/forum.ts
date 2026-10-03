@@ -13,6 +13,7 @@ import SupportSavedReply from './common/models/SupportSavedReply';
 import SupportIndexPage from './forum/components/SupportIndexPage';
 import SupportComposePage from './forum/components/SupportComposePage';
 import SupportShowPage from './forum/components/SupportShowPage';
+import SupportStatsModal from './forum/components/SupportStatsModal';
 import {
   NewSupportReplyNotification,
   NewSupportTicketNotification,
@@ -136,5 +137,16 @@ app.initializers.add('linkrobins-support', () => {
   extend('flarum/forum/components/SessionDropdown' as any, 'items', (items: any) => {
     if (!app.session || !app.session.user || !showNavInAccountMenu()) return;
     items.add('linkrobins-support', supportLink(), 40);
+  });
+
+  // Support stats for staff, in the account menu beside the Support link,
+  // opening a modal the way LR Birdseye's Analytics item does.
+  extend('flarum/forum/components/SessionDropdown' as any, 'items', (items: any) => {
+    if (!app.session || !app.session.user || !readForumAttribute('canHandleSupportTickets')) return;
+    items.add(
+      'linkrobins-support-stats',
+      m(Button, { icon: 'fas fa-chart-bar', onclick: () => app.modal.show(SupportStatsModal) }, tr('stats.title', 'Support stats')),
+      39
+    );
   });
 });

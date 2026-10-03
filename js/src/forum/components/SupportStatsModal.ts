@@ -1,13 +1,12 @@
 import Modal from 'flarum/common/components/Modal';
 import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
-import Button from 'flarum/common/components/Button';
 import { tr, trText } from '../utils/translate';
 
 const WINDOWS = [7, 30, 90];
 
 /** A duration in seconds, read at a glance: minutes, hours, or days. */
 function duration(seconds: number | null | undefined): string {
-  if (seconds === null || seconds === undefined) return trText('stats.no_data', 'Not enough data yet');
+  if (seconds === null || seconds === undefined) return '–';
   const minutes = Math.round(seconds / 60);
   if (minutes < 60) return trText('stats.minutes', '{count} min', { count: Math.max(1, minutes) });
   const hours = seconds / 3600;
@@ -24,19 +23,17 @@ function periodLabel(start: string, days: number): string {
 }
 
 /**
- * Staff-only support stats, opened from the sidebar as a modal so staff can
- * check the numbers without leaving the list they are working in: how fast
- * tickets are answered and resolved, how the backlog looks, how tickets end,
- * and who is answering them. Everything comes from
- * GET /api/linkrobins-support-stats (staff-only on the server too); nothing
- * here is tracked specially.
+ * Staff-only support stats in a wide modal, opened from the account menu.
+ * Laid out the way LR Birdseye's Analytics modal is (range buttons at the
+ * top right, a row of tiles, titled cards), so the two read as one product;
+ * keep them in step. Everything comes from GET /api/linkrobins-support-stats,
+ * which is staff-only on the server too.
  */
 export default class SupportStatsModal extends Modal<any> {
   days = 30;
   loading = true;
   error = false;
   data: any = null;
-  hover: number | null = null;
 
   oninit(vnode: any) {
     super.oninit(vnode);
@@ -44,7 +41,7 @@ export default class SupportStatsModal extends Modal<any> {
   }
 
   className() {
-    return 'LinkRobinsSupport-statsModal Modal--large';
+    return 'LinkRobinsSupportStatsModal';
   }
 
   title() {
@@ -70,209 +67,195 @@ export default class SupportStatsModal extends Modal<any> {
   }
 
   content() {
-    return m('div', { className: 'Modal-body LinkRobinsSupport-stats' }, [
-      m(
-        'div',
-        { className: 'LinkRobinsSupport-stats-range', role: 'group', 'aria-label': trText('stats.range', 'Time range') },
-        WINDOWS.map((d) =>
-          m(
-            Button,
-            {
-              className: 'Button' + (this.days === d ? ' Button--primary' : ''),
-              'aria-pressed': this.days === d ? 'true' : 'false',
-              onclick: () => {
-                if (this.days === d) return;
-                this.days = d;
-                this._load();
-              },
-            },
-            trText('stats.last_days', 'Last {count} days', { count: d })
-          )
-        )
-      ),
-      this.loading
-        ? m(LoadingIndicator)
-        : this.error || !this.data
-          ? m('div', { className: 'LinkRobinsSupport-empty' }, tr('stats.load_failed', 'Could not load stats.'))
-          : this._renderStats(this.data),
-    ]);
+    return m('div', { className: 'Modal-body' }, m('div', { className: 'SupportStats' }, this._body()));
   }
 
-  _tile(label: any, value: any, note?: any) {
-    return m('div', { className: 'LinkRobinsSupport-tile' }, [
-      m('div', { className: 'LinkRobinsSupport-tile-label' }, label),
-      m('div', { className: 'LinkRobinsSupport-tile-value' }, value),
-      note ? m('div', { className: 'LinkRobinsSupport-tile-note' }, note) : null,
-    ]);
-  }
+  _body() {
+    if (this.loading && !this.data) return m(LoadingIndicator);
+    if (this.error || !this.data) return m('p', { className: 'helpText' }, tr('stats.load_failed', 'Could not load stats.'));
 
-  _renderStats(d: any) {
+    const d = this.data;
     const fr = d.firstResponse;
     const tt = d.timeToResolve;
-    const endings = d.endings;
-    const ended = endings.confirmed + endings.auto + endings.staff;
 
     return [
-      m('section', { className: 'LinkRobinsSupport-tiles' }, [
-        this._tile(tr('stats.opened', 'Tickets opened'), d.opened),
-        this._tile(tr('stats.closed', 'Tickets closed'), d.closed),
-        this._tile(
-          tr('stats.first_response', 'First response'),
-          duration(fr.median),
-          fr.median === null
-            ? null
-            : [
-                trText('stats.slowest', 'Slowest tenth: {time}', { time: duration(fr.p90) }),
-                fr.unanswered ? m('div', null, trText('stats.unanswered', '{count} still waiting', { count: fr.unanswered })) : null,
-              ]
+      m('div', { className: 'SupportStats-header' }, [
+        m('span'),
+        m(
+          'div',
+          { className: 'SupportStats-ranges', role: 'group', 'aria-label': trText('stats.range', 'Time range') },
+          WINDOWS.map((n) =>
+            m(
+              'button',
+              {
+                type: 'button',
+                className: 'Button Button--size-sm' + (this.days === n ? ' Button--primary' : ''),
+                'aria-pressed': this.days === n ? 'true' : 'false',
+                onclick: () => {
+                  if (this.days === n) return;
+                  this.days = n;
+                  this._load();
+                },
+              },
+              trText('stats.n_days', '{count} days', { count: n })
+            )
+          )
         ),
-        this._tile(
-          tr('stats.time_to_resolve', 'Time to resolve'),
-          duration(tt.median),
-          tt.median === null ? null : trText('stats.slowest', 'Slowest tenth: {time}', { time: duration(tt.p90) })
+      ]),
+
+      m('div', { className: 'SupportStats-tiles' }, [
+        this._tile(tr('stats.opened', 'Tickets opened'), String(d.opened)),
+        this._tile(tr('stats.closed', 'Tickets closed'), String(d.closed)),
+        this._tile(tr('stats.first_response', 'First response'), duration(fr.median)),
+        this._tile(tr('stats.time_to_resolve', 'Time to resolve'), duration(tt.median)),
+      ]),
+
+      this._card(
+        tr('stats.speed', 'Response times'),
+        tr('stats.median_note', 'typical (median) and slowest tenth'),
+        m('div', { className: 'SupportStats-strip' }, [
+          this._mini(duration(fr.median), tr('stats.first_response', 'First response')),
+          this._mini(duration(fr.p90), tr('stats.first_response_slow', 'Slowest first response')),
+          this._mini(duration(tt.median), tr('stats.time_to_resolve', 'Time to resolve')),
+          this._mini(duration(tt.p90), tr('stats.resolve_slow', 'Slowest resolve')),
+          this._mini(String(fr.unanswered), tr('stats.still_waiting', 'Still waiting for a reply')),
+        ])
+      ),
+
+      this._volumeCard(d),
+
+      m('div', { className: 'SupportStats-cards' }, [
+        this._card(
+          tr('stats.backlog', 'Backlog right now'),
+          null,
+          m('div', { className: 'SupportStats-strip' }, [
+            this._mini(String(d.backlog.waiting), tr('stats.waiting', 'Waiting')),
+            this._mini(String(d.backlog.olderThan3Days), tr('stats.older_3', 'Over 3 days')),
+            this._mini(String(d.backlog.olderThan7Days), tr('stats.older_7', 'Over 7 days')),
+            this._mini(String(d.backlog.unassigned), tr('stats.unassigned', 'Unassigned')),
+          ])
         ),
+        this._endingsCard(d.endings),
       ]),
 
-      m('section', { className: 'LinkRobinsSupport-stats-section' }, [
-        m('h2', null, tr('stats.volume', 'Opened and closed')),
-        this._renderVolume(d.volume, d.days),
-      ]),
-
-      m('section', { className: 'LinkRobinsSupport-stats-section' }, [
-        m('h2', null, tr('stats.backlog', 'Backlog right now')),
-        m('div', { className: 'LinkRobinsSupport-tiles' }, [
-          this._tile(tr('stats.waiting', 'Waiting on staff or the owner'), d.backlog.waiting),
-          this._tile(tr('stats.older_3', 'Open longer than 3 days'), d.backlog.olderThan3Days),
-          this._tile(tr('stats.older_7', 'Open longer than 7 days'), d.backlog.olderThan7Days),
-          this._tile(tr('stats.unassigned', 'Unassigned'), d.backlog.unassigned),
-        ]),
-      ]),
-
-      m('section', { className: 'LinkRobinsSupport-stats-section' }, [
-        m('h2', null, tr('stats.endings', 'How resolved tickets were closed')),
-        ended === 0
-          ? m('p', { className: 'LinkRobinsSupport-stats-muted' }, tr('stats.no_endings', 'No resolved tickets have been closed in this period.'))
-          : m('div', { className: 'LinkRobinsSupport-tiles' }, [
-              this._tile(
-                tr('stats.confirmed', 'Confirmed solved by the owner'),
-                endings.confirmed,
-                Math.round((endings.confirmed / ended) * 100) + '%'
-              ),
-              this._tile(tr('stats.auto', 'Closed automatically'), endings.auto, Math.round((endings.auto / ended) * 100) + '%'),
-              this._tile(tr('stats.by_staff', 'Closed by staff'), endings.staff, Math.round((endings.staff / ended) * 100) + '%'),
-            ]),
-      ]),
-
-      m('section', { className: 'LinkRobinsSupport-stats-section' }, [
-        m('h2', null, tr('stats.people', 'By staff member')),
-        d.staff.length === 0
-          ? m('p', { className: 'LinkRobinsSupport-stats-muted' }, tr('stats.no_people', 'No staff replies in this period.'))
-          : m('table', { className: 'LinkRobinsSupport-statsTable' }, [
-              m(
-                'thead',
-                m('tr', [
-                  m('th', tr('stats.col_person', 'Staff member')),
-                  m('th', tr('stats.col_replies', 'Replies')),
-                  m('th', tr('stats.col_tickets', 'Tickets')),
-                  m('th', tr('stats.col_first', 'First to answer')),
-                  m('th', tr('stats.col_first_time', 'Typical first response')),
-                ])
-              ),
-              m(
-                'tbody',
-                d.staff.map((p: any) =>
-                  m('tr', { key: p.id }, [
-                    m('td', p.displayName || p.username),
-                    m('td', p.replies),
-                    m('td', p.tickets),
-                    m('td', p.firstResponses),
-                    m('td', p.medianFirstResponse === null ? '' : duration(p.medianFirstResponse)),
-                  ])
-                )
-              ),
-            ]),
-      ]),
+      this._staffCard(d.staff),
 
       m(
         'p',
-        { className: 'LinkRobinsSupport-stats-muted LinkRobinsSupport-stats-footnote' },
+        { className: 'SupportStats-note helpText' },
         tr(
           'stats.footnote',
-          'Times are typical (median) values. Status history is recorded from this version on, so time to resolve and how tickets were closed fill in as new tickets move through.'
+          'Status history is recorded from this version on, so time to resolve and how tickets were closed fill in as new tickets move through.'
         )
       ),
     ];
   }
 
-  /**
-   * Opened vs closed per period, as paired columns. Two series, so a legend
-   * sits above; hovering a period shows its exact numbers; the same figures
-   * are available as a table below for anyone who cannot read the chart.
-   */
-  _renderVolume(volume: any[], days: number) {
-    const max = Math.max(1, ...volume.map((v) => Math.max(v.opened, v.closed)));
-    const hovered = this.hover !== null ? volume[this.hover] : null;
+  _tile(label: any, value: string) {
+    return m('div', { className: 'SupportStats-tile' }, [
+      m('div', { className: 'SupportStats-tileLabel' }, label),
+      m('div', { className: 'SupportStats-tileValue' }, value),
+    ]);
+  }
 
-    // Label every period while they fit; past eight, every few, so they never collide.
+  _mini(value: string, label: any) {
+    return m('div', [m('div', { className: 'SupportStats-miniValue' }, value), m('div', { className: 'SupportStats-miniLabel' }, label)]);
+  }
+
+  _card(title: any, note: any, body: any) {
+    return m('div', { className: 'SupportStats-card' }, [
+      m('div', { className: 'SupportStats-cardTitle' }, [
+        m('span', { className: 'SupportStats-cardTitleText' }, title),
+        note ? m('span', { className: 'SupportStats-span' }, note) : null,
+      ]),
+      body,
+    ]);
+  }
+
+  _endingsCard(endings: any) {
+    const total = endings.confirmed + endings.auto + endings.staff;
+    const pct = (n: number) => (total ? Math.round((n / total) * 100) + '%' : '–');
+
+    return this._card(
+      tr('stats.endings', 'How resolved tickets were closed'),
+      null,
+      total === 0
+        ? m('p', { className: 'helpText' }, tr('stats.no_endings', 'None closed in this period.'))
+        : m('div', { className: 'SupportStats-strip' }, [
+            this._mini(pct(endings.confirmed), tr('stats.confirmed', 'Confirmed by the owner')),
+            this._mini(pct(endings.auto), tr('stats.auto', 'Closed automatically')),
+            this._mini(pct(endings.staff), tr('stats.by_staff', 'Closed by staff')),
+          ])
+    );
+  }
+
+  /**
+   * Opened vs closed per period, as paired columns: a legend in the card
+   * title, a dark tooltip on the hovered period (the Birdseye chart's), and
+   * the same figures as a table for anyone who cannot read the chart.
+   */
+  _volumeCard(d: any) {
+    const volume: any[] = d.volume;
+    const days: number = d.days;
+    const max = Math.max(1, ...volume.map((v) => Math.max(v.opened, v.closed)));
+    const span = volume.length ? `${shortDate(volume[0].start)} – ${shortDate(volume[volume.length - 1].start)}` : '';
     const labelEvery = volume.length > 8 ? Math.ceil(volume.length / 6) : 1;
 
-    return m('div', { className: 'LinkRobinsSupport-chart' }, [
-      m('div', { className: 'LinkRobinsSupport-chart-legend' }, [
-        m('span', [m('i', { className: 'LinkRobinsSupport-chart-key is-opened' }), tr('stats.opened', 'Tickets opened')]),
-        m('span', [m('i', { className: 'LinkRobinsSupport-chart-key is-closed' }), tr('stats.closed', 'Tickets closed')]),
-        // The hover readout lives in the legend row, so it never covers a column.
-        hovered
-          ? m(
-              'span',
-              { className: 'LinkRobinsSupport-chart-readout', role: 'status' },
-              trText('stats.period_summary', '{period}: {opened} opened, {closed} closed', {
-                period: periodLabel(hovered.start, days),
-                opened: hovered.opened,
-                closed: hovered.closed,
-              })
-            )
-          : null,
+    return m('div', { className: 'SupportStats-card' }, [
+      m('div', { className: 'SupportStats-cardTitle' }, [
+        m('span', { className: 'SupportStats-cardTitleText' }, tr('stats.volume', 'Opened and closed')),
+        m('span', { className: 'SupportStats-cardTitleRight' }, [
+          m('span', { className: 'SupportStats-legend' }, [
+            m('i', { className: 'SupportStats-swatch is-opened' }),
+            tr('stats.legend_opened', 'Opened'),
+          ]),
+          m('span', { className: 'SupportStats-legend' }, [
+            m('i', { className: 'SupportStats-swatch is-closed' }),
+            tr('stats.legend_closed', 'Closed'),
+          ]),
+          m('span', { className: 'SupportStats-span' }, span),
+        ]),
       ]),
-      m('div', { className: 'LinkRobinsSupport-chart-frame' }, [
-        m('span', { className: 'LinkRobinsSupport-chart-max' }, max),
-        m(
-          'div',
-          { className: 'LinkRobinsSupport-chart-plot', onmouseleave: () => (this.hover = null) },
-          volume.map((v: any, i: number) =>
-            m(
-              'div',
-              {
-                key: v.start,
-                className: 'LinkRobinsSupport-chart-group' + (this.hover === i ? ' is-hovered' : ''),
-                onmouseenter: () => (this.hover = i),
-                tabindex: 0,
-                onfocus: () => (this.hover = i),
-                'aria-label': trText('stats.period_summary', '{period}: {opened} opened, {closed} closed', {
-                  period: periodLabel(v.start, days),
-                  opened: v.opened,
-                  closed: v.closed,
-                }),
-              },
-              [
-                m('div', { className: 'LinkRobinsSupport-chart-bars' }, [
-                  m('div', { className: 'LinkRobinsSupport-chart-bar is-opened', style: { height: (v.opened / max) * 100 + '%' } }),
-                  m('div', { className: 'LinkRobinsSupport-chart-bar is-closed', style: { height: (v.closed / max) * 100 + '%' } }),
-                ]),
-                m('div', { className: 'LinkRobinsSupport-chart-label' }, i % labelEvery === 0 ? shortDate(v.start) : ''),
-              ]
-            )
+      m(
+        'div',
+        { className: 'SupportStats-chart' },
+        volume.map((v: any, i: number) =>
+          m(
+            'div',
+            {
+              key: v.start,
+              className: 'SupportStats-chartCol',
+              tabindex: 0,
+              'data-label': trText('stats.period_summary', '{period}: {opened} opened, {closed} closed', {
+                period: periodLabel(v.start, days),
+                opened: v.opened,
+                closed: v.closed,
+              }),
+              'aria-label': trText('stats.period_summary', '{period}: {opened} opened, {closed} closed', {
+                period: periodLabel(v.start, days),
+                opened: v.opened,
+                closed: v.closed,
+              }),
+            },
+            [
+              m('div', { className: 'SupportStats-chartPair' }, [
+                m('div', { className: 'SupportStats-chartBar is-opened', style: { height: (v.opened / max) * 100 + '%' } }),
+                m('div', { className: 'SupportStats-chartBar is-closed', style: { height: (v.closed / max) * 100 + '%' } }),
+              ]),
+              m('div', { className: 'SupportStats-chartLabel' }, i % labelEvery === 0 ? shortDate(v.start) : ''),
+            ]
           )
-        ),
-      ]),
-      m('details', { className: 'LinkRobinsSupport-chart-table' }, [
+        )
+      ),
+      m('details', { className: 'SupportStats-table' }, [
         m('summary', tr('stats.show_table', 'Show as a table')),
-        m('table', { className: 'LinkRobinsSupport-statsTable' }, [
+        m('table', [
           m(
             'thead',
             m('tr', [
               m('th', tr('stats.col_period', 'Period')),
-              m('th', tr('stats.opened', 'Tickets opened')),
-              m('th', tr('stats.closed', 'Tickets closed')),
+              m('th', tr('stats.legend_opened', 'Opened')),
+              m('th', tr('stats.legend_closed', 'Closed')),
             ])
           ),
           m(
@@ -282,5 +265,40 @@ export default class SupportStatsModal extends Modal<any> {
         ]),
       ]),
     ]);
+  }
+
+  _staffCard(people: any[]) {
+    return this._card(
+      tr('stats.people', 'By staff member'),
+      null,
+      people.length === 0
+        ? m('p', { className: 'helpText' }, tr('stats.no_people', 'No staff replies in this period.'))
+        : m('div', { className: 'SupportStats-tableScroll' }, [
+            m('table', { className: 'SupportStats-people' }, [
+              m(
+                'thead',
+                m('tr', [
+                  m('th', ''),
+                  m('th', tr('stats.col_replies', 'Replies')),
+                  m('th', tr('stats.col_tickets', 'Tickets')),
+                  m('th', tr('stats.col_first', 'First to answer')),
+                  m('th', tr('stats.col_first_time', 'Typical first response')),
+                ])
+              ),
+              m(
+                'tbody',
+                people.map((p: any) =>
+                  m('tr', { key: p.id }, [
+                    m('td', { className: 'SupportStats-person' }, p.displayName || p.username),
+                    m('td', String(p.replies)),
+                    m('td', String(p.tickets)),
+                    m('td', String(p.firstResponses)),
+                    m('td', duration(p.medianFirstResponse)),
+                  ])
+                )
+              ),
+            ]),
+          ])
+    );
   }
 }
