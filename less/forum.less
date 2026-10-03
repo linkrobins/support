@@ -249,11 +249,14 @@
 
 .LinkRobinsSupport-row-date {}
 
-// Status, and for staff the assignee, stacked on the right edge.
+// Priority, status and (for staff) assignee, side by side on the right
+// edge, so every row stays one line of chips tall. Stacked, an urgent
+// ticket's row grew to three chips high.
 .LinkRobinsSupport-row-side {
     display: flex;
-    flex-direction: column;
-    align-items: flex-end;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
     gap: 6px;
     flex-shrink: 0;
 }
@@ -405,6 +408,19 @@
         > *:not(:last-child)::after {
             margin: 0 6px;
         }
+    }
+    // No room beside the subject for a row of chips on a phone: they drop
+    // under the meta line instead, still side by side.
+    .LinkRobinsSupport-row {
+        flex-wrap: wrap;
+    }
+    .LinkRobinsSupport-row-main {
+        flex: 1 1 100%;
+    }
+    .LinkRobinsSupport-row-side {
+        flex: 1 1 100%;
+        flex-wrap: wrap;
+        justify-content: flex-start;
     }
     .LinkRobinsSupport-row-side .LinkRobinsSupport-chip {
         height: 22px;
