@@ -197,7 +197,7 @@ export default class SupportShowPage extends Page {
 
     const ticket = this.ticket;
     const isDeleted = !!ticket.isDeleted();
-    const canModerate = !!ticket.canUpdate() || !!ticket.canDelete();
+    const canModerate = canHandleSupportTickets() || !!ticket.canDelete();
 
     return this._wrap(
       m('div', { className: 'LinkRobinsSupport-container' + (isDeleted ? ' LinkRobinsSupport-container--deleted' : '') }, [
@@ -411,23 +411,8 @@ export default class SupportShowPage extends Page {
 
   // --- Staff controls ----------------------------------------------------
 
-  /**
-   * Assign to a staff member picked in AssignTicketModal, or unassign (null).
-   * The picker lists plain records from the staff endpoint, so the user is
-   * put into the store first to give the relationship a model to point at.
-   */
-  _assignTo(member: { id: string; username: string; displayName: string; avatarUrl: string | null } | null) {
-    if (!member) {
-      this._setAssignment(null);
-      return;
-    }
-    const user =
-      app.store.getById('users', member.id) ||
-      app.store.pushObject({
-        type: 'users',
-        id: member.id,
-        attributes: { username: member.username, displayName: member.displayName, avatarUrl: member.avatarUrl },
-      });
+  /** Assign to a staff member picked in AssignTicketModal, or unassign (null). */
+  _assignTo(user: any | null) {
     this._setAssignment(user);
   }
 

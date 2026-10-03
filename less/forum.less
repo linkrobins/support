@@ -740,11 +740,10 @@
 
 // Status and assignment changes in the ticket timeline: one quiet line
 // between replies, not a card of its own.
+// Laid out as one sentence (icon, text, date) that wraps like prose, so on a
+// phone it breaks between words rather than putting each part on its own line.
 .LinkRobinsSupport-event {
-    display: flex;
-    align-items: baseline;
-    flex-wrap: wrap;
-    gap: 6px;
+    display: block;
     margin: 4px 0 4px 12px;
     padding: 4px 0;
     color: var(--muted-color, #888);
@@ -752,14 +751,16 @@
 }
 .LinkRobinsSupport-event-icon {
     width: 14px;
+    margin-right: 6px;
     text-align: center;
 }
 .LinkRobinsSupport-event-date {
     opacity: 0.8;
+    white-space: nowrap;
 
     &::before {
         content: '\00B7';
-        margin-right: 6px;
+        margin: 0 6px;
     }
 }
 
@@ -770,11 +771,18 @@
     display: inline-block;
 }
 .LinkRobinsSupport-statusToggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
     border: 0;
     cursor: pointer;
+    line-height: inherit;
 
+    .Button-label {
+        display: inline;
+    }
     .Button-caret {
-        margin-left: 6px;
+        margin: 0;
         font-size: 0.9em;
     }
     &:hover,
@@ -804,9 +812,20 @@
 .LinkRobinsSupport-assignOption {
     display: flex;
     align-items: center;
+    justify-content: flex-start;
     gap: 10px;
     width: 100%;
     text-align: left;
+
+    // Flarum 2 wraps button content in .Button-label > .Button-labelText;
+    // both have to stretch for the row to read left to right.
+    .Button-label,
+    .Button-labelText {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+    }
 
     &.is-current {
         opacity: 1;

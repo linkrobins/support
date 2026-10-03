@@ -130,6 +130,10 @@ export default class TicketHeader extends Component {
 
   actions(ticket: any, isDeleted: boolean) {
     const { ticketBusy, onSoftDelete, onRestore, onForceDelete, onAssign, isStaff, updating } = this.attrs as any;
+    // Soft-delete and restore are staff-only on the server (isDeleted is
+    // writable for staff alone). canUpdate is also true for an owner on their
+    // own closed ticket, which is how Reopen works, so on its own it offered
+    // owners a Delete that always failed.
     const canUpdate = !!ticket.canUpdate();
     const canDelete = !!ticket.canDelete();
     const busy = !!ticketBusy;
@@ -154,7 +158,7 @@ export default class TicketHeader extends Component {
           )
         );
       }
-      if (canUpdate) {
+      if (canUpdate && isStaff) {
         items.push(
           m(
             Button,
@@ -169,7 +173,7 @@ export default class TicketHeader extends Component {
         );
       }
     } else {
-      if (canUpdate) {
+      if (canUpdate && isStaff) {
         items.push(m(Button, { icon: 'fas fa-undo', disabled: busy, onclick: () => onRestore() }, tr('ticket.restore', 'Restore ticket')));
       }
       if (canDelete) {
