@@ -1017,3 +1017,198 @@ button.LinkRobinsSupport-chip {
         gap: 8px;
     }
 }
+
+// --- Staff stats page ------------------------------------------------
+// Chart series colours: categorical slots 1 and 2 (blue, orange) of the
+// validated reference palette, stepped separately for dark mode. Text never
+// takes a series colour; the coloured keys carry identity.
+.LinkRobinsSupport-stats {
+    --lr-series-opened: #2a78d6;
+    --lr-series-closed: #eb6834;
+}
+[data-theme^=dark] .LinkRobinsSupport-stats {
+    --lr-series-opened: #3987e5;
+    --lr-series-closed: #d95926;
+}
+.LinkRobinsSupport-stats-header {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+.LinkRobinsSupport-stats-range {
+    display: flex;
+    gap: 6px;
+}
+.LinkRobinsSupport-stats-section {
+    margin-top: 28px;
+
+    h2 {
+        margin: 0 0 12px;
+        font-size: 1rem;
+        font-weight: 600;
+    }
+}
+.LinkRobinsSupport-stats-muted {
+    color: var(--muted-color, #888);
+}
+.LinkRobinsSupport-stats-footnote {
+    margin-top: 28px;
+    font-size: 0.8rem;
+}
+.LinkRobinsSupport-tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 12px;
+}
+.LinkRobinsSupport-tile {
+    padding: 14px 16px;
+    border-radius: 8px;
+    background: var(--control-bg, rgba(0, 0, 0, 0.04));
+
+    &-label {
+        font-size: 0.8rem;
+        color: var(--muted-color, #888);
+    }
+    &-value {
+        margin-top: 4px;
+        font-size: 1.6rem;
+        font-weight: 600;
+        color: var(--text-color, inherit);
+        line-height: 1.2;
+    }
+    &-note {
+        margin-top: 4px;
+        font-size: 0.78rem;
+        color: var(--muted-color, #888);
+    }
+}
+.LinkRobinsSupport-chart {
+    &-legend {
+        display: flex;
+        gap: 16px;
+        margin-bottom: 10px;
+        font-size: 0.85rem;
+        color: var(--muted-color, #888);
+
+        span {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+    }
+    &-key {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 2px;
+        margin-right: 6px;
+
+        &.is-opened { background: var(--lr-series-opened); }
+        &.is-closed { background: var(--lr-series-closed); }
+    }
+    &-frame {
+        position: relative;
+        padding-left: 28px;
+    }
+    // The one gridline: the top of the scale, labelled, recessive.
+    &-max {
+        position: absolute;
+        left: 0;
+        top: -6px;
+        font-size: 0.72rem;
+        color: var(--muted-color, #888);
+    }
+    &-plot {
+        display: flex;
+        align-items: stretch;
+        gap: 4px;
+        height: 160px;
+        border-top: 1px dashed var(--control-bg, rgba(0, 0, 0, 0.1));
+        border-bottom: 1px solid var(--control-bg, rgba(0, 0, 0, 0.15));
+        overflow-x: auto;
+    }
+    &-group {
+        flex: 1 1 0;
+        min-width: 22px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        border-radius: 4px;
+        outline: none;
+
+        &.is-hovered,
+        &:focus-visible {
+            background: var(--control-bg, rgba(0, 0, 0, 0.04));
+        }
+    }
+    &-bars {
+        flex: 1;
+        width: 100%;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        // The 2px surface gap between the paired columns.
+        gap: 2px;
+    }
+    // Thin columns, rounded at the data end, square on the baseline.
+    &-bar {
+        width: 100%;
+        max-width: 18px;
+        min-height: 0;
+        border-radius: 4px 4px 0 0;
+
+        &.is-opened { background: var(--lr-series-opened); }
+        &.is-closed { background: var(--lr-series-closed); }
+    }
+    &-label {
+        position: relative;
+        top: 18px;
+        height: 0;
+        font-size: 0.7rem;
+        color: var(--muted-color, #888);
+        white-space: nowrap;
+    }
+    &-tooltip {
+        position: absolute;
+        right: 0;
+        top: -8px;
+        padding: 8px 10px;
+        border-radius: 6px;
+        background: var(--body-bg, #fff);
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+        font-size: 0.8rem;
+        color: var(--text-color, inherit);
+        pointer-events: none;
+
+        div {
+            display: flex;
+            align-items: center;
+        }
+    }
+    &-table {
+        margin-top: 30px;
+        font-size: 0.85rem;
+
+        summary {
+            cursor: pointer;
+            color: var(--muted-color, #888);
+        }
+    }
+}
+.LinkRobinsSupport-statsTable {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+
+    th, td {
+        text-align: left;
+        padding: 8px 10px;
+        border-bottom: 1px solid var(--control-bg, rgba(0, 0, 0, 0.08));
+    }
+    th {
+        font-weight: 600;
+        color: var(--muted-color, #888);
+    }
+}

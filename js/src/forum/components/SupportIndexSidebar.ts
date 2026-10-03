@@ -107,6 +107,19 @@ export default class SupportIndexSidebar extends IndexSidebar {
       );
     });
 
+    // Staff-only stats, after the views.
+    if (canHandle) {
+      items.add(
+        'support-stats',
+        m(
+          LinkButton,
+          { href: basePath() + BASE_PATH + '/stats', icon: 'fas fa-chart-bar', active: currentFilter === 'stats' },
+          tr('stats.nav', 'Stats')
+        ),
+        -21 - FILTER_OPTIONS.length
+      );
+    }
+
     return items;
   }
 

@@ -33,6 +33,7 @@ return [
         ->css(__DIR__ . '/less/forum.less')
         ->route('/support',                       'linkrobins-support.index')
         ->route('/support/new',                   'linkrobins-support.compose')
+        ->route('/support/stats',                 'linkrobins-support.stats')
         ->route('/support/status/{status}',       'linkrobins-support.filtered')
         ->route('/support/{id}',                  'linkrobins-support.show'),
 
@@ -51,7 +52,8 @@ return [
     (new Extend\Routes('api'))
         ->get('/linkrobins-support-staff', 'linkrobins-support.staff', \LinkRobins\Support\Api\Controller\ListStaffController::class)
         ->post('/linkrobins-support-tickets/{id}/read', 'linkrobins-support.tickets.read', \LinkRobins\Support\Api\Controller\MarkTicketReadController::class)
-        ->get('/linkrobins-support-counts', 'linkrobins-support.counts', \LinkRobins\Support\Api\Controller\TicketCountsController::class),
+        ->get('/linkrobins-support-counts', 'linkrobins-support.counts', \LinkRobins\Support\Api\Controller\TicketCountsController::class)
+        ->get('/linkrobins-support-stats', 'linkrobins-support.stats-data', \LinkRobins\Support\Api\Controller\TicketStatsController::class),
 
     (new Extend\Policy())
         ->modelPolicy(SupportTicket::class,   Access\SupportTicketPolicy::class)
