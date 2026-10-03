@@ -157,11 +157,7 @@ export default class SupportIndexPage extends Page {
       return m('div', { className: 'LinkRobinsSupport-empty' }, tr('errors.load_tickets', 'Could not load tickets.'));
     }
     if (!this.tickets.length) {
-      return m(
-        'div',
-        { className: 'LinkRobinsSupport-empty' },
-        emptyLabel(this.filter, canCreateSupportTicket())
-      );
+      return m('div', { className: 'LinkRobinsSupport-empty' }, emptyLabel(this.filter, canCreateSupportTicket()));
     }
     return m(
       'div',

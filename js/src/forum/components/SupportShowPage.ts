@@ -219,9 +219,7 @@ export default class SupportShowPage extends Page {
           'div',
           { className: 'LinkRobinsSupport-replies' },
           this._timeline().map((entry: any) =>
-            entry.kind === 'event'
-              ? m(TicketEventItem, { key: 'event-' + entry.item.id(), event: entry.item })
-              : this._renderReply(entry.item)
+            entry.kind === 'event' ? m(TicketEventItem, { key: 'event-' + entry.item.id(), event: entry.item }) : this._renderReply(entry.item)
           )
         ),
 

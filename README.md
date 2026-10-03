@@ -43,7 +43,26 @@ forum-wide moderation actions (suspensions, bans) honest.
   in_progress; user to awaiting_user ⇒ in_progress). Closed tickets
   reject replies.
 - **Assignment.** Staff can claim or unassign tickets. The assigned
-  staff member shows in the staff control bar.
+  staff member shows in the staff control bar and on each row of the
+  staff ticket list, so nobody has to open a ticket to see who has it.
+- **Staff queues.** "Assigned to me" and "Unassigned" views list the
+  open tickets waiting on you and the ones nobody has picked up yet.
+  "My tickets" is still the tickets you opened yourself.
+- **Ticket history.** Every status and assignment change appears in the
+  ticket between the replies, with who made it and when: "Karl changed
+  the status from Open to Resolved". Staff see all of it; the person who
+  opened the ticket sees status changes but not internal assignment.
+- **Automatic closing.** Tickets left Resolved with no further activity
+  close themselves after 7 days (configurable, or off). A reply from
+  either side reopens a resolved ticket first, so this only closes
+  tickets nobody came back to. Nobody is notified, the history shows it
+  was closed automatically, and the owner can still reopen it. Needs the
+  Flarum scheduler (`php flarum schedule:run` in cron).
+- **Live updates.** With the bundled `flarum/realtime` extension
+  enabled, new replies and status changes appear on an open ticket, and
+  new tickets in the staff lists, without reloading. Each person only
+  ever receives what they could already see: never another member's
+  ticket, never an internal note.
 - **Notifications.** In-app and email. The ticket owner is notified
   when staff replies; staff are notified when a new ticket is opened
   or when the owner replies. Internal notes never produce
@@ -91,6 +110,8 @@ Settings live at admin → Extensions → Link Robins Support, with three
 tabs:
 
 - **Categories.** CRUD for ticket categories.
+- **Automatic closing.** How many days a resolved ticket may sit with no
+  activity before it closes. 0 turns it off.
 - **Rate limits.** Configurable values for the appeal and general
   limits described above.
 - **Appeal bans.** Search users and toggle their permanent appeal-ban
@@ -107,23 +128,27 @@ Users see:
 
 Staff additionally see:
 
-- The "All" filter on the index, with status chips for cross-cutting
-  views (open, in_progress, awaiting_user, resolved, closed).
+- The "Assigned to me" and "Unassigned" queues, and the "All" filter
+  with status views (open, in_progress, awaiting_user, resolved,
+  closed).
 - The staff control bar on each ticket: set status, claim/unassign, post
   internal notes via the reply form's "Internal note" toggle.
 
 ## Data model
 
-Three tables:
+Four tables:
 
 - `linkrobins_support_categories` -- name, slug, description, color,
   icon, position, is_appeal.
 - `linkrobins_support_tickets` -- category_id, user_id,
   assigned_staff_id, subject, status, decision, last_reply_at,
-  deleted_at.
+  status_changed_at, deleted_at.
 - `linkrobins_support_replies` -- ticket_id, user_id, content
   (parsed-source XML), is_internal_note, deleted_at, edited_at,
   edited_by_user_id.
+- `linkrobins_support_events` -- the ticket history: ticket_id,
+  user_id (who made the change; null for automatic changes), type
+  (`status` or `assignment`), from/to status, from/to assignee.
 
 One column added to the existing `users` table:
 
@@ -203,6 +228,7 @@ themselves, who is also the only non-staff party with the URL.
 | `/api/linkrobins-support-replies` | POST | authenticated |
 | `/api/linkrobins-support-replies/:id` | PATCH | staff (handle_tickets) |
 | `/api/linkrobins-support-replies/:id` | DELETE | staff, soft-deleted only |
+| `/api/linkrobins-support-events` | GET | authenticated (staff: all; owner: status changes on own tickets) |
 
 Moderation patterns:
 
@@ -217,8 +243,10 @@ Supported filters (use `filter[name]=value` shape; Flarum 2 rejects
 unrecognized top-level params):
 
 - On tickets: `filter[mine]=1`, `filter[status]=open`,
-  `filter[categoryId]=N`
+  `filter[categoryId]=N`, `filter[assigned]=me` or
+  `filter[assigned]=none`
 - On replies: `filter[ticketId]=N`
+- On history: `filter[ticketId]=N`
 
 ## License
 
