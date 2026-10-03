@@ -221,10 +221,25 @@ export default class SupportStatsPage extends Page {
     const max = Math.max(1, ...volume.map((v) => Math.max(v.opened, v.closed)));
     const hovered = this.hover !== null ? volume[this.hover] : null;
 
+    // Label every period while they fit; past eight, every few, so they never collide.
+    const labelEvery = volume.length > 8 ? Math.ceil(volume.length / 6) : 1;
+
     return m('div', { className: 'LinkRobinsSupport-chart' }, [
       m('div', { className: 'LinkRobinsSupport-chart-legend' }, [
         m('span', [m('i', { className: 'LinkRobinsSupport-chart-key is-opened' }), tr('stats.opened', 'Tickets opened')]),
         m('span', [m('i', { className: 'LinkRobinsSupport-chart-key is-closed' }), tr('stats.closed', 'Tickets closed')]),
+        // The hover readout lives in the legend row, so it never covers a column.
+        hovered
+          ? m(
+              'span',
+              { className: 'LinkRobinsSupport-chart-readout', role: 'status' },
+              trText('stats.period_summary', '{period}: {opened} opened, {closed} closed', {
+                period: periodLabel(hovered.start, days),
+                opened: hovered.opened,
+                closed: hovered.closed,
+              })
+            )
+          : null,
       ]),
       m('div', { className: 'LinkRobinsSupport-chart-frame' }, [
         m('span', { className: 'LinkRobinsSupport-chart-max' }, max),
@@ -251,24 +266,11 @@ export default class SupportStatsPage extends Page {
                   m('div', { className: 'LinkRobinsSupport-chart-bar is-opened', style: { height: (v.opened / max) * 100 + '%' } }),
                   m('div', { className: 'LinkRobinsSupport-chart-bar is-closed', style: { height: (v.closed / max) * 100 + '%' } }),
                 ]),
-                m('div', { className: 'LinkRobinsSupport-chart-label' }, shortDate(v.start)),
+                m('div', { className: 'LinkRobinsSupport-chart-label' }, i % labelEvery === 0 ? shortDate(v.start) : ''),
               ]
             )
           )
         ),
-        hovered
-          ? m('div', { className: 'LinkRobinsSupport-chart-tooltip', role: 'status' }, [
-              m('strong', periodLabel(hovered.start, days)),
-              m('div', [
-                m('i', { className: 'LinkRobinsSupport-chart-key is-opened' }),
-                trText('stats.opened_count', '{count} opened', { count: hovered.opened }),
-              ]),
-              m('div', [
-                m('i', { className: 'LinkRobinsSupport-chart-key is-closed' }),
-                trText('stats.closed_count', '{count} closed', { count: hovered.closed }),
-              ]),
-            ])
-          : null,
       ]),
       m('details', { className: 'LinkRobinsSupport-chart-table' }, [
         m('summary', tr('stats.show_table', 'Show as a table')),

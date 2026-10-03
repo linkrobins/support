@@ -1059,7 +1059,8 @@ button.LinkRobinsSupport-chip {
 }
 .LinkRobinsSupport-tiles {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    // Two to a row on a phone, four on a desktop.
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     gap: 12px;
 }
 .LinkRobinsSupport-tile {
@@ -1108,6 +1109,10 @@ button.LinkRobinsSupport-chip {
         &.is-opened { background: var(--lr-series-opened); }
         &.is-closed { background: var(--lr-series-closed); }
     }
+    &-readout {
+        margin-left: auto;
+        color: var(--text-color, inherit);
+    }
     &-frame {
         position: relative;
         padding-left: 28px;
@@ -1122,73 +1127,53 @@ button.LinkRobinsSupport-chip {
     }
     &-plot {
         display: flex;
-        align-items: stretch;
-        gap: 4px;
-        height: 160px;
         border-top: 1px dashed var(--control-bg, rgba(0, 0, 0, 0.1));
-        border-bottom: 1px solid var(--control-bg, rgba(0, 0, 0, 0.15));
-        overflow-x: auto;
     }
+    // Each period: its pair of columns over the baseline, its label below.
+    // No gap between periods, so the baseline runs unbroken; the columns
+    // keep their distance by padding.
     &-group {
         flex: 1 1 0;
-        min-width: 22px;
+        min-width: 0;
         display: flex;
         flex-direction: column;
-        align-items: center;
-        border-radius: 4px;
+        padding: 0 2px;
         outline: none;
 
-        &.is-hovered,
-        &:focus-visible {
+        &.is-hovered .LinkRobinsSupport-chart-bars,
+        &:focus-visible .LinkRobinsSupport-chart-bars {
             background: var(--control-bg, rgba(0, 0, 0, 0.04));
         }
     }
     &-bars {
-        flex: 1;
-        width: 100%;
+        height: 160px;
         display: flex;
         align-items: flex-end;
         justify-content: center;
         // The 2px surface gap between the paired columns.
         gap: 2px;
+        border-bottom: 1px solid var(--control-bg, rgba(0, 0, 0, 0.15));
+        border-radius: 4px 4px 0 0;
     }
     // Thin columns, rounded at the data end, square on the baseline.
     &-bar {
         width: 100%;
         max-width: 18px;
-        min-height: 0;
         border-radius: 4px 4px 0 0;
 
         &.is-opened { background: var(--lr-series-opened); }
         &.is-closed { background: var(--lr-series-closed); }
     }
     &-label {
-        position: relative;
-        top: 18px;
-        height: 0;
+        margin-top: 6px;
+        min-height: 1em;
         font-size: 0.7rem;
         color: var(--muted-color, #888);
+        text-align: center;
         white-space: nowrap;
     }
-    &-tooltip {
-        position: absolute;
-        right: 0;
-        top: -8px;
-        padding: 8px 10px;
-        border-radius: 6px;
-        background: var(--body-bg, #fff);
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
-        font-size: 0.8rem;
-        color: var(--text-color, inherit);
-        pointer-events: none;
-
-        div {
-            display: flex;
-            align-items: center;
-        }
-    }
     &-table {
-        margin-top: 30px;
+        margin-top: 16px;
         font-size: 0.85rem;
 
         summary {
