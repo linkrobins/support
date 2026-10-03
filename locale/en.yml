@@ -318,7 +318,6 @@ linkrobins-support:
       restore: 'Restore'
       cancel: 'Cancel'
       load_more_replies: 'Load more replies'
-      load_more_tickets: 'Load more tickets'
       loading_more: 'Loading…'
     confirm:
       close_ticket: 'Close this ticket? It cannot be replied to until it is reopened.'

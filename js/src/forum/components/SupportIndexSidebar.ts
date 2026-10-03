@@ -10,6 +10,7 @@ import { canCreateSupportTicket, canHandleSupportTickets } from '../utils/permis
 import { FILTER_OPTIONS, filterLabel, filterHrefFor } from '../utils/status';
 import { refreshCounts, supportCount, COUNT_FOR_FILTER } from '../utils/counts';
 import { onLive } from '../utils/live';
+import SupportStatsModal from './SupportStatsModal';
 
 export default class SupportIndexSidebar extends IndexSidebar {
   _stopLive: (() => void) | null = null;
@@ -106,6 +107,20 @@ export default class SupportIndexSidebar extends IndexSidebar {
         -21 - i
       );
     });
+
+    // Support stats for staff, after the views. A button, since it opens a
+    // modal over the current list rather than going anywhere.
+    if (canHandle) {
+      items.add(
+        'support-stats',
+        m(
+          Button,
+          { icon: 'fas fa-chart-bar', className: 'LinkButton LinkRobinsSupport-statsLink', onclick: () => app.modal.show(SupportStatsModal) },
+          tr('stats.title', 'Support stats')
+        ),
+        -21 - FILTER_OPTIONS.length
+      );
+    }
 
     return items;
   }

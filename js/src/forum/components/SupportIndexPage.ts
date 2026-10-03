@@ -240,15 +240,20 @@ export default class SupportIndexPage extends Page {
         { className: 'LinkRobinsSupport-list' },
         this.tickets.map((t: any) => this._renderRow(t))
       ),
-      this.hasMore
+      // Exactly how core's discussion list does it: its container class (so
+      // core's styling applies), a plain button with core's own "Load More"
+      // wording, swapped for a spinner while the next page loads.
+      this.hasMore || this.loadingMore
         ? m(
             'div',
-            { className: 'LinkRobinsSupport-loadMore' },
-            m(
-              Button,
-              { className: 'Button Button--default LinkRobinsSupport-loadMoreBtn', loading: this.loadingMore, onclick: () => this._loadMore() },
-              tr('action.load_more_tickets', 'Load more tickets')
-            )
+            { className: 'DiscussionList-loadMore' },
+            this.loadingMore
+              ? m(LoadingIndicator)
+              : m(
+                  Button,
+                  { className: 'Button', onclick: () => this._loadMore() },
+                  app.translator.trans('core.forum.discussion_list.load_more_button')
+                )
           )
         : null,
     ];
