@@ -185,7 +185,6 @@ linkrobins-support:
       title: 'Support stats'
       range: 'Time range'
       last_days: 'Last {count} days'
-      staff_only: 'Stats are only available to support staff.'
       load_failed: 'Could not load stats.'
       no_data: 'Not enough data yet'
       minutes: '{count} min'

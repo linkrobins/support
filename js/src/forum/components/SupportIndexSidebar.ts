@@ -10,6 +10,7 @@ import { canCreateSupportTicket, canHandleSupportTickets } from '../utils/permis
 import { FILTER_OPTIONS, filterLabel, filterHrefFor } from '../utils/status';
 import { refreshCounts, supportCount, COUNT_FOR_FILTER } from '../utils/counts';
 import { onLive } from '../utils/live';
+import SupportStatsModal from './SupportStatsModal';
 
 export default class SupportIndexSidebar extends IndexSidebar {
   _stopLive: (() => void) | null = null;
@@ -107,13 +108,14 @@ export default class SupportIndexSidebar extends IndexSidebar {
       );
     });
 
-    // Staff-only stats, after the views.
+    // Staff-only stats, after the views. Opens over the current page rather
+    // than navigating away from the list being worked.
     if (canHandle) {
       items.add(
         'support-stats',
         m(
-          LinkButton,
-          { href: basePath() + BASE_PATH + '/stats', icon: 'fas fa-chart-bar', active: currentFilter === 'stats' },
+          Button,
+          { icon: 'fas fa-chart-bar', className: 'Button Button--link hasIcon', onclick: () => app.modal.show(SupportStatsModal) },
           tr('stats.nav', 'Stats')
         ),
         -21 - FILTER_OPTIONS.length

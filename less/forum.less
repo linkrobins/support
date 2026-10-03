@@ -1030,16 +1030,15 @@ button.LinkRobinsSupport-chip {
     --lr-series-opened: #3987e5;
     --lr-series-closed: #d95926;
 }
-.LinkRobinsSupport-stats-header {
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-}
 .LinkRobinsSupport-stats-range {
     display: flex;
+    flex-wrap: wrap;
     gap: 6px;
+    margin-bottom: 20px;
+}
+// The modal body is left-aligned text, unlike Flarum's centred default.
+.LinkRobinsSupport-statsModal .Modal-body {
+    text-align: left;
 }
 .LinkRobinsSupport-stats-section {
     margin-top: 28px;

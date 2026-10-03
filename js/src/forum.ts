@@ -13,7 +13,6 @@ import SupportSavedReply from './common/models/SupportSavedReply';
 import SupportIndexPage from './forum/components/SupportIndexPage';
 import SupportComposePage from './forum/components/SupportComposePage';
 import SupportShowPage from './forum/components/SupportShowPage';
-import SupportStatsPage from './forum/components/SupportStatsPage';
 import {
   NewSupportReplyNotification,
   NewSupportTicketNotification,
@@ -39,8 +38,6 @@ app.initializers.add('linkrobins-support', () => {
   app.routes['linkrobins-support.index'] = { path: BASE_PATH, component: SupportIndexPage };
   app.routes['linkrobins-support.compose'] = { path: BASE_PATH + '/new', component: SupportComposePage };
   app.routes['linkrobins-support.filtered'] = { path: BASE_PATH + '/status/:status', component: SupportIndexPage };
-  // Before the ticket route, or "stats" would be read as a ticket id.
-  app.routes['linkrobins-support.stats'] = { path: BASE_PATH + '/stats', component: SupportStatsPage };
   app.routes['linkrobins-support.show'] = { path: BASE_PATH + '/:id', component: SupportShowPage };
 
   if (app.notificationComponents) {

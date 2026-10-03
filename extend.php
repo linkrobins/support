@@ -33,7 +33,6 @@ return [
         ->css(__DIR__ . '/less/forum.less')
         ->route('/support',                       'linkrobins-support.index')
         ->route('/support/new',                   'linkrobins-support.compose')
-        ->route('/support/stats',                 'linkrobins-support.stats')
         ->route('/support/status/{status}',       'linkrobins-support.filtered')
         ->route('/support/{id}',                  'linkrobins-support.show'),
 

@@ -1,10 +1,7 @@
-import Page from 'flarum/common/components/Page';
+import Modal from 'flarum/common/components/Modal';
 import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
 import Button from 'flarum/common/components/Button';
-import PageStructure from 'flarum/forum/components/PageStructure';
-import SupportIndexSidebar from './SupportIndexSidebar';
 import { tr, trText } from '../utils/translate';
-import { canHandleSupportTickets } from '../utils/permissions';
 
 const WINDOWS = [7, 30, 90];
 
@@ -27,12 +24,14 @@ function periodLabel(start: string, days: number): string {
 }
 
 /**
- * Staff-only support stats: how fast tickets are answered and resolved, how
- * the backlog looks, how tickets end, and who is answering them. Everything
- * comes from GET /api/linkrobins-support-stats; nothing here is tracked
- * specially.
+ * Staff-only support stats, opened from the sidebar as a modal so staff can
+ * check the numbers without leaving the list they are working in: how fast
+ * tickets are answered and resolved, how the backlog looks, how tickets end,
+ * and who is answering them. Everything comes from
+ * GET /api/linkrobins-support-stats (staff-only on the server too); nothing
+ * here is tracked specially.
  */
-export default class SupportStatsPage extends Page {
+export default class SupportStatsModal extends Modal<any> {
   days = 30;
   loading = true;
   error = false;
@@ -41,10 +40,15 @@ export default class SupportStatsPage extends Page {
 
   oninit(vnode: any) {
     super.oninit(vnode);
-    try {
-      app.setTitle(trText('stats.title', 'Support stats'));
-    } catch (e) {}
     this._load();
+  }
+
+  className() {
+    return 'LinkRobinsSupport-statsModal Modal--large';
+  }
+
+  title() {
+    return tr('stats.title', 'Support stats');
   }
 
   _load() {
@@ -65,45 +69,33 @@ export default class SupportStatsPage extends Page {
       });
   }
 
-  view() {
-    return m(
-      PageStructure,
-      {
-        className: 'IndexPage LinkRobinsSupport-page',
-        sidebar: () => m(SupportIndexSidebar, { className: 'LinkRobinsSupport-sidebar', activeFilter: 'stats' }),
-      },
-      m('div', { className: 'LinkRobinsSupport-container LinkRobinsSupport-stats' }, [
-        m('header', { className: 'LinkRobinsSupport-header LinkRobinsSupport-stats-header' }, [
-          m('h1', { className: 'LinkRobinsSupport-title' }, [m('i', { className: 'fas fa-chart-bar' }), ' ', tr('stats.title', 'Support stats')]),
+  content() {
+    return m('div', { className: 'Modal-body LinkRobinsSupport-stats' }, [
+      m(
+        'div',
+        { className: 'LinkRobinsSupport-stats-range', role: 'group', 'aria-label': trText('stats.range', 'Time range') },
+        WINDOWS.map((d) =>
           m(
-            'div',
-            { className: 'LinkRobinsSupport-stats-range', role: 'group', 'aria-label': trText('stats.range', 'Time range') },
-            WINDOWS.map((d) =>
-              m(
-                Button,
-                {
-                  className: 'Button' + (this.days === d ? ' Button--primary' : ''),
-                  'aria-pressed': this.days === d ? 'true' : 'false',
-                  onclick: () => {
-                    if (this.days === d) return;
-                    this.days = d;
-                    this._load();
-                  },
-                },
-                trText('stats.last_days', 'Last {count} days', { count: d })
-              )
-            )
-          ),
-        ]),
-        !canHandleSupportTickets()
-          ? m('div', { className: 'LinkRobinsSupport-empty' }, tr('stats.staff_only', 'Stats are only available to support staff.'))
-          : this.loading
-            ? m(LoadingIndicator)
-            : this.error || !this.data
-              ? m('div', { className: 'LinkRobinsSupport-empty' }, tr('stats.load_failed', 'Could not load stats.'))
-              : this._renderStats(this.data),
-      ])
-    );
+            Button,
+            {
+              className: 'Button' + (this.days === d ? ' Button--primary' : ''),
+              'aria-pressed': this.days === d ? 'true' : 'false',
+              onclick: () => {
+                if (this.days === d) return;
+                this.days = d;
+                this._load();
+              },
+            },
+            trText('stats.last_days', 'Last {count} days', { count: d })
+          )
+        )
+      ),
+      this.loading
+        ? m(LoadingIndicator)
+        : this.error || !this.data
+          ? m('div', { className: 'LinkRobinsSupport-empty' }, tr('stats.load_failed', 'Could not load stats.'))
+          : this._renderStats(this.data),
+    ]);
   }
 
   _tile(label: any, value: any, note?: any) {
