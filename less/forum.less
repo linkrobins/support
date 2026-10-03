@@ -929,3 +929,21 @@ button.LinkRobinsSupport-chip {
         flex: 1 1 100%;
     }
 }
+
+// Unread: the subject goes from semibold to bold and gets a dot in the
+// forum's primary colour, the same signal Flarum gives unread discussions.
+.LinkRobinsSupport-row:not(.is-unread) .LinkRobinsSupport-row-subject {
+    font-weight: 500;
+}
+.LinkRobinsSupport-row.is-unread .LinkRobinsSupport-row-subject {
+    font-weight: 700;
+}
+.LinkRobinsSupport-unreadDot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    margin-right: 8px;
+    border-radius: 50%;
+    background: var(--primary-color, #07adcc);
+    vertical-align: middle;
+}

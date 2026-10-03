@@ -134,6 +134,7 @@ linkrobins-support:
       empty_own: 'No tickets yet. Click "New ticket" to open one.'
       empty: 'No tickets to show.'
       search_placeholder: 'Search tickets'
+      unread: 'New replies'
       no_results: 'No tickets match your search.'
       empty_assigned_to_me: 'No open tickets are assigned to you.'
       empty_unassigned: 'Every open ticket has been claimed.'

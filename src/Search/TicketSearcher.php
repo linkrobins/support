@@ -35,7 +35,10 @@ class TicketSearcher extends AbstractSearcher
             return $query;
         }
 
-        if (SupportAbilities::isStaff($actor)) {
+        $isStaff = SupportAbilities::isStaff($actor);
+        SupportTicket::withUnreadFor($query, $actor, $isStaff);
+
+        if ($isStaff) {
             // Staff see soft-deleted tickets in list views too, rendered
             // with a "deleted" treatment, so a trashed ticket stays
             // visible (and restorable) until it is permanently removed --

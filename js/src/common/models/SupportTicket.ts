@@ -18,6 +18,7 @@ export default class SupportTicket extends Model {
   canDelete = Model.attribute<boolean>('canDelete');
   canReopen = Model.attribute<boolean>('canReopen');
   isDeleted = Model.attribute<boolean>('isDeleted');
+  isUnread = Model.attribute<boolean>('isUnread');
 
   createdAt = Model.attribute('createdAt', Model.transformDate);
   updatedAt = Model.attribute('updatedAt', Model.transformDate);

@@ -83,6 +83,7 @@ class SupportTicketResource extends AbstractDatabaseResource
             return;
         }
         $isStaff = SupportAbilities::isStaff($actor);
+        SupportTicket::withUnreadFor($query, $actor, $isStaff);
         if ($isStaff) {
             // Staff see soft-deleted tickets too so they can restore
             // or force-delete from the ticket detail page. The default
@@ -226,6 +227,11 @@ class SupportTicketResource extends AbstractDatabaseResource
                     }
                     return $q->count();
                 }),
+
+            // New replies since the actor last opened this ticket. Computed by
+            // SupportTicket::withUnreadFor on every list and show query.
+            Schema\Boolean::make('isUnread')
+                ->get(fn (SupportTicket $ticket) => (bool) ($ticket->is_unread ?? false)),
 
             Schema\Boolean::make('canReply')
                 ->get(function (SupportTicket $ticket, FlarumContext $context) {

@@ -70,6 +70,21 @@ export function loadStaff(): Promise<StaffMember[]> {
     .then((res: any) => (res && res.data) || []);
 }
 
+/**
+ * Record that the current user has just looked at a ticket, so it stops
+ * showing as unread for them. Fire and forget: a failure only means the
+ * marker stays until their next visit.
+ */
+export function markTicketRead(ticket: any): void {
+  if (!ticket || !app.session.user) return;
+  app
+    .request({ method: 'POST', url: apiUrl() + '/linkrobins-support-tickets/' + ticket.id() + '/read' })
+    .then(() => {
+      if (typeof ticket.pushAttributes === 'function') ticket.pushAttributes({ isUnread: false });
+    })
+    .catch(() => {});
+}
+
 export function loadCategories(): Promise<any> {
   return app.store.find('linkrobins-support-categories', {
     sort: 'position',

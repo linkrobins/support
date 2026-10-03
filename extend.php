@@ -48,7 +48,8 @@ return [
     (new Extend\ApiResource(SupportEventResource::class)),
 
     (new Extend\Routes('api'))
-        ->get('/linkrobins-support-staff', 'linkrobins-support.staff', \LinkRobins\Support\Api\Controller\ListStaffController::class),
+        ->get('/linkrobins-support-staff', 'linkrobins-support.staff', \LinkRobins\Support\Api\Controller\ListStaffController::class)
+        ->post('/linkrobins-support-tickets/{id}/read', 'linkrobins-support.tickets.read', \LinkRobins\Support\Api\Controller\MarkTicketReadController::class),
 
     (new Extend\Policy())
         ->modelPolicy(SupportTicket::class,   Access\SupportTicketPolicy::class)

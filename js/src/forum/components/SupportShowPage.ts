@@ -9,7 +9,7 @@ import ReplyComposer from './ReplyComposer';
 import { tr } from '../utils/translate';
 import { basePath, BASE_PATH, safeNavigate, showError } from '../utils/helpers';
 import { canHandleSupportTickets } from '../utils/permissions';
-import { loadTicket, loadReplies, loadEvents, postReply, uploadFilesToBody } from '../utils/api';
+import { loadTicket, loadReplies, loadEvents, markTicketRead, postReply, uploadFilesToBody } from '../utils/api';
 import { onLive } from '../utils/live';
 import { openSupportComposer, supportComposerSupported } from '../utils/composer';
 
@@ -107,6 +107,7 @@ export default class SupportShowPage extends Page {
         this.events = results[2] || [];
         this._allLoaded = this._countsAllLoaded();
         this.loading = false;
+        markTicketRead(this.ticket);
         try {
           const t = this.ticket && this.ticket.subject();
           if (t) app.setTitle(t);
@@ -379,6 +380,8 @@ export default class SupportShowPage extends Page {
         if (fresh.length) this.replies = this.replies.concat(fresh);
         m.redraw();
         this._refreshTicket();
+        // They are looking at it, so what just arrived is read.
+        if (fresh.length) markTicketRead(this.ticket);
       })
       .catch(() => {})
       .then(done);
