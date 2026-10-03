@@ -375,10 +375,8 @@
 
 @media (max-width: 767px) {
     // A phone gives a heading the whole width now, so it only needs to come
-    // down a step rather than shrink out of the way of anything. Ticket
-    // subjects only: list and search headings are short and stay the size the
-    // wiki uses, so the two extensions match.
-    .LinkRobinsSupport-ticket-header .LinkRobinsSupport-title {
+    // down a step rather than shrink out of the way of anything.
+    .LinkRobinsSupport-title {
         font-size: calc(1.3rem * var(--lr-text-scale, 1));
     }
     // --- Ticket list ---
@@ -899,21 +897,36 @@ button.LinkRobinsSupport-chip {
     text-align: center;
 }
 
-// Search box above the list. Mirrors the wiki's .LinkRobinsWiki-search rule
-// for rule, so the two extensions look identical; change both together.
-.LinkRobinsSupport-search {
-    display: flex;
-    gap: 8px;
+// List header: the view's title on the left, search on the right; the
+// search drops under the title on a phone.
+.LinkRobinsSupport-indexHeader {
+    // The base header is a column; this one is a row, or the search box's
+    // flex-basis turns into a height.
+    flex-direction: row;
+    flex-wrap: wrap;
     align-items: center;
-    margin-bottom: 16px;
-
-    &-input {
-        flex: 1 1 auto;
-        min-width: 0;
-    }
-
-    &-go, &-clear {
-        flex: 0 0 auto;
+    justify-content: space-between;
+    gap: 12px;
+}
+.LinkRobinsSupport-search {
+    position: relative;
+    flex: 0 1 280px;
+    min-width: 200px;
+}
+.LinkRobinsSupport-search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted-color, #888);
+    pointer-events: none;
+}
+.LinkRobinsSupport-search-input {
+    padding-left: 34px;
+}
+@media (max-width: 767px) {
+    .LinkRobinsSupport-search {
+        flex: 1 1 100%;
     }
 }
 

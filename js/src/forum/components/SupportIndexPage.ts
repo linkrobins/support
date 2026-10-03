@@ -7,7 +7,7 @@ import SupportIndexSidebar from './SupportIndexSidebar';
 import { tr, trText } from '../utils/translate';
 import { basePath, BASE_PATH, formatDate, safeNavigate, showError } from '../utils/helpers';
 import { canCreateSupportTicket, canHandleSupportTickets } from '../utils/permissions';
-import { statusChip, FILTER_OPTIONS, filterLabel, filterHrefFor, emptyLabel } from '../utils/status';
+import { statusChip, FILTER_OPTIONS, filterLabel, emptyLabel } from '../utils/status';
 import { loadTickets } from '../utils/api';
 import { onLive } from '../utils/live';
 
@@ -20,12 +20,11 @@ export default class SupportIndexPage extends Page {
   // Lists load a page at a time; "Load more" fetches the next one.
   hasMore = false;
   loadingMore = false;
-  // Search within the current view, from ?q= in the URL (so a result page
-  // can be linked and gone back to); the draft is what is being typed.
+  // Search within the current view; empty means no search.
   query = '';
-  queryDraft = '';
+  _searchTimer: any = null;
   // Each load gets a number; a response that is not the latest is dropped,
-  // so a slow reply for an older search cannot overwrite a newer one.
+  // so a slow reply for "ava" cannot overwrite the results for "avatar".
   _loadSeq = 0;
   filter: string | null = 'mine';
   _lastLoadedFilter: string | null = 'mine';
@@ -38,8 +37,6 @@ export default class SupportIndexPage extends Page {
     this.error = null;
     this.tickets = [];
     this.filter = this._filterFromAttrs(this.attrs);
-    this.query = this._queryFromRoute();
-    this.queryDraft = this.query;
     try {
       app.setTitle(tr('nav', 'Support'));
     } catch (e) {}
@@ -63,28 +60,18 @@ export default class SupportIndexPage extends Page {
     if (this._stopLive) this._stopLive();
     this._stopLive = null;
     clearTimeout(this._liveTimer);
+    clearTimeout(this._searchTimer);
     super.onremove(vnode);
   }
 
   onbeforeupdate(vnode: any) {
     const nextFilter = this._filterFromAttrs(vnode.attrs);
-    const nextQuery = this._queryFromRoute();
-    if (nextFilter !== this._lastLoadedFilter || nextQuery !== this.query) {
+    if (nextFilter !== this._lastLoadedFilter) {
       this.filter = nextFilter;
       this._lastLoadedFilter = nextFilter;
-      this.query = nextQuery;
-      this.queryDraft = nextQuery;
       Promise.resolve().then(() => this._load());
     }
     return true;
-  }
-
-  _queryFromRoute(): string {
-    try {
-      return (m.route.param('q') || '').toString().trim();
-    } catch (e) {
-      return '';
-    }
   }
 
   _filterFromAttrs(attrs: any): string {
@@ -97,7 +84,7 @@ export default class SupportIndexPage extends Page {
     return defaultFilter;
   }
 
-  _load(quiet = false) {
+  _load(quiet = false, freshSearch = false) {
     // A quiet reload keeps the current list on screen instead of a spinner.
     if (!quiet) {
       this.loading = true;
@@ -106,7 +93,7 @@ export default class SupportIndexPage extends Page {
 
     // A quiet (live) reload refetches everything already on screen, so a list
     // the viewer has paged through does not snap back to the first page.
-    const limit = quiet ? Math.min(100, Math.max(PAGE_SIZE, this.tickets.length)) : PAGE_SIZE;
+    const limit = quiet && !freshSearch ? Math.min(100, Math.max(PAGE_SIZE, this.tickets.length)) : PAGE_SIZE;
     const seq = ++this._loadSeq;
 
     loadTickets(this._params(0, limit))
@@ -161,8 +148,8 @@ export default class SupportIndexPage extends Page {
     } else {
       filter.mine = '1';
     }
-    if (this.query) {
-      filter.q = this.query;
+    if (this.query.trim()) {
+      filter.q = this.query.trim();
     }
     const params: any = { page: { offset, limit } };
     if (Object.keys(filter).length) {
@@ -172,7 +159,7 @@ export default class SupportIndexPage extends Page {
   }
 
   view() {
-    const content = m('div', { className: 'LinkRobinsSupport-container' }, [this._renderSearch(), this._renderHeader(), this._renderList()]);
+    const content = m('div', { className: 'LinkRobinsSupport-container' }, [this._renderHeader(), this._renderList()]);
 
     return m(
       PageStructure,
@@ -197,61 +184,32 @@ export default class SupportIndexPage extends Page {
   }
 
   _renderHeader() {
-    // While searching, the heading says so, as the wiki's does.
-    if (this.query) {
-      return m('header', { className: 'LinkRobinsSupport-header' }, [
-        m('h1', { className: 'LinkRobinsSupport-title' }, [
-          m('i', { className: 'fas fa-search' }),
-          ' ',
-          tr('index.results_heading', 'Results for "{query}"', { query: this.query }),
-        ]),
-      ]);
-    }
     const label = this._headingFor(this.filter);
-    return m('header', { className: 'LinkRobinsSupport-header' }, [
+    return m('header', { className: 'LinkRobinsSupport-header LinkRobinsSupport-indexHeader' }, [
       m('h1', { className: 'LinkRobinsSupport-title' }, [m('i', { className: 'fas fa-life-ring' }), ' ', label]),
+      this._renderSearch(),
     ]);
   }
 
   /**
-   * Search the current view by subject, reply text or ticket number. Built to
-   * match the wiki's search exactly (layout, buttons, ?q= in the URL), so the
-   * two extensions read as one product.
+   * Search the current view by subject, reply text or ticket number. Typing
+   * reloads after a short pause rather than on every key.
    */
   _renderSearch() {
-    const submit = (e?: any) => {
-      if (e) e.preventDefault();
-      const value = (this.queryDraft || '').trim();
-      const params: any = {};
-      if (value) params.q = value;
-      m.route.set(this.filter && this.filter !== 'mine' ? filterHrefFor(this.filter) : basePath() + BASE_PATH, params);
-    };
-
-    return m('form', { className: 'LinkRobinsSupport-search', onsubmit: submit, role: 'search' }, [
+    return m('div', { className: 'LinkRobinsSupport-search' }, [
+      m('i', { className: 'fas fa-search LinkRobinsSupport-search-icon', 'aria-hidden': 'true' }),
       m('input', {
         className: 'FormControl LinkRobinsSupport-search-input',
         type: 'search',
-        value: this.queryDraft,
+        value: this.query,
         placeholder: trText('index.search_placeholder', 'Search tickets'),
         'aria-label': trText('index.search_placeholder', 'Search tickets'),
         oninput: (e: any) => {
-          this.queryDraft = e.target.value;
+          this.query = e.target.value;
+          clearTimeout(this._searchTimer);
+          this._searchTimer = setTimeout(() => this._load(true, true), 300);
         },
       }),
-      m(Button, { className: 'Button LinkRobinsSupport-search-go', type: 'submit', icon: 'fas fa-search' }, tr('index.search_button', 'Search')),
-      this.query
-        ? m(
-            Button,
-            {
-              className: 'Button Button--link LinkRobinsSupport-search-clear',
-              onclick: () => {
-                this.queryDraft = '';
-                submit();
-              },
-            },
-            tr('index.search_clear', 'Clear')
-          )
-        : null,
     ]);
   }
 
@@ -270,7 +228,7 @@ export default class SupportIndexPage extends Page {
     if (this.error) {
       return m('div', { className: 'LinkRobinsSupport-empty' }, tr('errors.load_tickets', 'Could not load tickets.'));
     }
-    if (!this.tickets.length && this.query) {
+    if (!this.tickets.length && this.query.trim()) {
       return m('div', { className: 'LinkRobinsSupport-empty' }, tr('index.no_results', 'No tickets match your search.'));
     }
     if (!this.tickets.length) {
