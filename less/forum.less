@@ -1036,17 +1036,33 @@ button.LinkRobinsSupport-chip {
     gap: 6px;
     margin-bottom: 20px;
 }
-// The modal body is left-aligned text, unlike Flarum's centred default.
+// The modal body is left-aligned text, unlike Flarum's centred default, and
+// shares the tiles' background colour, so the tiles take the page colour
+// there to keep their edges.
 .LinkRobinsSupport-statsModal .Modal-body {
     text-align: left;
-}
-.LinkRobinsSupport-stats-section {
-    margin-top: 28px;
 
-    h2 {
-        margin: 0 0 12px;
-        font-size: 1rem;
-        font-weight: 600;
+    .LinkRobinsSupport-tile {
+        background: var(--body-bg, #fff);
+    }
+}
+// The sidebar's Stats item is a button (it opens a modal), dressed like the
+// link items around it: these mirror core's
+// `.sideNav .Dropdown--select .Dropdown-menu > li > a` rules, theme
+// variables included, for a button.
+.sideNav .Dropdown--select .Dropdown-menu > li > button.LinkRobinsSupport-statsLink {
+    color: var(--sidenav-color, var(--muted-color));
+    gap: 8px;
+    padding-left: 0;
+    padding-right: 0;
+
+    .Button-icon {
+        font-size: 15px;
+    }
+    &:hover,
+    &:focus-visible {
+        background: none;
+        color: var(--sidenav-color-hover, var(--link-color));
     }
 }
 .LinkRobinsSupport-stats-muted {
@@ -1111,6 +1127,17 @@ button.LinkRobinsSupport-chip {
     &-readout {
         margin-left: auto;
         color: var(--text-color, inherit);
+    }
+    &-legend {
+        flex-wrap: wrap;
+        row-gap: 4px;
+    }
+    @media (max-width: 767px) {
+        // On a phone the readout gets its own line under the keys.
+        &-readout {
+            flex-basis: 100%;
+            margin-left: 0;
+        }
     }
     &-frame {
         position: relative;

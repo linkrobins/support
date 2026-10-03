@@ -115,7 +115,7 @@ export default class SupportIndexSidebar extends IndexSidebar {
         'support-stats',
         m(
           Button,
-          { icon: 'fas fa-chart-bar', className: 'Button Button--link hasIcon', onclick: () => app.modal.show(SupportStatsModal) },
+          { icon: 'fas fa-chart-bar', className: 'LinkButton LinkRobinsSupport-statsLink', onclick: () => app.modal.show(SupportStatsModal) },
           tr('stats.nav', 'Stats')
         ),
         -21 - FILTER_OPTIONS.length
