@@ -27,6 +27,12 @@ export default class SupportShowPage extends Page {
   // Status and assignment changes, shown between the replies by time.
   events: any[] = [];
   _stopLive: (() => void) | null = null;
+  // Whether every reply up to now is on screen. Kept as its own flag rather
+  // than derived from the ticket's reply count, because a live push can raise
+  // that count before the new reply itself has been fetched.
+  _allLoaded = false;
+  _catchingUp = false;
+  _catchUpAgain = false;
   replyText = '';
   replyIsInternal = false;
   posting = false;
@@ -100,6 +106,7 @@ export default class SupportShowPage extends Page {
         this.ticket = results[0];
         this.replies = results[1] || [];
         this.events = results[2] || [];
+        this._allLoaded = this._countsAllLoaded();
         this.loading = false;
         try {
           const t = this.ticket && this.ticket.subject();
@@ -127,6 +134,7 @@ export default class SupportShowPage extends Page {
         const seen = new Set((this.replies || []).map((r: any) => String(r.id())));
         const fresh = (more || []).filter((r: any) => !seen.has(String(r.id())));
         this.replies = (this.replies || []).concat(fresh);
+        this._allLoaded = this._countsAllLoaded();
         this.loadingMore = false;
         m.redraw();
       })
@@ -326,28 +334,52 @@ export default class SupportShowPage extends Page {
       .catch(() => {});
   }
 
+  _countsAllLoaded(): boolean {
+    const total = this.ticket && typeof this.ticket.replyCount === 'function' ? this.ticket.replyCount() : null;
+    return total == null || (this.replies || []).length >= total;
+  }
+
   /**
-   * A live update arrived. A ticket push has already been merged into the
-   * store, so the header and status bar redraw on their own; only its history
-   * needs refetching. A reply push cannot say which ticket it belongs to, so
-   * fetch whatever is new on this one: the next page if every reply so far is
-   * loaded, otherwise just the ticket, so the reply count and "Load more"
-   * catch up.
+   * A live update arrived for this ticket (a ticket push carries its id; a
+   * reply push cannot say which ticket it belongs to, so it is treated as
+   * possibly ours). A ticket push has already been merged into the store, so
+   * the header and status bar redraw on their own.
    */
   _onLive(kind: string, id: string | null) {
     if (!this.ticket || this.loading) return;
+    if (kind === 'ticket' && id !== String(this.ticket.id())) return;
+    this._catchUp();
+  }
 
-    if (kind === 'ticket') {
-      if (id === String(this.ticket.id())) this._refreshEvents();
+  /**
+   * Bring the page up to date: append replies that are new since everything
+   * was last on screen, then refresh the ticket (reply count) and its history.
+   * When older replies are still behind "Load more", only the ticket is
+   * refreshed, and "Load more" picks the new ones up in order. One reply
+   * usually arrives as two pushes (the reply and the ticket it moved), so
+   * overlapping calls are folded into one follow-up run.
+   */
+  _catchUp() {
+    if (this._catchingUp) {
+      this._catchUpAgain = true;
       return;
     }
+    this._catchingUp = true;
 
-    const total = typeof this.ticket.replyCount === 'function' ? this.ticket.replyCount() : null;
-    const allLoaded = total == null || this.replies.length >= total;
-    if (!allLoaded) {
+    const done = () => {
+      this._catchingUp = false;
+      if (this._catchUpAgain) {
+        this._catchUpAgain = false;
+        this._catchUp();
+      }
+    };
+
+    if (!this._allLoaded) {
       this._refreshTicket();
+      done();
       return;
     }
+
     loadReplies(this._ticketId, this.replies.length, this._replyLimit)
       .then((more: any[]) => {
         const seen = new Set((this.replies || []).map((r: any) => String(r.id())));
@@ -356,7 +388,8 @@ export default class SupportShowPage extends Page {
         m.redraw();
         this._refreshTicket();
       })
-      .catch(() => {});
+      .catch(() => {})
+      .then(done);
   }
 
   // "Load more replies" button, shown while fewer replies are loaded than the
