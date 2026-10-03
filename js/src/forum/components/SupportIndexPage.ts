@@ -20,6 +20,12 @@ export default class SupportIndexPage extends Page {
   // Lists load a page at a time; "Load more" fetches the next one.
   hasMore = false;
   loadingMore = false;
+  // Search within the current view; empty means no search.
+  query = '';
+  _searchTimer: any = null;
+  // Each load gets a number; a response that is not the latest is dropped,
+  // so a slow reply for "ava" cannot overwrite the results for "avatar".
+  _loadSeq = 0;
   filter: string | null = 'mine';
   _lastLoadedFilter: string | null = 'mine';
   _stopLive: (() => void) | null = null;
@@ -54,6 +60,7 @@ export default class SupportIndexPage extends Page {
     if (this._stopLive) this._stopLive();
     this._stopLive = null;
     clearTimeout(this._liveTimer);
+    clearTimeout(this._searchTimer);
     super.onremove(vnode);
   }
 
@@ -77,7 +84,7 @@ export default class SupportIndexPage extends Page {
     return defaultFilter;
   }
 
-  _load(quiet = false) {
+  _load(quiet = false, freshSearch = false) {
     // A quiet reload keeps the current list on screen instead of a spinner.
     if (!quiet) {
       this.loading = true;
@@ -86,16 +93,19 @@ export default class SupportIndexPage extends Page {
 
     // A quiet (live) reload refetches everything already on screen, so a list
     // the viewer has paged through does not snap back to the first page.
-    const limit = quiet ? Math.min(100, Math.max(PAGE_SIZE, this.tickets.length)) : PAGE_SIZE;
+    const limit = quiet && !freshSearch ? Math.min(100, Math.max(PAGE_SIZE, this.tickets.length)) : PAGE_SIZE;
+    const seq = ++this._loadSeq;
 
     loadTickets(this._params(0, limit))
       .then((tickets: any) => {
+        if (seq !== this._loadSeq) return;
         this.tickets = tickets || [];
         this.hasMore = !!(tickets && tickets.payload && tickets.payload.links && tickets.payload.links.next);
         this.loading = false;
         m.redraw();
       })
       .catch((err: any) => {
+        if (seq !== this._loadSeq) return;
         this.error = err;
         this.loading = false;
         console.error('[linkrobins/support] index load failed:', err);
@@ -138,6 +148,9 @@ export default class SupportIndexPage extends Page {
     } else {
       filter.mine = '1';
     }
+    if (this.query.trim()) {
+      filter.q = this.query.trim();
+    }
     const params: any = { page: { offset, limit } };
     if (Object.keys(filter).length) {
       params.filter = filter;
@@ -172,8 +185,31 @@ export default class SupportIndexPage extends Page {
 
   _renderHeader() {
     const label = this._headingFor(this.filter);
-    return m('header', { className: 'LinkRobinsSupport-header' }, [
+    return m('header', { className: 'LinkRobinsSupport-header LinkRobinsSupport-indexHeader' }, [
       m('h1', { className: 'LinkRobinsSupport-title' }, [m('i', { className: 'fas fa-life-ring' }), ' ', label]),
+      this._renderSearch(),
+    ]);
+  }
+
+  /**
+   * Search the current view by subject, reply text or ticket number. Typing
+   * reloads after a short pause rather than on every key.
+   */
+  _renderSearch() {
+    return m('div', { className: 'LinkRobinsSupport-search' }, [
+      m('i', { className: 'fas fa-search LinkRobinsSupport-search-icon', 'aria-hidden': 'true' }),
+      m('input', {
+        className: 'FormControl LinkRobinsSupport-search-input',
+        type: 'search',
+        value: this.query,
+        placeholder: trText('index.search_placeholder', 'Search tickets'),
+        'aria-label': trText('index.search_placeholder', 'Search tickets'),
+        oninput: (e: any) => {
+          this.query = e.target.value;
+          clearTimeout(this._searchTimer);
+          this._searchTimer = setTimeout(() => this._load(true, true), 300);
+        },
+      }),
     ]);
   }
 
@@ -191,6 +227,9 @@ export default class SupportIndexPage extends Page {
     }
     if (this.error) {
       return m('div', { className: 'LinkRobinsSupport-empty' }, tr('errors.load_tickets', 'Could not load tickets.'));
+    }
+    if (!this.tickets.length && this.query.trim()) {
+      return m('div', { className: 'LinkRobinsSupport-empty' }, tr('index.no_results', 'No tickets match your search.'));
     }
     if (!this.tickets.length) {
       return m('div', { className: 'LinkRobinsSupport-empty' }, emptyLabel(this.filter, canCreateSupportTicket()));

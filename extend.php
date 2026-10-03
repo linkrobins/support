@@ -61,6 +61,7 @@ return [
 
     (new Extend\SearchDriver(DatabaseSearchDriver::class))
         ->addSearcher(SupportTicket::class, TicketSearcher::class)
+        ->setFulltext(TicketSearcher::class, \LinkRobins\Support\Search\TicketFulltextFilter::class)
         ->addFilter(TicketSearcher::class, Filters\StatusFilter::class)
         ->addFilter(TicketSearcher::class, Filters\CategoryIdFilter::class)
         ->addFilter(TicketSearcher::class, Filters\MineFilter::class)

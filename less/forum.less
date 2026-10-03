@@ -896,3 +896,34 @@ button.LinkRobinsSupport-chip {
     margin-top: 12px;
     text-align: center;
 }
+
+// List header: the view's title on the left, search on the right; the
+// search drops under the title on a phone.
+.LinkRobinsSupport-indexHeader {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+.LinkRobinsSupport-search {
+    position: relative;
+    flex: 0 1 280px;
+    min-width: 200px;
+}
+.LinkRobinsSupport-search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted-color, #888);
+    pointer-events: none;
+}
+.LinkRobinsSupport-search-input {
+    padding-left: 34px;
+}
+@media (max-width: 767px) {
+    .LinkRobinsSupport-search {
+        flex: 1 1 100%;
+    }
+}
