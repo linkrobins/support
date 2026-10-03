@@ -81,7 +81,7 @@ forum-wide moderation actions (suspensions, bans) honest.
 ## Requirements
 
 - Flarum 2.0.0+
-- PHP 8.2+
+- PHP 8.3+
 
 ## Installation
 
