@@ -8,6 +8,7 @@ import SupportCategory from './common/models/SupportCategory';
 import SupportTicket from './common/models/SupportTicket';
 import SupportReply from './common/models/SupportReply';
 import SupportEvent from './common/models/SupportEvent';
+import SupportSavedReply from './common/models/SupportSavedReply';
 
 import SupportIndexPage from './forum/components/SupportIndexPage';
 import SupportComposePage from './forum/components/SupportComposePage';
@@ -31,6 +32,7 @@ app.initializers.add('linkrobins-support', () => {
   app.store.models['linkrobins-support-tickets'] = SupportTicket;
   app.store.models['linkrobins-support-replies'] = SupportReply;
   app.store.models['linkrobins-support-events'] = SupportEvent;
+  app.store.models['linkrobins-support-saved-replies'] = SupportSavedReply;
 
   app.routes['linkrobins-support.index'] = { path: BASE_PATH, component: SupportIndexPage };
   app.routes['linkrobins-support.compose'] = { path: BASE_PATH + '/new', component: SupportComposePage };

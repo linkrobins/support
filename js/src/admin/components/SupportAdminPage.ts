@@ -5,6 +5,7 @@ import Form from 'flarum/common/components/Form';
 import FormSectionGroup from 'flarum/admin/components/FormSectionGroup';
 import FormSection from 'flarum/admin/components/FormSection';
 import CategoryEditorModal from './CategoryEditorModal';
+import SavedReplyEditorModal from './SavedReplyEditorModal';
 import AppealBannedUsersModal from './AppealBannedUsersModal';
 import { tx, loadCategoriesList } from '../utils';
 
@@ -12,6 +13,8 @@ export default class SupportAdminPage extends ExtensionPage {
   categories: any[] = [];
   loadingCats = true;
   catError: any = null;
+  savedReplies: any[] = [];
+  loadingReplies = true;
 
   oninit(vnode: any) {
     super.oninit(vnode);
@@ -19,6 +22,66 @@ export default class SupportAdminPage extends ExtensionPage {
     this.loadingCats = true;
     this.catError = null;
     this._loadCategories();
+    this._loadSavedReplies();
+  }
+
+  _loadSavedReplies() {
+    this.loadingReplies = true;
+    app.store
+      .find('linkrobins-support-saved-replies', { page: { limit: 200 } })
+      .then((replies: any) => {
+        this.savedReplies = replies || [];
+        this.loadingReplies = false;
+        m.redraw();
+      })
+      .catch(() => {
+        this.loadingReplies = false;
+        m.redraw();
+      });
+  }
+
+  _renderSavedRepliesSection() {
+    const open = (reply: any) => app.modal.show(SavedReplyEditorModal, { reply, onSaved: () => this._loadSavedReplies() });
+
+    return [
+      m('p', { className: 'helpText' }, tx('linkrobins-support.admin.saved_replies.intro')),
+      this.loadingReplies
+        ? m(LoadingIndicator)
+        : this.savedReplies.length === 0
+          ? m('div', { className: 'LinkRobinsSupportAdmin-empty' }, tx('linkrobins-support.admin.saved_replies.empty'))
+          : m(
+              'div',
+              { className: 'LinkRobinsSupportAdmin-tableWrap' },
+              m(
+                'table',
+                { className: 'LinkRobinsSupportAdmin-catTable' },
+                m(
+                  'tbody',
+                  null,
+                  this.savedReplies.map((r: any) =>
+                    m('tr', { key: 'saved-' + r.id() }, [
+                      m('td', null, m('strong', null, r.title())),
+                      m(
+                        'td',
+                        { className: 'LinkRobinsSupportAdmin-savedPreview' },
+                        (r.content() || '').slice(0, 90) + ((r.content() || '').length > 90 ? '…' : '')
+                      ),
+                      m(
+                        'td',
+                        { className: 'LinkRobinsSupportAdmin-actions' },
+                        m(
+                          Button,
+                          { className: 'Button', icon: 'fas fa-pencil-alt', onclick: () => open(r) },
+                          tx('linkrobins-support.admin.saved_replies.edit_button')
+                        )
+                      ),
+                    ])
+                  )
+                )
+              )
+            ),
+      m(Button, { className: 'Button', icon: 'fas fa-plus', onclick: () => open(null) }, tx('linkrobins-support.admin.saved_replies.new_button')),
+    ];
   }
 
   _loadCategories() {
@@ -50,6 +113,7 @@ export default class SupportAdminPage extends ExtensionPage {
         { className: 'container' },
         m(FormSectionGroup, null, [
           m(FormSection, { label: tx('linkrobins-support.admin.categories.heading') }, this._renderCategoriesSection()),
+          m(FormSection, { label: tx('linkrobins-support.admin.saved_replies.heading') }, this._renderSavedRepliesSection()),
           m(FormSection, { label: tx('linkrobins-support.admin.navigation.heading') }, this._renderNavigationSection()),
           m(FormSection, { label: tx('linkrobins-support.admin.auto_close.heading') }, this._renderAutoCloseSection()),
           m(FormSection, { label: tx('linkrobins-support.admin.rate_limits.heading') }, this._renderSettingsSection()),

@@ -5,6 +5,7 @@ import SupportIndexSidebar from './SupportIndexSidebar';
 import TicketHeader from './TicketHeader';
 import ReplyItem from './ReplyItem';
 import TicketEventItem from './TicketEventItem';
+import SavedRepliesMenu from './SavedRepliesMenu';
 import ReplyComposer from './ReplyComposer';
 import { tr } from '../utils/translate';
 import { basePath, BASE_PATH, safeNavigate, showError } from '../utils/helpers';
@@ -754,6 +755,7 @@ export default class SupportShowPage extends Page {
               tr('reply.internal_note', 'Internal note'),
             ]),
           });
+          rows.push({ name: 'savedReplies', content: m(SavedRepliesMenu) });
         }
         return rows;
       },

@@ -74,6 +74,25 @@ linkrobins-support:
       in_account_menu_help: 'The menu under your avatar, alongside Profile and Settings.'
       forum_nav: "Show the forum's navigation on support pages"
       forum_nav_help: 'When on, support pages also list All Discussions, Following and Tags above the ticket filters. Off by default, so support pages show only the tickets.'
+    saved_replies:
+      heading: 'Saved replies'
+      intro: 'Common answers staff can insert into a ticket reply from the composer, then edit before sending. Only staff see them.'
+      empty: 'No saved replies yet.'
+      new_button: 'New saved reply'
+      edit_button: Edit
+      title_new: 'New saved reply'
+      title_edit: 'Edit saved reply'
+      field_title: Title
+      field_title_help: 'What staff pick from the list, for example "Need your forum URL".'
+      field_content: Text
+      field_content_help: 'Inserted into the reply exactly as written. Markdown and BBCode work as they do in any reply.'
+      field_position: Position
+      field_position_help: 'Optional. Lower numbers come first; the rest follow alphabetically.'
+      submit_create: Create
+      submit_update: 'Save changes'
+      delete_button: Delete
+      delete_confirm: 'Delete the saved reply "{name}"?'
+      error_save: 'Could not save the saved reply.'
     auto_close:
       heading: 'Automatic closing'
       intro: 'Close tickets that stay Resolved with no further activity. A reply from either side reopens a resolved ticket, so this only closes tickets nobody came back to. Nobody is notified; the ticket history shows it was closed automatically, and the owner can still reopen it.'
@@ -225,6 +244,7 @@ linkrobins-support:
       mod_actions: 'Moderation actions'
       internal_placeholder: 'Internal note (only staff will see this)…'
       internal_note: 'Internal note'
+      saved_replies: 'Saved replies'
       post_reply: 'Post reply'
       posting: 'Posting…'
       discard_confirm: 'You have unsaved changes. Discard them?'

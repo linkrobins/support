@@ -46,6 +46,7 @@ return [
     (new Extend\ApiResource(SupportTicketResource::class)),
     (new Extend\ApiResource(SupportReplyResource::class)),
     (new Extend\ApiResource(SupportEventResource::class)),
+    (new Extend\ApiResource(\LinkRobins\Support\Api\Resource\SupportSavedReplyResource::class)),
 
     (new Extend\Routes('api'))
         ->get('/linkrobins-support-staff', 'linkrobins-support.staff', \LinkRobins\Support\Api\Controller\ListStaffController::class)
