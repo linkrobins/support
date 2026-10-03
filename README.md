@@ -42,9 +42,11 @@ forum-wide moderation actions (suspensions, bans) honest.
   → closed. Auto-advances based on who replies (staff to open ⇒
   in_progress; user to awaiting_user ⇒ in_progress). Closed tickets
   reject replies.
-- **Assignment.** Staff can claim or unassign tickets. The assigned
-  staff member shows in the staff control bar and on each row of the
-  staff ticket list, so nobody has to open a ticket to see who has it.
+- **Assignment.** Staff assign a ticket to anyone on the support team
+  (themselves included) or unassign it, from "Assign..." in the ticket's
+  menu. The assigned staff member shows in the ticket header and on each
+  row of the staff ticket list, so nobody has to open a ticket to see
+  who has it.
 - **Staff queues.** "Assigned to me" and "Unassigned" views list the
   open tickets waiting on you and the ones nobody has picked up yet.
   "My tickets" is still the tickets you opened yourself.
@@ -131,8 +133,10 @@ Staff additionally see:
 - The "Assigned to me" and "Unassigned" queues, and the "All" filter
   with status views (open, in_progress, awaiting_user, resolved,
   closed).
-- The staff control bar on each ticket: set status, claim/unassign, post
-  internal notes via the reply form's "Internal note" toggle.
+- On each ticket: the status pill is a dropdown for changing status (and
+  the appeal decision works the same way), "Assign..." in the ticket's
+  menu opens the team picker, and the reply form's "Internal note"
+  toggle posts staff-only notes.
 
 ## Data model
 
