@@ -2,7 +2,6 @@ import Component from 'flarum/common/Component';
 import Button from 'flarum/common/components/Button';
 import Dropdown from 'flarum/common/components/Dropdown';
 import { tr, trText } from '../utils/translate';
-import { userLink } from '../utils/helpers';
 import { statusBadge, statusClass, statusLabel, decisionLabel } from '../utils/status';
 import AssignTicketModal from './AssignTicketModal';
 
@@ -10,7 +9,7 @@ const STATUSES = ['open', 'in_progress', 'awaiting_user', 'resolved', 'closed'];
 const DECISIONS = ['pending', 'accepted', 'rejected'];
 
 // Presentational ticket header: the subject on its own line, a wrapping meta
-// line under it (status, category, author, assignee), and the appeal
+// line under it (status, category, assignee), and the appeal
 // decision line. For staff the status pill and the decision are dropdowns, and
 // assignment lives in the moderation menu, so the ticket needs no separate
 // control bar.
@@ -21,7 +20,6 @@ const DECISIONS = ['pending', 'accepted', 'rejected'];
 export default class TicketHeader extends Component {
   view() {
     const { ticket, canModerate, isStaff } = this.attrs as any;
-    const creator = ticket.user && ticket.user();
     const category = ticket.category && ticket.category();
     const isDeleted = !!ticket.isDeleted();
 
@@ -38,7 +36,6 @@ export default class TicketHeader extends Component {
             ])
           : null,
         category ? m('span', { className: 'LinkRobinsSupport-row-cat', style: 'color: ' + (category.color() || 'inherit') }, category.name()) : null,
-        creator ? m('span', null, [tr('show.opened_by', 'Opened by'), ' ', userLink(creator)]) : null,
         isStaff ? this.assignee(ticket) : null,
       ]),
       ticket.decision()

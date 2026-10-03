@@ -205,7 +205,6 @@ linkrobins-support:
       title: 'Ticket'
       closed_notice: 'This ticket has been closed and cannot be replied to.'
       cannot_reply: 'You cannot reply to this ticket.'
-      opened_by: 'Opened by'
       assigned_to_name: 'Assigned to {name}'
       unassigned: Unassigned
       decision: 'Decision:'
