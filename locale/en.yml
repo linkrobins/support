@@ -145,6 +145,11 @@ linkrobins-support:
       assigned_to: 'Assigned to {name}'
       untitled: 'Untitled'
       deleted_badge: 'Deleted'
+    assign:
+      title: 'Assign ticket'
+      load_failed: 'Could not load the support team.'
+      you: '(you)'
+      unassign: 'Unassign'
     event:
       status_changed: '{name} changed the status from {from} to {to}'
       status_changed_no_actor: 'The status changed from {from} to {to}'
@@ -200,9 +205,8 @@ linkrobins-support:
       title: 'Ticket'
       closed_notice: 'This ticket has been closed and cannot be replied to.'
       cannot_reply: 'You cannot reply to this ticket.'
-      closed_badge: 'Closed ticket'
       opened_by: 'Opened by'
-      assigned_to: 'Assigned to'
+      assigned_to_name: 'Assigned to {name}'
       unassigned: Unassigned
       decision: 'Decision:'
       deleted_badge: 'Deleted'
@@ -211,8 +215,8 @@ linkrobins-support:
       accepted: 'Accepted'
       rejected: 'Rejected'
     staff:
-      set_status: 'Set status:'
-      set_decision: 'Appeal decision:'
+      change_status: 'Change status'
+      change_decision: 'Change appeal decision'
     reply:
       deleted_notice: 'This reply was deleted.'
       mod_actions: 'Moderation actions'
@@ -232,8 +236,6 @@ linkrobins-support:
       saving: 'Saving…'
       edit_reply: 'Edit reply'
       attach_files: 'Attach files'
-      claim: 'Claim'
-      unassign: 'Unassign'
       reopen: 'Reopen ticket'
       edit: 'Edit'
       delete: 'Delete'
@@ -250,6 +252,7 @@ linkrobins-support:
     ticket:
       delete: 'Delete ticket'
       restore: 'Restore ticket'
+      assign: 'Assign…'
       mod_actions: 'Ticket moderation actions'
     user_controls:
       allow_appeals: 'Allow support appeals'

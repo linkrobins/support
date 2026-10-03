@@ -314,8 +314,7 @@
 
 .LinkRobinsSupport-container--deleted {
     .LinkRobinsSupport-header,
-    .LinkRobinsSupport-replies,
-    .LinkRobinsSupport-staffBar {
+    .LinkRobinsSupport-replies {
         opacity: 0.7;
     }
     .LinkRobinsSupport-ticket-actions {
@@ -356,125 +355,12 @@
     }
 }
 
-// --- Staff controls bar ---------------------------------------------
-
-.LinkRobinsSupport-staffBar {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-    margin-bottom: 24px;
-    padding: 12px 16px;
-    background: var(--control-bg, rgba(0,0,0,0.03));
-    border-radius: 8px;
-}
-
-.LinkRobinsSupport-staffBar-label {
-    font-weight: 600;
-    font-size: 0.85rem;
-    color: var(--muted-color, #888);
-}
-
-
-.LinkRobinsSupport-staffBar-statusGroup {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin: 0;
-}
-
-.LinkRobinsSupport-staffBar-statusSelect {
-    width: auto;
-    font-size: 0.9rem;
-    font-weight: 600;
-    padding: 6px 28px 6px 12px;
-    border-radius: 4px;
-    border: 1px solid var(--control-bg, rgba(0,0,0,0.15));
-    background-color: var(--body-bg, #fff);
-    color: var(--text-color, inherit);
-    cursor: pointer;
-    transition: border-color 0.12s, box-shadow 0.12s, background-color 0.12s;
-
-    appearance: none;
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");
-    background-repeat: no-repeat;
-    background-position: right 10px center;
-
-    &:hover:not(:disabled) {
-        border-color: var(--primary-color, #07adcc);
-        background-color: var(--control-bg, rgba(0,0,0,0.02));
-    }
-    &:focus {
-        outline: none;
-        border-color: var(--primary-color, #07adcc);
-        box-shadow: 0 0 0 2px fade(#07adcc, 25%);
-    }
-    &:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-    }
-}
-
-.LinkRobinsSupport-staffBar-statusGroup .LinkRobinsSupport-staffBar-label {
-    font-weight: 600;
-}
-
-.LinkRobinsSupport-staffBar-assign {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-    padding-left: 12px;
-    margin-left: auto;
-    border-left: 1px solid rgba(127,127,127,0.18);
-}
-
-.LinkRobinsSupport-staffBtn {
-    font-size: 0.8rem !important;
-    padding: 5px 12px !important;
-    // A default Button paints itself --control-bg, which is exactly the bar's
-    // own background: Claim / Unassign / Reopen had no edges at all and read
-    // as stray lines of text. Give them the page background and a border, the
-    // same treatment the status select beside them already gets.
-    background-color: var(--body-bg, #fff);
-    border: 1px solid var(--control-bg, rgba(0, 0, 0, 0.15));
-    transition: border-color 0.12s;
-
-    &:hover:not(:disabled),
-    &:focus {
-        border-color: var(--primary-color, #07adcc);
-    }
-}
-
 @media (max-width: 767px) {
     // A phone gives a heading the whole width now, so it only needs to come
     // down a step rather than shrink out of the way of anything.
     .LinkRobinsSupport-title {
         font-size: calc(1.3rem * var(--lr-text-scale, 1));
     }
-    .LinkRobinsSupport-staffBar {
-        flex-direction: column;
-        align-items: stretch;
-    }
-    .LinkRobinsSupport-staffBar-statusGroup {
-        width: 100%;
-        justify-content: space-between;
-    }
-    .LinkRobinsSupport-staffBar-statusSelect {
-        flex: 1;
-        min-width: 0;
-    }
-    .LinkRobinsSupport-staffBar-assign {
-        padding-left: 0;
-        margin-left: 0;
-        border-left: none;
-        padding-top: 8px;
-        border-top: 1px solid rgba(127,127,127,0.18);
-        width: 100%;
-    }
-
     // --- Ticket list ---
     // Buy the subject back the width the desktop padding spends, and align the
     // status pill with the subject's first line now that the subject can wrap.
@@ -875,4 +761,73 @@
         content: '\00B7';
         margin-right: 6px;
     }
+}
+
+// Staff: the status pill doubles as the status picker. It keeps the pill's
+// colours and adds a caret, so it reads as the same badge members see.
+.LinkRobinsSupport-statusDropdown,
+.LinkRobinsSupport-decisionDropdown {
+    display: inline-block;
+}
+.LinkRobinsSupport-statusToggle {
+    border: 0;
+    cursor: pointer;
+
+    .Button-caret {
+        margin-left: 6px;
+        font-size: 0.9em;
+    }
+    &:hover,
+    &:focus-visible {
+        filter: brightness(0.95);
+    }
+}
+.LinkRobinsSupport-decisionToggle {
+    padding: 0;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
+.LinkRobinsSupport-ticket-assignee.is-unassigned {
+    font-style: italic;
+}
+
+// Assign modal: the team as a list of one-click rows.
+.LinkRobinsSupport-assignList {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.LinkRobinsSupport-assignOption {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    text-align: left;
+
+    &.is-current {
+        opacity: 1;
+        font-weight: 600;
+    }
+}
+.LinkRobinsSupport-assignAvatar {
+    --size: 28px;
+    width: 28px;
+    height: 28px;
+    line-height: 28px;
+    font-size: 13px;
+    flex-shrink: 0;
+}
+.LinkRobinsSupport-assignName {
+    flex: 1;
+}
+.LinkRobinsSupport-assignYou {
+    color: var(--muted-color, #888);
+}
+.LinkRobinsSupport-assignFooter {
+    margin-top: 12px;
+    text-align: center;
 }

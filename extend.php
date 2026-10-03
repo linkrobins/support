@@ -47,6 +47,9 @@ return [
     (new Extend\ApiResource(SupportReplyResource::class)),
     (new Extend\ApiResource(SupportEventResource::class)),
 
+    (new Extend\Routes('api'))
+        ->get('/linkrobins-support-staff', 'linkrobins-support.staff', \LinkRobins\Support\Api\Controller\ListStaffController::class),
+
     (new Extend\Policy())
         ->modelPolicy(SupportTicket::class,   Access\SupportTicketPolicy::class)
         ->modelPolicy(SupportReply::class,    Access\SupportReplyPolicy::class)

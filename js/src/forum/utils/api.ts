@@ -53,6 +53,23 @@ export function loadEvents(ticketId: string | number): Promise<any> {
   });
 }
 
+export interface StaffMember {
+  id: string;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+}
+
+/**
+ * The support team, for the Assign picker. A dedicated staff-only endpoint:
+ * core's user list needs searchUsers, which support staff often lack.
+ */
+export function loadStaff(): Promise<StaffMember[]> {
+  return app
+    .request<{ data: StaffMember[] }>({ method: 'GET', url: apiUrl() + '/linkrobins-support-staff' })
+    .then((res: any) => (res && res.data) || []);
+}
+
 export function loadCategories(): Promise<any> {
   return app.store.find('linkrobins-support-categories', {
     sort: 'position',

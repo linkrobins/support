@@ -1,19 +1,26 @@
 import Component from 'flarum/common/Component';
 import Button from 'flarum/common/components/Button';
 import Dropdown from 'flarum/common/components/Dropdown';
-import { tr } from '../utils/translate';
+import { tr, trText } from '../utils/translate';
 import { formatDate, userLink } from '../utils/helpers';
-import { statusBadge, decisionLabel } from '../utils/status';
+import { statusBadge, statusClass, statusLabel, decisionLabel } from '../utils/status';
+import AssignTicketModal from './AssignTicketModal';
+
+const STATUSES = ['open', 'in_progress', 'awaiting_user', 'resolved', 'closed'];
+const DECISIONS = ['pending', 'accepted', 'rejected'];
 
 // Presentational ticket header: the subject on its own line, a wrapping meta
-// line under it (status, category, author, date), and the appeal decision line.
+// line under it (status, category, author, date, assignee), and the appeal
+// decision line. For staff the status pill and the decision are dropdowns, and
+// assignment lives in the moderation menu, so the ticket needs no separate
+// control bar.
 // The moderation menu is positioned into the header's top-right corner by the
 // stylesheet, which is why it is rendered before the title.
 // SupportShowPage owns the state and passes the ticket plus moderation
 // callbacks; this component only renders.
 export default class TicketHeader extends Component {
   view() {
-    const { ticket, canModerate } = this.attrs as any;
+    const { ticket, canModerate, isStaff } = this.attrs as any;
     const creator = ticket.user && ticket.user();
     const category = ticket.category && ticket.category();
     const isDeleted = !!ticket.isDeleted();
@@ -22,7 +29,7 @@ export default class TicketHeader extends Component {
       canModerate ? this.actions(ticket, isDeleted) : null,
       m('h1', { className: 'LinkRobinsSupport-title' }, ticket.subject()),
       m('div', { className: 'LinkRobinsSupport-ticket-meta' }, [
-        statusBadge(ticket.status()),
+        isStaff && !isDeleted ? this.statusControl(ticket) : statusBadge(ticket.status()),
         isDeleted
           ? m('span', { className: 'LinkRobinsSupport-reply-deletedBadge' }, [
               m('i', { className: 'fas fa-trash' }),
@@ -33,25 +40,120 @@ export default class TicketHeader extends Component {
         category ? m('span', { className: 'LinkRobinsSupport-row-cat', style: 'color: ' + (category.color() || 'inherit') }, category.name()) : null,
         creator ? m('span', null, [tr('show.opened_by', 'Opened by'), ' ', userLink(creator)]) : null,
         m('span', null, formatDate(ticket.createdAt())),
+        isStaff ? this.assignee(ticket) : null,
       ]),
       ticket.decision()
         ? m('div', { className: 'LinkRobinsSupport-decision' }, [
             tr('show.decision', 'Decision:'),
             ' ',
-            m('span', { className: 'LinkRobinsSupport-decision-' + ticket.decision() }, decisionLabel(ticket.decision())),
+            isStaff && !isDeleted
+              ? this.decisionControl(ticket)
+              : m('span', { className: 'LinkRobinsSupport-decision-' + ticket.decision() }, decisionLabel(ticket.decision())),
           ])
         : null,
     ]);
   }
 
+  /**
+   * The status pill as a dropdown. Changing status is the action staff take
+   * most, so it stays one click away rather than going behind the menu.
+   * Picking Closed still asks for confirmation (the page's _setStatus).
+   */
+  statusControl(ticket: any) {
+    const { onSetStatus, updating } = this.attrs as any;
+    const current = ticket.status();
+
+    return m(
+      Dropdown,
+      {
+        className: 'LinkRobinsSupport-statusDropdown',
+        buttonClassName: 'LinkRobinsSupport-status LinkRobinsSupport-statusToggle ' + statusClass(current),
+        label: statusLabel(current),
+        caretIcon: 'fas fa-caret-down',
+        accessibleToggleLabel: trText('staff.change_status', 'Change status'),
+      },
+      STATUSES.map((s) =>
+        m(
+          Button,
+          {
+            icon: s === current ? 'fas fa-check' : 'fas fa-fw',
+            disabled: !!updating || s === current,
+            onclick: () => onSetStatus(s),
+          },
+          statusLabel(s)
+        )
+      )
+    );
+  }
+
+  decisionControl(ticket: any) {
+    const { onSetDecision, updating } = this.attrs as any;
+    const current = ticket.decision();
+
+    return m(
+      Dropdown,
+      {
+        className: 'LinkRobinsSupport-decisionDropdown',
+        buttonClassName: 'Button Button--text LinkRobinsSupport-decisionToggle LinkRobinsSupport-decision-' + current,
+        label: decisionLabel(current),
+        caretIcon: 'fas fa-caret-down',
+        accessibleToggleLabel: trText('staff.change_decision', 'Change appeal decision'),
+      },
+      DECISIONS.map((d) =>
+        m(
+          Button,
+          {
+            icon: d === current ? 'fas fa-check' : 'fas fa-fw',
+            disabled: !!updating || d === current,
+            onclick: () => onSetDecision(d),
+          },
+          decisionLabel(d)
+        )
+      )
+    );
+  }
+
+  assignee(ticket: any) {
+    const assigned = ticket.assignedStaff && ticket.assignedStaff();
+    return assigned
+      ? m('span', { className: 'LinkRobinsSupport-ticket-assignee' }, [
+          m('i', { className: 'fas fa-user-check', 'aria-hidden': 'true' }),
+          ' ',
+          tr('show.assigned_to_name', 'Assigned to {name}', { name: assigned.displayName() || assigned.username() }),
+        ])
+      : m('span', { className: 'LinkRobinsSupport-ticket-assignee is-unassigned' }, [
+          m('i', { className: 'fas fa-user-slash', 'aria-hidden': 'true' }),
+          ' ',
+          tr('show.unassigned', 'Unassigned'),
+        ]);
+  }
+
   actions(ticket: any, isDeleted: boolean) {
-    const { ticketBusy, onSoftDelete, onRestore, onForceDelete } = this.attrs as any;
+    const { ticketBusy, onSoftDelete, onRestore, onForceDelete, onAssign, isStaff, updating } = this.attrs as any;
     const canUpdate = !!ticket.canUpdate();
     const canDelete = !!ticket.canDelete();
     const busy = !!ticketBusy;
 
     const items: any[] = [];
     if (!isDeleted) {
+      if (isStaff) {
+        const assigned = ticket.assignedStaff && ticket.assignedStaff();
+        items.push(
+          m(
+            Button,
+            {
+              icon: 'fas fa-user-tag',
+              disabled: busy || !!updating,
+              onclick: () =>
+                app.modal.show(AssignTicketModal, {
+                  currentId: assigned ? assigned.id() : null,
+                  onAssign: (member: any) => onAssign(member),
+                }),
+            },
+            tr('ticket.assign', 'Assign…')
+          )
+        );
+      }
       if (canUpdate) {
         items.push(
           m(

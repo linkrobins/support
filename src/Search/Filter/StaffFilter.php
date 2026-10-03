@@ -2,7 +2,6 @@
 
 namespace LinkRobins\Support\Search\Filter;
 
-use Flarum\Group\Group;
 use Flarum\Search\Database\DatabaseSearchState;
 use Flarum\Search\Filter\FilterInterface;
 use Flarum\Search\SearchState;
@@ -17,8 +16,7 @@ use LinkRobins\Support\Access\SupportAbilities;
  * The definition of staff has to match SupportNotifier::staffRecipients()
  * exactly -- a name in this list that the notifier would not recognise means
  * an admin can route a category at someone who then never hears about it.
- * Both are expressed as "in the admin group, or in a group holding
- * handle_tickets".
+ * The query lives in SupportAbilities::whereStaff().
  *
  * @implements FilterInterface<DatabaseSearchState>
  */
@@ -43,18 +41,12 @@ class StaffFilter implements FilterInterface
             return;
         }
 
-        $method = $negate ? 'whereNot' : 'where';
+        if ($negate) {
+            $state->getQuery()->whereNot(fn ($query) => SupportAbilities::whereStaff($query));
 
-        $state->getQuery()->{$method}(function ($query) {
-            $query->whereHas('groups', function ($q) {
-                $q->where('groups.id', Group::ADMINISTRATOR_ID);
-            })->orWhereHas('groups', function ($q) {
-                $q->whereIn('groups.id', function ($sub) {
-                    $sub->select('group_id')
-                        ->from('group_permission')
-                        ->where('permission', SupportAbilities::HANDLE_TICKETS);
-                });
-            });
-        });
+            return;
+        }
+
+        SupportAbilities::whereStaff($state->getQuery());
     }
 }

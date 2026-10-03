@@ -31,6 +31,10 @@ const STATUS_CLASSES: Record<string, string> = {
   closed: 'is-closed',
 };
 
+export function statusClass(status: string): string {
+  return STATUS_CLASSES[status] || '';
+}
+
 export function statusBadge(status: string): any {
   const label = statusLabel(status);
   const cls = STATUS_CLASSES[status] || '';

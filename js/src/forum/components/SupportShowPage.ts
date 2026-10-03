@@ -3,7 +3,6 @@ import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
 import PageStructure from 'flarum/forum/components/PageStructure';
 import SupportIndexSidebar from './SupportIndexSidebar';
 import TicketHeader from './TicketHeader';
-import StaffControlBar from './StaffControlBar';
 import ReplyItem from './ReplyItem';
 import TicketEventItem from './TicketEventItem';
 import ReplyComposer from './ReplyComposer';
@@ -16,7 +15,7 @@ import { openSupportComposer, supportComposerSupported } from '../utils/composer
 
 // Orchestrates the ticket detail page: owns loading/error state, the ticket and
 // its (paginated) replies, and all mutation logic. Rendering is delegated to
-// the presentational TicketHeader / StaffControlBar / ReplyItem / ReplyComposer
+// the presentational TicketHeader / ReplyItem / ReplyComposer
 // components, which receive data + callbacks.
 export default class SupportShowPage extends Page {
   loading = true;
@@ -205,23 +204,16 @@ export default class SupportShowPage extends Page {
         m(TicketHeader, {
           ticket,
           canModerate,
+          isStaff: canHandleSupportTickets(),
+          updating: this.updating,
+          onSetStatus: (s: string) => this._setStatus(s),
+          onSetDecision: (d: string) => this._setDecision(d),
+          onAssign: (member: any) => this._assignTo(member),
           ticketBusy: this._ticketBusy,
           onSoftDelete: () => this._softDeleteTicket(),
           onRestore: () => this._restoreTicket(),
           onForceDelete: () => this._forceDeleteTicket(),
         }),
-
-        canHandleSupportTickets()
-          ? m(StaffControlBar, {
-              ticket,
-              updating: this.updating,
-              onSetStatus: (s: string) => this._setStatus(s),
-              onSetDecision: (d: string) => this._setDecision(d),
-              onClaim: () => this._claim(),
-              onUnassign: () => this._unassign(),
-              onReopen: () => this._reopen(),
-            })
-          : null,
 
         m(
           'div',
@@ -419,14 +411,24 @@ export default class SupportShowPage extends Page {
 
   // --- Staff controls ----------------------------------------------------
 
-  _claim() {
-    const actor = app.session && app.session.user;
-    if (!actor) return;
-    this._setAssignment(actor);
-  }
-
-  _unassign() {
-    this._setAssignment(null);
+  /**
+   * Assign to a staff member picked in AssignTicketModal, or unassign (null).
+   * The picker lists plain records from the staff endpoint, so the user is
+   * put into the store first to give the relationship a model to point at.
+   */
+  _assignTo(member: { id: string; username: string; displayName: string; avatarUrl: string | null } | null) {
+    if (!member) {
+      this._setAssignment(null);
+      return;
+    }
+    const user =
+      app.store.getById('users', member.id) ||
+      app.store.pushObject({
+        type: 'users',
+        id: member.id,
+        attributes: { username: member.username, displayName: member.displayName, avatarUrl: member.avatarUrl },
+      });
+    this._setAssignment(user);
   }
 
   _setAssignment(user: any) {
