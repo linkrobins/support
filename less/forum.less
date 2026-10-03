@@ -375,8 +375,10 @@
 
 @media (max-width: 767px) {
     // A phone gives a heading the whole width now, so it only needs to come
-    // down a step rather than shrink out of the way of anything.
-    .LinkRobinsSupport-title {
+    // down a step rather than shrink out of the way of anything. Ticket
+    // subjects only: list headings are short and stay the size the wiki uses,
+    // so the two extensions match.
+    .LinkRobinsSupport-ticket-header .LinkRobinsSupport-title {
         font-size: calc(1.3rem * var(--lr-text-scale, 1));
     }
     // --- Ticket list ---
