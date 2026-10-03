@@ -900,7 +900,9 @@ button.LinkRobinsSupport-chip {
 // List header: the view's title on the left, search on the right; the
 // search drops under the title on a phone.
 .LinkRobinsSupport-indexHeader {
-    display: flex;
+    // The base header is a column; this one is a row, or the search box's
+    // flex-basis turns into a height.
+    flex-direction: row;
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
