@@ -130,6 +130,7 @@ linkrobins-support:
       status_changed: 'Your ticket was marked {status}'
       status_changed_generic: 'A ticket was marked {status}'
       reopened_by_owner: '{name} reopened their ticket'
+      confirmed_solved_by_owner: '{name} confirmed their ticket was solved'
       assigned: '{name} assigned a ticket to you'
       assigned_generic: 'A ticket was assigned to you'
     settings:
@@ -232,6 +233,9 @@ linkrobins-support:
       title: 'Ticket'
       closed_notice: 'This ticket has been closed and cannot be replied to.'
       cannot_reply: 'You cannot reply to this ticket.'
+      confirm_solved_prompt: 'This ticket was marked resolved. Did this solve your problem?'
+      confirm_solved_yes: 'Yes, close it'
+      confirm_solved_no: 'No, I still need help'
       assigned_to_name: 'Assigned to {name}'
       unassigned: Unassigned
       decision: 'Decision:'
@@ -304,6 +308,9 @@ linkrobins-support:
     open_ticket: 'Open the ticket'
     status_changed_subject: '[{subject}] marked {status}'
     status_changed_body: 'Your support ticket has been marked {status}.'
+    status_changed_body_generic: 'A support ticket was marked {status}.'
+    reopened_by_owner_body: '{name} reopened their ticket.'
+    confirmed_solved_body: '{name} confirmed their ticket was solved and closed it.'
     assigned_subject: 'Assigned to you: {subject}'
     assigned_body: '{name} assigned this support ticket to you.'
   # Server-resolved messages (API error details + rate-limit reasons). Only

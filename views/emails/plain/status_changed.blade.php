@@ -1,6 +1,6 @@
 <x-mail::plain.notification>
 <x-slot:body>
-{{ $translator->trans('linkrobins-support.email.status_changed_body', ['status' => $translator->trans(\LinkRobins\Support\SupportTicket::statusLabelKey($blueprint->status))]) }}
+{{ $blueprint->emailBody($translator, $user) }}
 
   {{ $blueprint->ticket->subject }}
 

@@ -1,5 +1,6 @@
 import Page from 'flarum/common/components/Page';
 import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
+import Button from 'flarum/common/components/Button';
 import PageStructure from 'flarum/forum/components/PageStructure';
 import SupportIndexSidebar from './SupportIndexSidebar';
 import TicketHeader from './TicketHeader';
@@ -229,6 +230,8 @@ export default class SupportShowPage extends Page {
 
         this._renderLoadMore(),
 
+        this._renderConfirmSolved(),
+
         ticket.canReply()
           ? m(ReplyComposer, {
               ticket,
@@ -281,6 +284,54 @@ export default class SupportShowPage extends Page {
             ]),
       ])
     );
+  }
+
+  /**
+   * For the owner of a resolved ticket: confirm it is solved (which closes
+   * it), or say it is not (which opens the reply box; replying to a resolved
+   * ticket already puts it back in progress).
+   */
+  _renderConfirmSolved() {
+    const ticket = this.ticket;
+    if (!ticket || !(ticket.canConfirmSolved && ticket.canConfirmSolved())) return null;
+
+    return m('div', { className: 'LinkRobinsSupport-confirmSolved' }, [
+      m('div', { className: 'LinkRobinsSupport-confirmSolved-text' }, [
+        m('i', { className: 'fas fa-check-circle', 'aria-hidden': 'true' }),
+        ' ',
+        tr('show.confirm_solved_prompt', 'This ticket was marked resolved. Did this solve your problem?'),
+      ]),
+      m('div', { className: 'LinkRobinsSupport-confirmSolved-actions' }, [
+        m(
+          Button,
+          { className: 'Button Button--primary', disabled: this.updating, onclick: () => this._confirmSolved() },
+          tr('show.confirm_solved_yes', 'Yes, close it')
+        ),
+        m(
+          Button,
+          { className: 'Button', disabled: this.updating, onclick: () => this._openReplyComposer(false) },
+          tr('show.confirm_solved_no', 'No, I still need help')
+        ),
+      ]),
+    ]);
+  }
+
+  _confirmSolved() {
+    this.updating = true;
+    m.redraw();
+    this.ticket
+      .save({ status: 'closed' })
+      .then(() => {
+        this.updating = false;
+        m.redraw();
+        this._refreshEvents();
+      })
+      .catch((err: any) => {
+        this.updating = false;
+        console.error('[linkrobins/support] confirm solved failed:', err);
+        showError(tr('errors.update_status', 'Could not update status.'));
+        m.redraw();
+      });
   }
 
   _renderReply(r: any) {

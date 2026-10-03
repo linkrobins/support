@@ -48,12 +48,13 @@ class SupportTicketPolicy extends AbstractPolicy
         if ($this->isStaff($actor)) {
             return true;
         }
-        // The owner may update their own closed, non-appeal ticket solely to
-        // reopen it. The status setter caps non-staff at closed -> open and
-        // updating() reverts any other field they might include, so this
-        // authorization can't be used to edit the ticket otherwise. Appeals
-        // stay staff-only.
-        if ($this->isOwner($actor, $ticket) && $ticket->isClosed()) {
+        // The owner may update their own closed or resolved, non-appeal ticket
+        // solely to move its status: reopen a closed one, or confirm a
+        // resolved one solved (which closes it). The status setter caps
+        // non-staff at exactly those two moves and updating() reverts any
+        // other field they might include, so this authorization can't be used
+        // to edit the ticket otherwise. Appeals stay staff-only.
+        if ($this->isOwner($actor, $ticket) && ($ticket->isClosed() || $ticket->status === SupportTicket::STATUS_RESOLVED)) {
             $category = $ticket->category;
 
             return ! ($category && $category->is_appeal);

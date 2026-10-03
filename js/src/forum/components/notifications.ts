@@ -195,6 +195,11 @@ export class TicketStatusChangedNotification extends Notification {
     if (!ownTicket && from && from.displayName && data.status === 'open') {
       return tr('notifications.reopened_by_owner', '{name} reopened their ticket', { name: from.displayName() });
     }
+    // The owner closing their own ticket from "Did this solve your problem?".
+    const fromOwner = !!(subj && subj.user && from && subj.user() && String(subj.user().id()) === String(from.id()));
+    if (!ownTicket && fromOwner && data.status === 'closed') {
+      return tr('notifications.confirmed_solved_by_owner', '{name} confirmed their ticket was solved', { name: from.displayName() });
+    }
     return ownTicket
       ? tr('notifications.status_changed', 'Your ticket was marked {status}', { status })
       : tr('notifications.status_changed_generic', 'A ticket was marked {status}', { status });

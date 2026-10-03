@@ -174,14 +174,20 @@ class SupportTicketResource extends AbstractDatabaseResource
                         $ticket->status = $value;
                         return;
                     }
-                    // Non-staff: the only status change allowed is the owner
-                    // reopening their OWN closed, non-appeal ticket
-                    // (closed -> open). Appeals stay staff-only so a suspended
-                    // user can't reopen a rejected appeal. Everything else from
-                    // a non-staff actor is ignored.
+                    // Non-staff: the owner of a non-appeal ticket may make two
+                    // moves only: reopen it when closed (closed -> open), or
+                    // confirm it solved when resolved (resolved -> closed).
+                    // Appeals stay staff-only so a suspended user can't reopen
+                    // a rejected appeal. Everything else from a non-staff actor
+                    // is ignored.
                     if (
                         $this->ownerMayReopen($ticket, $actor)
                         && $value === SupportTicket::STATUS_OPEN
+                    ) {
+                        $ticket->status = $value;
+                    } elseif (
+                        $this->ownerMayConfirmSolved($ticket, $actor)
+                        && $value === SupportTicket::STATUS_CLOSED
                     ) {
                         $ticket->status = $value;
                     }
@@ -270,6 +276,13 @@ class SupportTicketResource extends AbstractDatabaseResource
                         return false;
                     }
                     return SupportAbilities::isStaff($actor) || $this->ownerMayReopen($ticket, $actor);
+                }),
+
+            // Drives the "Did this solve your problem?" prompt for the owner
+            // of a resolved ticket.
+            Schema\Boolean::make('canConfirmSolved')
+                ->get(function (SupportTicket $ticket, FlarumContext $context) {
+                    return $this->ownerMayConfirmSolved($ticket, $context->getActor());
                 }),
 
             Schema\Boolean::make('canUpdate')
@@ -414,6 +427,23 @@ class SupportTicketResource extends AbstractDatabaseResource
      * suspended user can't reopen a rejected appeal). Called before the status
      * setter reassigns, so $ticket->status is still the persisted value.
      */
+    /**
+     * Whether $actor may close $ticket by confirming it solved: they own it,
+     * staff have marked it resolved, and it is not an appeal.
+     */
+    protected function ownerMayConfirmSolved(SupportTicket $ticket, User $actor): bool
+    {
+        if ($actor->isGuest() || (int) $actor->id !== (int) $ticket->user_id) {
+            return false;
+        }
+        if ($ticket->status !== SupportTicket::STATUS_RESOLVED) {
+            return false;
+        }
+        $category = $ticket->category;
+
+        return ! ($category && $category->is_appeal);
+    }
+
     protected function ownerMayReopen(SupportTicket $ticket, User $actor): bool
     {
         if ($actor->isGuest() || (int) $actor->id !== (int) $ticket->user_id) {

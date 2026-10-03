@@ -18,6 +18,7 @@ export default class SupportTicket extends Model {
   canPostInternalNote = Model.attribute<boolean>('canPostInternalNote');
   canDelete = Model.attribute<boolean>('canDelete');
   canReopen = Model.attribute<boolean>('canReopen');
+  canConfirmSolved = Model.attribute<boolean>('canConfirmSolved');
   isDeleted = Model.attribute<boolean>('isDeleted');
   isUnread = Model.attribute<boolean>('isUnread');
 

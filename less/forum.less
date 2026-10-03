@@ -977,3 +977,27 @@ button.LinkRobinsSupport-chip {
         color: var(--muted-color, #888);
     }
 }
+
+// "Did this solve your problem?" for the owner of a resolved ticket, in the
+// resolved status colour so it reads as part of the same state.
+.LinkRobinsSupport-confirmSolved {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 16px 0;
+    padding: 14px 18px;
+    border-radius: 8px;
+    background: rgba(46, 204, 113, 0.1);
+
+    &-text {
+        color: #27ae60;
+        font-weight: 600;
+    }
+    &-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+}
