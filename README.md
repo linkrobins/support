@@ -42,13 +42,66 @@ forum-wide moderation actions (suspensions, bans) honest.
   → closed. Auto-advances based on who replies (staff to open ⇒
   in_progress; user to awaiting_user ⇒ in_progress). Closed tickets
   reject replies.
-- **Assignment.** Staff can claim or unassign tickets. The assigned
-  staff member shows in the staff control bar.
+- **"Did this solve your problem?"** When staff mark a ticket resolved,
+  the person who opened it can confirm it and close it straight away, or
+  say they still need help, which opens the reply box. Staff are told
+  when an owner confirms a ticket solved.
+- **Assignment.** Staff assign a ticket to anyone on the support team
+  (themselves included) or unassign it, from "Assign..." in the ticket's
+  menu. The assigned staff member shows in the ticket header and on each
+  row of the staff ticket list, so nobody has to open a ticket to see
+  who has it.
+- **Staff queues.** "Assigned to me" and "Unassigned" views list the
+  open tickets waiting on you and the ones nobody has picked up yet.
+  "My tickets" is still the tickets you opened yourself.
+- **Ticket history.** Every status and assignment change appears in the
+  ticket between the replies, with who made it and when: "Karl changed
+  the status from Open to Resolved". Staff see all of it; the person who
+  opened the ticket sees status changes but not internal assignment.
+- **Automatic closing.** Tickets left Resolved with no further activity
+  close themselves after 7 days (configurable, or off). A reply from
+  either side reopens a resolved ticket first, so this only closes
+  tickets nobody came back to. Nobody is notified, the history shows it
+  was closed automatically, and the owner can still reopen it. Needs the
+  Flarum scheduler (`php flarum schedule:run` in cron).
+- **Reminders.** When a ticket has waited on its owner (Awaiting
+  response) for 3 days with no activity, they get one reminder by
+  notification and email (configurable, or off). Once per wait. Also
+  needs the Flarum scheduler.
+- **Search.** A search box beside the list title finds tickets by
+  subject, by the text of a reply, or by ticket number, as you type.
+  Members search only their own tickets and never match the text of a
+  staff internal note.
+- **Unread markers.** Tickets with a reply you have not seen yet show a
+  dot and a bold subject, the way Flarum marks unread discussions.
+  Opening the ticket clears it. Internal notes never mark a member's
+  ticket unread.
+- **Sidebar counts.** Staff see how much open work sits in each queue
+  and status view ("Unassigned 7"); everyone sees how many of their own
+  tickets have an unread reply.
+- **Priority.** Staff can mark a ticket urgent or low priority from its
+  menu. Urgent tickets carry a red chip and come first in every staff
+  list. Members never see priority.
+- **Saved replies.** Admins keep a library of common answers; staff
+  insert one into a reply from the composer and edit it before sending.
+  Members never see the list.
+- **Support stats.** Staff can open a stats view from the support
+  sidebar or their account menu: tickets opened and closed, typical
+  first-response and resolution times with the slowest tenth, opened
+  versus closed over time, the current backlog, how resolved tickets
+  were closed, and a breakdown per staff member, over 7, 30 or 90 days.
+- **Live updates.** With the bundled `flarum/realtime` extension
+  enabled, new replies and status changes appear on an open ticket, and
+  new tickets in the staff lists, without reloading. Each person only
+  ever receives what they could already see: never another member's
+  ticket, never an internal note.
 - **Notifications.** In-app and email. The ticket owner is notified
-  when staff replies; staff are notified when a new ticket is opened
-  or when the owner replies. Internal notes never produce
-  notifications. Users can toggle these per driver in their
-  notification preferences.
+  when staff replies or changes the ticket's status; staff are notified
+  when a new ticket is opened, when the owner replies, reopens a ticket
+  or confirms it solved, and when a ticket is assigned to them. A
+  category can route its new tickets to one staff member. Internal notes
+  never produce notifications. Users can toggle each of these per driver
+  in their notification preferences.
 - **Decisions on appeals.** Resolved appeal tickets record a
   `decision` field (approved / rejected / null).
 - **File attachments.** Optional integration with `fof/upload`. When
@@ -60,7 +113,7 @@ forum-wide moderation actions (suspensions, bans) honest.
 ## Requirements
 
 - Flarum 2.0.0+
-- PHP 8.2+
+- PHP 8.3+
 
 ## Installation
 
@@ -87,10 +140,18 @@ a separate permission for it.
 
 ## Admin UI
 
-Settings live at admin → Extensions → Link Robins Support, with three
-tabs:
+Settings live at admin → Extensions → LR Support, in these sections:
 
-- **Categories.** CRUD for ticket categories.
+- **Categories.** CRUD for ticket categories, including an optional
+  staff member who receives each category's new tickets.
+- **Saved replies.** The answers staff can insert into a reply: a title,
+  the text, and an optional position.
+- **Navigation.** Whether the Support link appears in the forum sidebar
+  and the account menu, and whether support pages also show the forum's
+  own navigation.
+- **Reminders and automatic closing.** How many days a resolved ticket
+  may sit with no activity before it closes, and how many days a ticket
+  may wait on its owner before they are reminded. 0 turns either off.
 - **Rate limits.** Configurable values for the appeal and general
   limits described above.
 - **Appeal bans.** Search users and toggle their permanent appeal-ban
@@ -100,30 +161,42 @@ tabs:
 
 Users see:
 
-- `/support` -- their tickets list, with filter chips for status.
+- `/support` -- their tickets list, with a search box and unread
+  markers.
 - `/support/new` -- compose form. Banned-from-appeals users see only
   general categories; suspended users see only appeal categories.
 - `/support/:id` -- the ticket page, with reply form and reply thread.
 
 Staff additionally see:
 
-- The "All" filter on the index, with status chips for cross-cutting
-  views (open, in_progress, awaiting_user, resolved, closed).
-- The staff control bar on each ticket: set status, claim/unassign, post
-  internal notes via the reply form's "Internal note" toggle.
+- The "Assigned to me" and "Unassigned" queues, and the "All" filter
+  with status views (open, in_progress, awaiting_user, resolved,
+  closed).
+- On each ticket: the status pill is a dropdown for changing status (and
+  the appeal decision works the same way), the ticket's menu holds
+  "Assign..." (the team picker) and the priority options, and the reply
+  form has the "Internal note" toggle and the saved replies menu.
+- "Support stats" in the sidebar and the account menu.
 
 ## Data model
 
-Three tables:
+Seven tables:
 
 - `linkrobins_support_categories` -- name, slug, description, color,
   icon, position, is_appeal.
 - `linkrobins_support_tickets` -- category_id, user_id,
-  assigned_staff_id, subject, status, decision, last_reply_at,
-  deleted_at.
+  assigned_staff_id, subject, status, decision, priority,
+  last_reply_at, status_changed_at, reminded_at, deleted_at.
 - `linkrobins_support_replies` -- ticket_id, user_id, content
   (parsed-source XML), is_internal_note, deleted_at, edited_at,
   edited_by_user_id.
+- `linkrobins_support_events` -- the ticket history: ticket_id,
+  user_id (who made the change; null for automatic changes), type
+  (`status` or `assignment`), from/to status, from/to assignee.
+- `linkrobins_support_reads` -- when each person last opened each
+  ticket, for the unread markers.
+- `linkrobins_support_saved_replies` -- title, content (raw Markdown or
+  BBCode), position.
 
 One column added to the existing `users` table:
 
@@ -203,6 +276,13 @@ themselves, who is also the only non-staff party with the URL.
 | `/api/linkrobins-support-replies` | POST | authenticated |
 | `/api/linkrobins-support-replies/:id` | PATCH | staff (handle_tickets) |
 | `/api/linkrobins-support-replies/:id` | DELETE | staff, soft-deleted only |
+| `/api/linkrobins-support-events` | GET | authenticated (staff: all; owner: status changes on own tickets) |
+| `/api/linkrobins-support-tickets/:id/read` | POST | anyone who can see the ticket |
+| `/api/linkrobins-support-counts` | GET | authenticated (staff get the queue counts) |
+| `/api/linkrobins-support-stats` | GET | staff (handle_tickets); `?days=7\|30\|90` |
+| `/api/linkrobins-support-staff` | GET | staff (handle_tickets) |
+| `/api/linkrobins-support-saved-replies` | GET | staff (handle_tickets) |
+| `/api/linkrobins-support-saved-replies` | POST/PATCH/DELETE | admin |
 
 Moderation patterns:
 
@@ -216,9 +296,11 @@ Moderation patterns:
 Supported filters (use `filter[name]=value` shape; Flarum 2 rejects
 unrecognized top-level params):
 
-- On tickets: `filter[mine]=1`, `filter[status]=open`,
-  `filter[categoryId]=N`
+- On tickets: `filter[q]=...` (search), `filter[mine]=1`,
+  `filter[status]=open`, `filter[categoryId]=N`, `filter[assigned]=me`
+  or `filter[assigned]=none`
 - On replies: `filter[ticketId]=N`
+- On history: `filter[ticketId]=N`
 
 ## License
 

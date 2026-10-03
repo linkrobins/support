@@ -83,6 +83,7 @@ class SupportTicketResource extends AbstractDatabaseResource
             return;
         }
         $isStaff = SupportAbilities::isStaff($actor);
+        SupportTicket::withUnreadFor($query, $actor, $isStaff);
         if ($isStaff) {
             // Staff see soft-deleted tickets too so they can restore
             // or force-delete from the ticket detail page. The default
@@ -173,16 +174,35 @@ class SupportTicketResource extends AbstractDatabaseResource
                         $ticket->status = $value;
                         return;
                     }
-                    // Non-staff: the only status change allowed is the owner
-                    // reopening their OWN closed, non-appeal ticket
-                    // (closed -> open). Appeals stay staff-only so a suspended
-                    // user can't reopen a rejected appeal. Everything else from
-                    // a non-staff actor is ignored.
+                    // Non-staff: the owner of a non-appeal ticket may make two
+                    // moves only: reopen it when closed (closed -> open), or
+                    // confirm it solved when resolved (resolved -> closed).
+                    // Appeals stay staff-only so a suspended user can't reopen
+                    // a rejected appeal. Everything else from a non-staff actor
+                    // is ignored.
                     if (
                         $this->ownerMayReopen($ticket, $actor)
                         && $value === SupportTicket::STATUS_OPEN
                     ) {
                         $ticket->status = $value;
+                    } elseif (
+                        $this->ownerMayConfirmSolved($ticket, $actor)
+                        && $value === SupportTicket::STATUS_CLOSED
+                    ) {
+                        $ticket->status = $value;
+                    }
+                }),
+
+            // Staff triage only: members neither see nor set it.
+            Schema\Str::make('priority')
+                ->visible(fn (SupportTicket $ticket, FlarumContext $context) => SupportAbilities::isStaff($context->getActor()))
+                ->writableOnUpdate()
+                ->set(function (SupportTicket $ticket, $value, FlarumContext $context) {
+                    if (! SupportAbilities::isStaff($context->getActor())) {
+                        return;
+                    }
+                    if (is_string($value) && in_array($value, SupportTicket::ALL_PRIORITIES, true)) {
+                        $ticket->priority = $value;
                     }
                 }),
 
@@ -227,6 +247,11 @@ class SupportTicketResource extends AbstractDatabaseResource
                     return $q->count();
                 }),
 
+            // New replies since the actor last opened this ticket. Computed by
+            // SupportTicket::withUnreadFor on every list and show query.
+            Schema\Boolean::make('isUnread')
+                ->get(fn (SupportTicket $ticket) => (bool) ($ticket->is_unread ?? false)),
+
             Schema\Boolean::make('canReply')
                 ->get(function (SupportTicket $ticket, FlarumContext $context) {
                     $actor = $context->getActor();
@@ -251,6 +276,13 @@ class SupportTicketResource extends AbstractDatabaseResource
                         return false;
                     }
                     return SupportAbilities::isStaff($actor) || $this->ownerMayReopen($ticket, $actor);
+                }),
+
+            // Drives the "Did this solve your problem?" prompt for the owner
+            // of a resolved ticket.
+            Schema\Boolean::make('canConfirmSolved')
+                ->get(function (SupportTicket $ticket, FlarumContext $context) {
+                    return $this->ownerMayConfirmSolved($ticket, $context->getActor());
                 }),
 
             Schema\Boolean::make('canUpdate')
@@ -395,6 +427,23 @@ class SupportTicketResource extends AbstractDatabaseResource
      * suspended user can't reopen a rejected appeal). Called before the status
      * setter reassigns, so $ticket->status is still the persisted value.
      */
+    /**
+     * Whether $actor may close $ticket by confirming it solved: they own it,
+     * staff have marked it resolved, and it is not an appeal.
+     */
+    protected function ownerMayConfirmSolved(SupportTicket $ticket, User $actor): bool
+    {
+        if ($actor->isGuest() || (int) $actor->id !== (int) $ticket->user_id) {
+            return false;
+        }
+        if ($ticket->status !== SupportTicket::STATUS_RESOLVED) {
+            return false;
+        }
+        $category = $ticket->category;
+
+        return ! ($category && $category->is_appeal);
+    }
+
     protected function ownerMayReopen(SupportTicket $ticket, User $actor): bool
     {
         if ($actor->isGuest() || (int) $actor->id !== (int) $ticket->user_id) {
@@ -585,6 +634,10 @@ class SupportTicketResource extends AbstractDatabaseResource
         if (! $actor->isGuest() && ! SupportAbilities::isStaff($actor) && $model->isDirty('subject')) {
             $model->subject = $model->getOriginal('subject');
         }
+
+        // Credit status and assignment changes in the ticket timeline to the
+        // person making this request (see SupportEvent::recordChanges).
+        $model->eventActorId = $actor->isGuest() ? null : (int) $actor->id;
 
         $this->before[(int) $model->id] = [
             'status' => $model->getOriginal('status'),

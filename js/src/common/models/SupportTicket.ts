@@ -10,6 +10,7 @@ export default class SupportTicket extends Model {
   subject = Model.attribute<string>('subject');
   status = Model.attribute<string>('status');
   decision = Model.attribute<string | null>('decision');
+  priority = Model.attribute<string | undefined>('priority');
   replyCount = Model.attribute<number>('replyCount');
 
   canReply = Model.attribute<boolean>('canReply');
@@ -17,7 +18,9 @@ export default class SupportTicket extends Model {
   canPostInternalNote = Model.attribute<boolean>('canPostInternalNote');
   canDelete = Model.attribute<boolean>('canDelete');
   canReopen = Model.attribute<boolean>('canReopen');
+  canConfirmSolved = Model.attribute<boolean>('canConfirmSolved');
   isDeleted = Model.attribute<boolean>('isDeleted');
+  isUnread = Model.attribute<boolean>('isUnread');
 
   createdAt = Model.attribute('createdAt', Model.transformDate);
   updatedAt = Model.attribute('updatedAt', Model.transformDate);

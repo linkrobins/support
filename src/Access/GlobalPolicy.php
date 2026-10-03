@@ -37,4 +37,9 @@ class GlobalPolicy extends AbstractPolicy
     {
         return $actor->isAdmin();
     }
+
+    public function manageSavedReplies(User $actor): bool
+    {
+        return $actor->isAdmin();
+    }
 }

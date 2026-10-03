@@ -8,8 +8,25 @@ import { tr } from '../utils/translate';
 import { basePath, BASE_PATH, safeNavigate, showForumNavOnSupportPages } from '../utils/helpers';
 import { canCreateSupportTicket, canHandleSupportTickets } from '../utils/permissions';
 import { FILTER_OPTIONS, filterLabel, filterHrefFor } from '../utils/status';
+import { refreshCounts, supportCount, COUNT_FOR_FILTER } from '../utils/counts';
+import { onLive } from '../utils/live';
+import SupportStatsModal from './SupportStatsModal';
 
 export default class SupportIndexSidebar extends IndexSidebar {
+  _stopLive: (() => void) | null = null;
+
+  oncreate(vnode: any) {
+    super.oncreate(vnode);
+    refreshCounts();
+    this._stopLive = onLive(() => refreshCounts());
+  }
+
+  onremove(vnode: any) {
+    if (this._stopLive) this._stopLive();
+    this._stopLive = null;
+    super.onremove(vnode);
+  }
+
   items() {
     const items = new ItemList();
 
@@ -85,13 +102,38 @@ export default class SupportIndexSidebar extends IndexSidebar {
             icon: opt.icon,
             active: currentFilter === opt.id,
           },
-          filterLabel(opt)
+          [filterLabel(opt), this._count(opt.id)]
         ),
         -21 - i
       );
     });
 
+    // Support stats for staff, after the views. A button, since it opens a
+    // modal over the current list rather than going anywhere.
+    if (canHandle) {
+      items.add(
+        'support-stats',
+        m(
+          Button,
+          { icon: 'fas fa-chart-bar', className: 'LinkButton LinkRobinsSupport-statsLink', onclick: () => app.modal.show(SupportStatsModal) },
+          tr('stats.title', 'Support stats')
+        ),
+        -21 - FILTER_OPTIONS.length
+      );
+    }
+
     return items;
+  }
+
+  /**
+   * The number beside a filter: open work for staff queues and statuses,
+   * unread tickets beside "My tickets". Nothing when it is zero.
+   */
+  _count(filterId: string) {
+    const key = COUNT_FOR_FILTER[filterId];
+    const n = key ? supportCount(key) : 0;
+    if (!n) return null;
+    return m('span', { className: 'LinkRobinsSupport-navCount' + (filterId === 'mine' ? ' is-unread' : '') }, n > 99 ? '99+' : String(n));
   }
 
   /**

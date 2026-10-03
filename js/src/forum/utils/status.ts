@@ -31,10 +31,19 @@ const STATUS_CLASSES: Record<string, string> = {
   closed: 'is-closed',
 };
 
-export function statusBadge(status: string): any {
-  const label = statusLabel(status);
-  const cls = STATUS_CLASSES[status] || '';
-  return m('span', { className: 'LinkRobinsSupport-status ' + cls }, label);
+export function statusClass(status: string): string {
+  return STATUS_CLASSES[status] || '';
+}
+
+/**
+ * The status as a chip: tinted by status, with a dot, in sentence case. Used
+ * in the ticket header and the ticket list so both read the same.
+ */
+export function statusChip(status: string): any {
+  return m('span', { className: 'LinkRobinsSupport-chip LinkRobinsSupport-chip--status ' + statusClass(status) }, [
+    m('span', { className: 'LinkRobinsSupport-chip-dot' }),
+    statusLabel(status),
+  ]);
 }
 
 /**
@@ -66,6 +75,8 @@ export interface FilterOption {
 // filterLabel(), NOT at module load (see statusLabel above for why).
 export const FILTER_OPTIONS: FilterOption[] = [
   { id: 'mine', labelKey: 'index.my_tickets', fallback: 'My tickets', icon: 'fas fa-user', staffOnly: false },
+  { id: 'assigned_to_me', labelKey: 'index.filter_assigned_to_me', fallback: 'Assigned to me', icon: 'fas fa-user-check', staffOnly: true },
+  { id: 'unassigned', labelKey: 'index.filter_unassigned', fallback: 'Unassigned', icon: 'fas fa-user-slash', staffOnly: true },
   { id: 'all', labelKey: 'index.filter_all', fallback: 'All', icon: 'fas fa-inbox', staffOnly: true },
   { id: 'open', labelKey: 'status.open', fallback: 'Open', icon: 'fas fa-circle', staffOnly: true },
   { id: 'in_progress', labelKey: 'status.in_progress', fallback: 'In progress', icon: 'fas fa-spinner', staffOnly: true },
@@ -80,4 +91,47 @@ export function filterLabel(opt: FilterOption): string {
 
 export function filterHrefFor(id: string): string {
   return basePath() + BASE_PATH + '/status/' + id;
+}
+
+/**
+ * What an empty list says, per filter. A status list says there are no tickets
+ * with that status; only the viewer's own empty list invites them to open one.
+ * Resolved at render time like every other label here.
+ */
+export function emptyLabel(filter: string | null, canCreate: boolean): string {
+  switch (filter) {
+    case null:
+    case 'mine':
+      return canCreate ? tr('index.empty_own', 'No tickets yet. Click "New ticket" to open one.') : tr('index.empty', 'No tickets to show.');
+    case 'assigned_to_me':
+      return tr('index.empty_assigned_to_me', 'No open tickets are assigned to you.');
+    case 'unassigned':
+      return tr('index.empty_unassigned', 'Every open ticket has been claimed.');
+    case 'all':
+      return tr('index.empty', 'No tickets to show.');
+    case 'open':
+      return tr('index.empty_status.open', 'No open tickets.');
+    case 'in_progress':
+      return tr('index.empty_status.in_progress', 'No tickets in progress.');
+    case 'awaiting_user':
+      return tr('index.empty_status.awaiting_response', 'No tickets awaiting a response.');
+    case 'resolved':
+      return tr('index.empty_status.resolved', 'No resolved tickets.');
+    case 'closed':
+      return tr('index.empty_status.closed', 'No closed tickets.');
+    default:
+      return tr('index.empty', 'No tickets to show.');
+  }
+}
+
+/**
+ * The priority chip, for staff: only for low and urgent, since normal is the
+ * default and a chip on every ticket would say nothing.
+ */
+export function priorityChip(priority: string | null | undefined): any {
+  if (priority !== 'urgent' && priority !== 'low') return null;
+  return m('span', { className: 'LinkRobinsSupport-chip LinkRobinsSupport-chip--priority is-' + priority }, [
+    m('i', { className: priority === 'urgent' ? 'fas fa-exclamation' : 'fas fa-arrow-down', 'aria-hidden': 'true' }),
+    priority === 'urgent' ? tr('priority.urgent', 'Urgent') : tr('priority.low', 'Low priority'),
+  ]);
 }

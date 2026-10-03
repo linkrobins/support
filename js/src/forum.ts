@@ -7,19 +7,24 @@ import Button from 'flarum/common/components/Button';
 import SupportCategory from './common/models/SupportCategory';
 import SupportTicket from './common/models/SupportTicket';
 import SupportReply from './common/models/SupportReply';
+import SupportEvent from './common/models/SupportEvent';
+import SupportSavedReply from './common/models/SupportSavedReply';
 
 import SupportIndexPage from './forum/components/SupportIndexPage';
 import SupportComposePage from './forum/components/SupportComposePage';
 import SupportShowPage from './forum/components/SupportShowPage';
+import SupportStatsModal from './forum/components/SupportStatsModal';
 import {
   NewSupportReplyNotification,
   NewSupportTicketNotification,
   TicketAssignedNotification,
+  AwaitingReminderNotification,
   TicketStatusChangedNotification,
   installSupportNotificationGrouping,
 } from './forum/components/notifications';
 
 import { tr } from './forum/utils/translate';
+import { installRealtime } from './forum/utils/live';
 import { basePath, BASE_PATH, showNavInSidebar, showNavInAccountMenu, readForumAttribute, showError } from './forum/utils/helpers';
 
 app.initializers.add('linkrobins-support', () => {
@@ -28,6 +33,8 @@ app.initializers.add('linkrobins-support', () => {
   app.store.models['linkrobins-support-categories'] = SupportCategory;
   app.store.models['linkrobins-support-tickets'] = SupportTicket;
   app.store.models['linkrobins-support-replies'] = SupportReply;
+  app.store.models['linkrobins-support-events'] = SupportEvent;
+  app.store.models['linkrobins-support-saved-replies'] = SupportSavedReply;
 
   app.routes['linkrobins-support.index'] = { path: BASE_PATH, component: SupportIndexPage };
   app.routes['linkrobins-support.compose'] = { path: BASE_PATH + '/new', component: SupportComposePage };
@@ -39,11 +46,15 @@ app.initializers.add('linkrobins-support', () => {
     app.notificationComponents['linkrobinsSupportNewTicket'] = NewSupportTicketNotification;
     app.notificationComponents['linkrobinsSupportTicketStatusChanged'] = TicketStatusChangedNotification;
     app.notificationComponents['linkrobinsSupportTicketAssigned'] = TicketAssignedNotification;
+    app.notificationComponents['linkrobinsSupportAwaitingReminder'] = AwaitingReminderNotification;
   }
 
   // Group support notifications under a translatable "Support" heading in the
   // notifications dropdown, instead of the generic forum-title group.
   installSupportNotificationGrouping();
+
+  // Live replies and ticket updates, when flarum/realtime is enabled.
+  installRealtime();
 
   // NotificationGrid lives in a lazily-loaded chunk, so it isn't in the
   // registry at init time -- a direct import resolves to undefined. Use the
@@ -69,6 +80,11 @@ app.initializers.add('linkrobins-support', () => {
       name: 'linkrobinsSupportTicketAssigned',
       icon: 'fas fa-user-check',
       label: tr('settings.notify_assigned_label', 'A support ticket is assigned to you'),
+    });
+    items.add('linkrobinsSupportAwaitingReminder', {
+      name: 'linkrobinsSupportAwaitingReminder',
+      icon: 'fas fa-hourglass-half',
+      label: tr('settings.notify_awaiting_reminder_label', 'Support has been waiting a few days for my reply'),
     });
   });
 
@@ -121,5 +137,16 @@ app.initializers.add('linkrobins-support', () => {
   extend('flarum/forum/components/SessionDropdown' as any, 'items', (items: any) => {
     if (!app.session || !app.session.user || !showNavInAccountMenu()) return;
     items.add('linkrobins-support', supportLink(), 40);
+  });
+
+  // Support stats for staff, in the account menu beside the Support link,
+  // opening a modal the way LR Birdseye's Analytics item does.
+  extend('flarum/forum/components/SessionDropdown' as any, 'items', (items: any) => {
+    if (!app.session || !app.session.user || !readForumAttribute('canHandleSupportTickets')) return;
+    items.add(
+      'linkrobins-support-stats',
+      m(Button, { icon: 'fas fa-chart-bar', onclick: () => app.modal.show(SupportStatsModal) }, tr('stats.title', 'Support stats')),
+      39
+    );
   });
 });

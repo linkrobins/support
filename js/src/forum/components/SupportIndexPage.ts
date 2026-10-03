@@ -1,19 +1,35 @@
 import Page from 'flarum/common/components/Page';
 import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
+import Avatar from 'flarum/common/components/Avatar';
+import Button from 'flarum/common/components/Button';
 import PageStructure from 'flarum/forum/components/PageStructure';
 import SupportIndexSidebar from './SupportIndexSidebar';
-import { tr } from '../utils/translate';
-import { basePath, BASE_PATH, formatDate, safeNavigate } from '../utils/helpers';
+import { tr, trText } from '../utils/translate';
+import { basePath, BASE_PATH, formatDate, safeNavigate, showError } from '../utils/helpers';
 import { canCreateSupportTicket, canHandleSupportTickets } from '../utils/permissions';
-import { statusBadge, FILTER_OPTIONS, filterLabel } from '../utils/status';
+import { statusChip, priorityChip, FILTER_OPTIONS, filterLabel, emptyLabel } from '../utils/status';
 import { loadTickets } from '../utils/api';
+import { onLive } from '../utils/live';
+
+const PAGE_SIZE = 25;
 
 export default class SupportIndexPage extends Page {
   loading = true;
   error: any = null;
   tickets: any[] = [];
+  // Lists load a page at a time; "Load more" fetches the next one.
+  hasMore = false;
+  loadingMore = false;
+  // Search within the current view; empty means no search.
+  query = '';
+  _searchTimer: any = null;
+  // Each load gets a number; a response that is not the latest is dropped,
+  // so a slow reply for "ava" cannot overwrite the results for "avatar".
+  _loadSeq = 0;
   filter: string | null = 'mine';
   _lastLoadedFilter: string | null = 'mine';
+  _stopLive: (() => void) | null = null;
+  _liveTimer: any = null;
 
   oninit(vnode: any) {
     super.oninit(vnode);
@@ -26,6 +42,26 @@ export default class SupportIndexPage extends Page {
     } catch (e) {}
     this._lastLoadedFilter = this.filter;
     this._load();
+  }
+
+  oncreate(vnode: any) {
+    super.oncreate(vnode);
+    // A ticket opened or moved somewhere: refetch the list in place so new
+    // tickets appear and moved ones leave this view. Debounced, since one
+    // action can produce a few pushes in a row (a reply, then its status).
+    this._stopLive = onLive((kind) => {
+      if (kind !== 'ticket') return;
+      clearTimeout(this._liveTimer);
+      this._liveTimer = setTimeout(() => this._load(true), 500);
+    });
+  }
+
+  onremove(vnode: any) {
+    if (this._stopLive) this._stopLive();
+    this._stopLive = null;
+    clearTimeout(this._liveTimer);
+    clearTimeout(this._searchTimer);
+    super.onremove(vnode);
   }
 
   onbeforeupdate(vnode: any) {
@@ -48,35 +84,78 @@ export default class SupportIndexPage extends Page {
     return defaultFilter;
   }
 
-  _load() {
-    this.loading = true;
-    m.redraw();
-
-    const filter: any = {};
-    if (canHandleSupportTickets() && this.filter !== 'mine') {
-      if (this.filter && this.filter !== 'all') {
-        filter.status = this.filter;
-      }
-    } else {
-      filter.mine = '1';
-    }
-    const params: any = { page: { limit: 25 } };
-    if (Object.keys(filter).length) {
-      params.filter = filter;
+  _load(quiet = false, freshSearch = false) {
+    // A quiet reload keeps the current list on screen instead of a spinner.
+    if (!quiet) {
+      this.loading = true;
+      m.redraw();
     }
 
-    loadTickets(params)
-      .then((tickets: any[]) => {
+    // A quiet (live) reload refetches everything already on screen, so a list
+    // the viewer has paged through does not snap back to the first page.
+    const limit = quiet && !freshSearch ? Math.min(100, Math.max(PAGE_SIZE, this.tickets.length)) : PAGE_SIZE;
+    const seq = ++this._loadSeq;
+
+    loadTickets(this._params(0, limit))
+      .then((tickets: any) => {
+        if (seq !== this._loadSeq) return;
         this.tickets = tickets || [];
+        this.hasMore = !!(tickets && tickets.payload && tickets.payload.links && tickets.payload.links.next);
         this.loading = false;
         m.redraw();
       })
       .catch((err: any) => {
+        if (seq !== this._loadSeq) return;
         this.error = err;
         this.loading = false;
         console.error('[linkrobins/support] index load failed:', err);
         m.redraw();
       });
+  }
+
+  _loadMore() {
+    if (this.loadingMore) return;
+    this.loadingMore = true;
+    m.redraw();
+
+    loadTickets(this._params(this.tickets.length, PAGE_SIZE))
+      .then((more: any) => {
+        // Skip anything already shown, in case the list shifted between pages.
+        const seen = new Set(this.tickets.map((t: any) => String(t.id())));
+        this.tickets = this.tickets.concat((more || []).filter((t: any) => !seen.has(String(t.id()))));
+        this.hasMore = !!(more && more.payload && more.payload.links && more.payload.links.next);
+        this.loadingMore = false;
+        m.redraw();
+      })
+      .catch((err: any) => {
+        this.loadingMore = false;
+        console.error('[linkrobins/support] load more tickets failed:', err);
+        showError(tr('errors.load_more_tickets', 'Could not load more tickets.'));
+        m.redraw();
+      });
+  }
+
+  _params(offset: number, limit: number) {
+    const filter: any = {};
+    if (canHandleSupportTickets() && this.filter !== 'mine') {
+      if (this.filter === 'assigned_to_me' || this.filter === 'unassigned') {
+        // Work queues: what is still to be done, so closed tickets drop out.
+        filter.assigned = this.filter === 'assigned_to_me' ? 'me' : 'none';
+        filter['-status'] = 'closed';
+      } else if (this.filter && this.filter !== 'all') {
+        filter.status = this.filter;
+      }
+    } else {
+      filter.mine = '1';
+    }
+    if (this.query.trim()) {
+      filter.q = this.query.trim();
+    }
+    const params: any = { page: { offset, limit } };
+    if (Object.keys(filter).length) {
+      params.filter = filter;
+    }
+    return params;
   }
 
   view() {
@@ -106,8 +185,31 @@ export default class SupportIndexPage extends Page {
 
   _renderHeader() {
     const label = this._headingFor(this.filter);
-    return m('header', { className: 'LinkRobinsSupport-header' }, [
+    return m('header', { className: 'LinkRobinsSupport-header LinkRobinsSupport-indexHeader' }, [
       m('h1', { className: 'LinkRobinsSupport-title' }, [m('i', { className: 'fas fa-life-ring' }), ' ', label]),
+      this._renderSearch(),
+    ]);
+  }
+
+  /**
+   * Search the current view by subject, reply text or ticket number. Typing
+   * reloads after a short pause rather than on every key.
+   */
+  _renderSearch() {
+    return m('div', { className: 'LinkRobinsSupport-search' }, [
+      m('i', { className: 'fas fa-search LinkRobinsSupport-search-icon', 'aria-hidden': 'true' }),
+      m('input', {
+        className: 'FormControl LinkRobinsSupport-search-input',
+        type: 'search',
+        value: this.query,
+        placeholder: trText('index.search_placeholder', 'Search tickets'),
+        'aria-label': trText('index.search_placeholder', 'Search tickets'),
+        oninput: (e: any) => {
+          this.query = e.target.value;
+          clearTimeout(this._searchTimer);
+          this._searchTimer = setTimeout(() => this._load(true, true), 300);
+        },
+      }),
     ]);
   }
 
@@ -126,17 +228,57 @@ export default class SupportIndexPage extends Page {
     if (this.error) {
       return m('div', { className: 'LinkRobinsSupport-empty' }, tr('errors.load_tickets', 'Could not load tickets.'));
     }
-    if (!this.tickets.length) {
-      return m(
-        'div',
-        { className: 'LinkRobinsSupport-empty' },
-        canCreateSupportTicket() ? tr('index.empty_own', 'No tickets yet. Click "New ticket" to open one.') : tr('index.empty', 'No tickets to show.')
-      );
+    if (!this.tickets.length && this.query.trim()) {
+      return m('div', { className: 'LinkRobinsSupport-empty' }, tr('index.no_results', 'No tickets match your search.'));
     }
+    if (!this.tickets.length) {
+      return m('div', { className: 'LinkRobinsSupport-empty' }, emptyLabel(this.filter, canCreateSupportTicket()));
+    }
+    return [
+      m(
+        'div',
+        { className: 'LinkRobinsSupport-list' },
+        this.tickets.map((t: any) => this._renderRow(t))
+      ),
+      // Exactly how core's discussion list does it: its container class (so
+      // core's styling applies), a plain button with core's own "Load More"
+      // wording, swapped for a spinner while the next page loads.
+      this.hasMore || this.loadingMore
+        ? m(
+            'div',
+            { className: 'DiscussionList-loadMore' },
+            this.loadingMore
+              ? m(LoadingIndicator)
+              : m(
+                  Button,
+                  { className: 'Button', onclick: () => this._loadMore() },
+                  app.translator.trans('core.forum.discussion_list.load_more_button')
+                )
+          )
+        : null,
+    ];
+  }
+
+  /**
+   * Who has the ticket, for staff scanning the queue, as a chip under the
+   * status: their avatar and name, or "Unassigned". It sits apart from the
+   * meta line so it is never mistaken for the person who opened the ticket.
+   * Members see only their own tickets and do not need routing detail.
+   */
+  _renderAssignee(ticket: any) {
+    if (!canHandleSupportTickets()) return null;
+    const assignee = ticket.assignedStaff && ticket.assignedStaff();
+    if (!assignee) {
+      return m('span', { className: 'LinkRobinsSupport-chip LinkRobinsSupport-chip--assignee is-unassigned' }, [
+        m('i', { className: 'fas fa-user-slash', 'aria-hidden': 'true' }),
+        tr('index.unassigned', 'Unassigned'),
+      ]);
+    }
+    const name = assignee.displayName() || assignee.username();
     return m(
-      'div',
-      { className: 'LinkRobinsSupport-list' },
-      this.tickets.map((t: any) => this._renderRow(t))
+      'span',
+      { className: 'LinkRobinsSupport-chip LinkRobinsSupport-chip--assignee', title: trText('index.assigned_to', 'Assigned to {name}', { name }) },
+      [m(Avatar, { user: assignee }), name]
     );
   }
 
@@ -145,12 +287,13 @@ export default class SupportIndexPage extends Page {
     const cat = ticket.category && ticket.category();
     const href = basePath() + BASE_PATH + '/' + encodeURIComponent(ticket.id());
     const isDeleted = !!(ticket.isDeleted && ticket.isDeleted());
+    const isUnread = !!(ticket.isUnread && ticket.isUnread());
 
     return m(
       'a',
       {
         href,
-        className: 'LinkRobinsSupport-row' + (isDeleted ? ' LinkRobinsSupport-row--deleted' : ''),
+        className: 'LinkRobinsSupport-row' + (isDeleted ? ' LinkRobinsSupport-row--deleted' : '') + (isUnread ? ' is-unread' : ''),
         onclick: (e: any) => {
           safeNavigate(href, e);
         },
@@ -159,16 +302,32 @@ export default class SupportIndexPage extends Page {
       [
         m('div', { className: 'LinkRobinsSupport-row-main' }, [
           m('div', { className: 'LinkRobinsSupport-row-subject' }, [
+            isUnread
+              ? m('span', {
+                  className: 'LinkRobinsSupport-unreadDot',
+                  title: trText('index.unread', 'New replies'),
+                  'aria-label': trText('index.unread', 'New replies'),
+                })
+              : null,
             ticket.subject() || tr('index.untitled', 'Untitled'),
             isDeleted ? m('span', { className: 'LinkRobinsSupport-row-deletedBadge' }, tr('index.deleted_badge', 'Deleted')) : null,
           ]),
           m('div', { className: 'LinkRobinsSupport-row-meta' }, [
-            cat ? m('span', { className: 'LinkRobinsSupport-row-cat', style: 'color: ' + (cat.color() || 'inherit') }, cat.name()) : null,
+            cat
+              ? m('span', { className: 'LinkRobinsSupport-row-cat' }, [
+                  m('span', { className: 'LinkRobinsSupport-chip-dot', style: { background: cat.color() || 'var(--muted-color)' } }),
+                  cat.name(),
+                ])
+              : null,
             user ? m('span', { className: 'LinkRobinsSupport-row-user' }, user.displayName() || user.username()) : null,
             m('span', { className: 'LinkRobinsSupport-row-date' }, formatDate(ticket.lastReplyAt() || ticket.createdAt())),
           ]),
         ]),
-        m('div', { className: 'LinkRobinsSupport-row-status' }, statusBadge(ticket.status())),
+        m('div', { className: 'LinkRobinsSupport-row-side' }, [
+          canHandleSupportTickets() ? priorityChip(ticket.priority && ticket.priority()) : null,
+          statusChip(ticket.status()),
+          this._renderAssignee(ticket),
+        ]),
       ]
     );
   }

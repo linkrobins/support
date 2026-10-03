@@ -195,6 +195,11 @@ export class TicketStatusChangedNotification extends Notification {
     if (!ownTicket && from && from.displayName && data.status === 'open') {
       return tr('notifications.reopened_by_owner', '{name} reopened their ticket', { name: from.displayName() });
     }
+    // The owner closing their own ticket from "Did this solve your problem?".
+    const fromOwner = !!(subj && subj.user && from && subj.user() && String(subj.user().id()) === String(from.id()));
+    if (!ownTicket && fromOwner && data.status === 'closed') {
+      return tr('notifications.confirmed_solved_by_owner', '{name} confirmed their ticket was solved', { name: from.displayName() });
+    }
     return ownTicket
       ? tr('notifications.status_changed', 'Your ticket was marked {status}', { status })
       : tr('notifications.status_changed_generic', 'A ticket was marked {status}', { status });
@@ -217,6 +222,22 @@ export class TicketAssignedNotification extends Notification {
     return from && from.displayName
       ? tr('notifications.assigned', '{name} assigned a ticket to you', { name: from.displayName() })
       : tr('notifications.assigned_generic', 'A ticket was assigned to you');
+  }
+  excerpt() {
+    return ticketExcerpt(this.attrs && this.attrs.notification);
+  }
+}
+
+/** The forum's one-off nudge: staff have been waiting on the owner's reply. */
+export class AwaitingReminderNotification extends Notification {
+  icon() {
+    return '';
+  }
+  href() {
+    return ticketHref(this.attrs && this.attrs.notification);
+  }
+  content() {
+    return tr('notifications.awaiting_reminder', 'Support is waiting for your reply');
   }
   excerpt() {
     return ticketExcerpt(this.attrs && this.attrs.notification);

@@ -109,16 +109,8 @@
 
 // --- Status badges --------------------------------------------------
 
-.LinkRobinsSupport-status {
-    display: inline-block;
-    padding: 3px 10px;
-    border-radius: 999px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    white-space: nowrap;
-
+// One colour per status, applied to the status chip wherever it appears.
+.lr-support-status-colours() {
     &.is-open {
         background: rgba(7, 173, 204, 0.15);
         color: #07adcc;
@@ -220,23 +212,52 @@
     white-space: nowrap;
 }
 
+// Category, opener and last activity as one quiet line, separated by dots.
+// The category keeps its colour as a dot rather than bold coloured text, so
+// nothing on the line competes with the subject.
 .LinkRobinsSupport-row-meta {
     display: flex;
     flex-wrap: wrap;
-    gap: 12px;
+    align-items: center;
+    gap: 4px 0;
     font-size: 0.8rem;
     color: var(--muted-color, #888);
+
+    // The separator trails each item rather than leading the next, so when a
+    // narrow row wraps, the new line never starts with a stray dot.
+    > * {
+        white-space: nowrap;
+    }
+    > *:not(:last-child)::after {
+        content: '\00B7';
+        margin: 0 8px;
+    }
 }
 
 .LinkRobinsSupport-row-cat {
-    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+
+    // Spacing on the dot, not a flex gap: a gap would also push the trailing
+    // separator away from the category name.
+    .LinkRobinsSupport-chip-dot {
+        margin-right: 6px;
+    }
 }
 
 .LinkRobinsSupport-row-user {}
 
 .LinkRobinsSupport-row-date {}
 
-.LinkRobinsSupport-row-status {
+// Priority, status and (for staff) assignee, side by side on the right
+// edge, so every row stays one line of chips tall. Stacked, an urgent
+// ticket's row grew to three chips high.
+.LinkRobinsSupport-row-side {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
     flex-shrink: 0;
 }
 
@@ -314,8 +335,7 @@
 
 .LinkRobinsSupport-container--deleted {
     .LinkRobinsSupport-header,
-    .LinkRobinsSupport-replies,
-    .LinkRobinsSupport-staffBar {
+    .LinkRobinsSupport-replies {
         opacity: 0.7;
     }
     .LinkRobinsSupport-ticket-actions {
@@ -356,125 +376,14 @@
     }
 }
 
-// --- Staff controls bar ---------------------------------------------
-
-.LinkRobinsSupport-staffBar {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-    margin-bottom: 24px;
-    padding: 12px 16px;
-    background: var(--control-bg, rgba(0,0,0,0.03));
-    border-radius: 8px;
-}
-
-.LinkRobinsSupport-staffBar-label {
-    font-weight: 600;
-    font-size: 0.85rem;
-    color: var(--muted-color, #888);
-}
-
-
-.LinkRobinsSupport-staffBar-statusGroup {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin: 0;
-}
-
-.LinkRobinsSupport-staffBar-statusSelect {
-    width: auto;
-    font-size: 0.9rem;
-    font-weight: 600;
-    padding: 6px 28px 6px 12px;
-    border-radius: 4px;
-    border: 1px solid var(--control-bg, rgba(0,0,0,0.15));
-    background-color: var(--body-bg, #fff);
-    color: var(--text-color, inherit);
-    cursor: pointer;
-    transition: border-color 0.12s, box-shadow 0.12s, background-color 0.12s;
-
-    appearance: none;
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");
-    background-repeat: no-repeat;
-    background-position: right 10px center;
-
-    &:hover:not(:disabled) {
-        border-color: var(--primary-color, #07adcc);
-        background-color: var(--control-bg, rgba(0,0,0,0.02));
-    }
-    &:focus {
-        outline: none;
-        border-color: var(--primary-color, #07adcc);
-        box-shadow: 0 0 0 2px fade(#07adcc, 25%);
-    }
-    &:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-    }
-}
-
-.LinkRobinsSupport-staffBar-statusGroup .LinkRobinsSupport-staffBar-label {
-    font-weight: 600;
-}
-
-.LinkRobinsSupport-staffBar-assign {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-    padding-left: 12px;
-    margin-left: auto;
-    border-left: 1px solid rgba(127,127,127,0.18);
-}
-
-.LinkRobinsSupport-staffBtn {
-    font-size: 0.8rem !important;
-    padding: 5px 12px !important;
-    // A default Button paints itself --control-bg, which is exactly the bar's
-    // own background: Claim / Unassign / Reopen had no edges at all and read
-    // as stray lines of text. Give them the page background and a border, the
-    // same treatment the status select beside them already gets.
-    background-color: var(--body-bg, #fff);
-    border: 1px solid var(--control-bg, rgba(0, 0, 0, 0.15));
-    transition: border-color 0.12s;
-
-    &:hover:not(:disabled),
-    &:focus {
-        border-color: var(--primary-color, #07adcc);
-    }
-}
-
 @media (max-width: 767px) {
     // A phone gives a heading the whole width now, so it only needs to come
-    // down a step rather than shrink out of the way of anything.
-    .LinkRobinsSupport-title {
+    // down a step rather than shrink out of the way of anything. Ticket
+    // subjects only: list headings are short and stay the size the wiki uses,
+    // so the two extensions match.
+    .LinkRobinsSupport-ticket-header .LinkRobinsSupport-title {
         font-size: calc(1.3rem * var(--lr-text-scale, 1));
     }
-    .LinkRobinsSupport-staffBar {
-        flex-direction: column;
-        align-items: stretch;
-    }
-    .LinkRobinsSupport-staffBar-statusGroup {
-        width: 100%;
-        justify-content: space-between;
-    }
-    .LinkRobinsSupport-staffBar-statusSelect {
-        flex: 1;
-        min-width: 0;
-    }
-    .LinkRobinsSupport-staffBar-assign {
-        padding-left: 0;
-        margin-left: 0;
-        border-left: none;
-        padding-top: 8px;
-        border-top: 1px solid rgba(127,127,127,0.18);
-        width: 100%;
-    }
-
     // --- Ticket list ---
     // Buy the subject back the width the desktop padding spends, and align the
     // status pill with the subject's first line now that the subject can wrap.
@@ -494,12 +403,32 @@
         overflow: hidden;
     }
     .LinkRobinsSupport-row-meta {
-        gap: 4px 10px;
         font-size: 0.75rem;
+
+        > *:not(:last-child)::after {
+            margin: 0 6px;
+        }
     }
-    .LinkRobinsSupport-status {
-        padding: 2px 8px;
-        font-size: 0.7rem;
+    // No room beside the subject for a row of chips on a phone: they drop
+    // under the meta line instead, still side by side.
+    .LinkRobinsSupport-row {
+        flex-wrap: wrap;
+    }
+    .LinkRobinsSupport-row-main {
+        flex: 1 1 100%;
+    }
+    .LinkRobinsSupport-row-side {
+        flex: 1 1 100%;
+        flex-wrap: wrap;
+        justify-content: flex-start;
+    }
+    .LinkRobinsSupport-row-side .LinkRobinsSupport-chip {
+        height: 22px;
+        padding: 0 8px;
+        font-size: 0.72rem;
+    }
+    .LinkRobinsSupport-row-side .LinkRobinsSupport-chip--assignee:not(.is-unassigned) {
+        padding-left: 3px;
     }
 
     // --- Replies and cards ---
@@ -831,4 +760,531 @@
 
 .LinkRobinsSupport-chosenCategory-icon {
     color: var(--primary-color, #07adcc);
+}
+
+// Status and assignment changes in the ticket timeline: one quiet line
+// between replies, not a card of its own.
+// Laid out as one sentence (icon, text, date) that wraps like prose, so on a
+// phone it breaks between words rather than putting each part on its own line.
+.LinkRobinsSupport-event {
+    display: block;
+    margin: 4px 0 4px 12px;
+    padding: 4px 0;
+    color: var(--muted-color, #888);
+    font-size: calc(0.85rem * var(--lr-text-scale, 1));
+}
+.LinkRobinsSupport-event-icon {
+    width: 14px;
+    margin-right: 6px;
+    text-align: center;
+}
+.LinkRobinsSupport-event-date {
+    opacity: 0.8;
+    white-space: nowrap;
+
+    &::before {
+        content: '\00B7';
+        margin: 0 6px;
+    }
+}
+
+// Ticket header: status, category and assignee as matching chips (same
+// height, size and weight). Colour carries the meaning: the status chip is
+// tinted by status, the category chip shows its colour as a dot, and the
+// assignee chip shows their avatar. For staff the status chip is also the
+// status picker, so it carries a caret.
+.LinkRobinsSupport-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 26px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--control-bg, rgba(0, 0, 0, 0.05));
+    color: var(--control-color, inherit);
+    font-size: calc(0.8rem * var(--lr-text-scale, 1));
+    font-weight: 500;
+    line-height: 1;
+    white-space: nowrap;
+}
+.LinkRobinsSupport-chip--status {
+    .lr-support-status-colours();
+}
+.LinkRobinsSupport-chip-dot {
+    flex-shrink: 0;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+}
+.LinkRobinsSupport-chip--assignee {
+    padding-left: 4px;
+
+    .Avatar {
+        --size: 18px;
+        width: 18px;
+        height: 18px;
+        line-height: 18px;
+        font-size: 9px;
+    }
+    &.is-unassigned {
+        padding-left: 10px;
+        font-style: italic;
+        color: var(--muted-color, #888);
+    }
+}
+.LinkRobinsSupport-statusDropdown,
+.LinkRobinsSupport-decisionDropdown {
+    display: inline-block;
+}
+// The status chip as a dropdown toggle: Flarum wraps button content in
+// .Button-label, which must stay inline for the chip to keep its shape.
+button.LinkRobinsSupport-chip {
+    cursor: pointer;
+
+    .Button-label,
+    .Button-labelText {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .Button-caret {
+        margin: 0;
+        font-size: 0.85em;
+    }
+    &:hover,
+    &:focus-visible {
+        filter: brightness(0.95);
+    }
+}
+.LinkRobinsSupport-decisionToggle {
+    padding: 0;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
+// Assign modal: the team as a list of one-click rows.
+.LinkRobinsSupport-assignList {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.LinkRobinsSupport-assignOption {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 10px;
+    width: 100%;
+    text-align: left;
+
+    // Flarum 2 wraps button content in .Button-label > .Button-labelText;
+    // both have to stretch for the row to read left to right.
+    .Button-label,
+    .Button-labelText {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+    }
+
+    &.is-current {
+        opacity: 1;
+        font-weight: 600;
+    }
+}
+.LinkRobinsSupport-assignAvatar {
+    --size: 28px;
+    width: 28px;
+    height: 28px;
+    line-height: 28px;
+    font-size: 13px;
+    flex-shrink: 0;
+}
+.LinkRobinsSupport-assignName {
+    flex: 1;
+}
+.LinkRobinsSupport-assignYou {
+    color: var(--muted-color, #888);
+}
+.LinkRobinsSupport-assignFooter {
+    margin-top: 12px;
+    text-align: center;
+}
+
+// List header: the view's title on the left, search on the right; the
+// search drops under the title on a phone.
+.LinkRobinsSupport-indexHeader {
+    // The base header is a column; this one is a row, or the search box's
+    // flex-basis turns into a height.
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+.LinkRobinsSupport-search {
+    position: relative;
+    flex: 0 1 280px;
+    min-width: 200px;
+}
+.LinkRobinsSupport-search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted-color, #888);
+    pointer-events: none;
+}
+.LinkRobinsSupport-search-input {
+    padding-left: 34px;
+}
+@media (max-width: 767px) {
+    .LinkRobinsSupport-search {
+        flex: 1 1 100%;
+    }
+}
+
+// Unread: the subject goes from semibold to bold and gets a dot in the
+// forum's primary colour, the same signal Flarum gives unread discussions.
+.LinkRobinsSupport-row:not(.is-unread) .LinkRobinsSupport-row-subject {
+    font-weight: 500;
+}
+.LinkRobinsSupport-row.is-unread .LinkRobinsSupport-row-subject {
+    font-weight: 700;
+}
+.LinkRobinsSupport-unreadDot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    margin-right: 8px;
+    border-radius: 50%;
+    background: var(--primary-color, #07adcc);
+    vertical-align: middle;
+}
+
+// Counts beside the sidebar links: small, muted, right-aligned, the way core
+// shows numbers in its own navigation. Unread own tickets use the primary
+// colour, since that one asks for attention.
+.LinkRobinsSupport-navCount {
+    margin-left: auto;
+    padding-left: 8px;
+    font-size: 0.8em;
+    font-weight: 600;
+    color: var(--muted-color, #888);
+
+    &.is-unread {
+        color: var(--primary-color, #07adcc);
+    }
+}
+
+// Priority chips (staff only, and only when not normal). Urgent borrows the
+// danger red so it reads at a glance; low recedes.
+.LinkRobinsSupport-chip--priority {
+    &.is-urgent {
+        background: rgba(192, 57, 43, 0.12);
+        color: #c0392b;
+        font-weight: 600;
+    }
+    &.is-low {
+        color: var(--muted-color, #888);
+    }
+}
+
+// "Did this solve your problem?" for the owner of a resolved ticket, in the
+// resolved status colour so it reads as part of the same state.
+.LinkRobinsSupport-confirmSolved {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 16px 0;
+    padding: 14px 18px;
+    border-radius: 8px;
+    background: rgba(46, 204, 113, 0.1);
+
+    &-text {
+        color: #27ae60;
+        font-weight: 600;
+    }
+    &-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+}
+
+// --- Staff stats modal ------------------------------------------------
+// Laid out like LR Birdseye's Analytics modal (its .BirdseyeDashboard rules,
+// mirrored here) so the two read as one product: keep them in step. The two
+// chart series are categorical slots 1 and 2 of the validated reference
+// palette, stepped separately for dark mode; text never takes a series colour.
+.Modal.LinkRobinsSupportStatsModal {
+    max-width: 1000px;
+}
+.SupportStats {
+    --lr-series-opened: #2a78d6;
+    --lr-series-closed: #eb6834;
+    text-align: left;
+
+    [data-theme^=dark] & {
+        --lr-series-opened: #3987e5;
+        --lr-series-closed: #d95926;
+    }
+
+    &-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-top: -4px;
+        margin-bottom: 12px;
+    }
+    &-ranges {
+        display: flex;
+        gap: 6px;
+    }
+
+    &-tiles {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+        margin-bottom: 12px;
+
+        @media (max-width: 580px) {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+    &-tile,
+    &-card {
+        background: var(--body-bg-light, var(--body-bg));
+        border: 1px solid var(--control-bg);
+        border-radius: var(--border-radius);
+        padding: 12px 14px;
+    }
+    &-tileLabel {
+        color: var(--muted-color);
+        font-size: 12px;
+        margin-bottom: 4px;
+    }
+    &-tileValue {
+        font-size: 22px;
+        font-weight: 700;
+    }
+
+    &-card {
+        margin-bottom: 12px;
+    }
+    &-cards {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+        margin-bottom: 12px;
+
+        @media (max-width: 580px) {
+            grid-template-columns: minmax(0, 1fr);
+        }
+
+        .SupportStats-card {
+            margin-bottom: 0;
+        }
+    }
+    &-cardTitle {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 8px;
+        font-weight: 600;
+        font-size: 13px;
+        margin-bottom: 8px;
+    }
+    &-cardTitleText {
+        min-width: 0;
+    }
+    &-cardTitleRight {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+    &-span {
+        color: var(--muted-color);
+        font-weight: 400;
+        font-size: 12px;
+    }
+
+    // Inline figures inside a card, Birdseye's "Today so far" strip.
+    &-strip {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 32px;
+    }
+    &-miniValue {
+        font-size: 18px;
+        font-weight: 700;
+    }
+    &-miniLabel {
+        color: var(--muted-color);
+        font-size: 12px;
+    }
+
+    &-legend {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-weight: 400;
+        font-size: 12px;
+        color: var(--muted-color);
+    }
+    &-swatch {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 2px;
+
+        &.is-opened { background: var(--lr-series-opened); }
+        &.is-closed { background: var(--lr-series-closed); }
+    }
+
+    &-chart {
+        display: flex;
+        gap: 2px;
+        height: 200px;
+    }
+    // Each period is one hover target, tall bars or short; the tooltip is
+    // Birdseye's.
+    &-chartCol {
+        flex: 1 1 0;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        outline: none;
+
+        &:hover::after,
+        &:focus-visible::after {
+            content: attr(data-label);
+            position: absolute;
+            top: -6px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 5;
+            pointer-events: none;
+            white-space: nowrap;
+            background: rgba(9, 15, 24, 0.95);
+            color: #f2f6fb;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 6px;
+            padding: 3px 8px;
+            font-size: 12px;
+            line-height: 1.4;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+        }
+        // Keep the tooltip inside the card at the ends of the chart.
+        &:first-child:hover::after,
+        &:first-child:focus-visible::after {
+            left: 0;
+            transform: none;
+        }
+        &:last-child:hover::after,
+        &:last-child:focus-visible::after {
+            left: auto;
+            right: 0;
+            transform: none;
+        }
+        &:hover .SupportStats-chartPair,
+        &:focus-visible .SupportStats-chartPair {
+            background: var(--control-bg);
+        }
+    }
+    &-chartPair {
+        flex: 1;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        gap: 2px;
+        border-radius: 3px 3px 0 0;
+        border-bottom: 1px solid var(--control-bg);
+    }
+    &-chartBar {
+        width: 100%;
+        max-width: 18px;
+        border-radius: 3px 3px 0 0;
+        min-height: 0;
+        transition: height 0.2s ease;
+
+        &.is-opened { background: var(--lr-series-opened); }
+        &.is-closed { background: var(--lr-series-closed); }
+    }
+    &-chartLabel {
+        margin-top: 6px;
+        min-height: 1em;
+        font-size: 11px;
+        color: var(--muted-color);
+        text-align: center;
+        white-space: nowrap;
+    }
+
+    &-table {
+        margin-top: 10px;
+        font-size: 12px;
+
+        summary {
+            cursor: pointer;
+            color: var(--muted-color);
+        }
+    }
+    &-table table,
+    &-people {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+
+        th, td {
+            text-align: left;
+            padding: 6px 8px;
+            border-bottom: 1px solid var(--control-bg);
+        }
+        th {
+            font-weight: 600;
+            font-size: 12px;
+            color: var(--muted-color);
+        }
+    }
+    &-tableScroll {
+        overflow-x: auto;
+    }
+    &-person {
+        font-weight: 600;
+    }
+
+    &-note {
+        margin: 8px 0 0;
+        font-size: 12px;
+    }
+}
+
+// The sidebar's "Support stats" item is a button (it opens a modal), dressed
+// like the link items around it: these mirror core's
+// `.sideNav .Dropdown--select .Dropdown-menu > li > a` rules, theme
+// variables included.
+.sideNav .Dropdown--select .Dropdown-menu > li > button.LinkRobinsSupport-statsLink {
+    color: var(--sidenav-color, var(--muted-color));
+    gap: 15px;
+    padding-left: 0;
+    padding-right: 0;
+
+    .Button-icon {
+        font-size: 15px;
+    }
+    &:hover,
+    &:focus-visible {
+        background: none;
+        color: var(--sidenav-color-hover, var(--link-color));
+    }
 }

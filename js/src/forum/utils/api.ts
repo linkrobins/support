@@ -1,4 +1,5 @@
 import { tr } from './translate';
+import { refreshCounts } from './counts';
 import type SupportTicket from '../../common/models/SupportTicket';
 import type SupportReply from '../../common/models/SupportReply';
 import type SupportCategory from '../../common/models/SupportCategory';
@@ -39,6 +40,51 @@ export function loadReplies(ticketId: string | number, offset = 0, limit = 50): 
     page: { offset, limit },
     include: 'user,editedBy',
   });
+}
+
+export function loadEvents(ticketId: string | number): Promise<any> {
+  // Status and assignment history for one ticket, oldest first. Bounded by
+  // the endpoint's paginate(200, 200); a ticket with more changes than that
+  // shows its first 200, which is far past what anyone scrolls through.
+  return app.store.find('linkrobins-support-events', {
+    sort: 'createdAt',
+    filter: { ticketId },
+    page: { limit: 200 },
+    include: 'user,fromUser,toUser',
+  });
+}
+
+export interface StaffMember {
+  id: string;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+}
+
+/**
+ * The support team, for the Assign picker. A dedicated staff-only endpoint:
+ * core's user list needs searchUsers, which support staff often lack.
+ */
+export function loadStaff(): Promise<StaffMember[]> {
+  return app
+    .request<{ data: StaffMember[] }>({ method: 'GET', url: apiUrl() + '/linkrobins-support-staff' })
+    .then((res: any) => (res && res.data) || []);
+}
+
+/**
+ * Record that the current user has just looked at a ticket, so it stops
+ * showing as unread for them. Fire and forget: a failure only means the
+ * marker stays until their next visit.
+ */
+export function markTicketRead(ticket: any): void {
+  if (!ticket || !app.session.user) return;
+  app
+    .request({ method: 'POST', url: apiUrl() + '/linkrobins-support-tickets/' + ticket.id() + '/read' })
+    .then(() => {
+      if (typeof ticket.pushAttributes === 'function') ticket.pushAttributes({ isUnread: false });
+      refreshCounts();
+    })
+    .catch(() => {});
 }
 
 export function loadCategories(): Promise<any> {

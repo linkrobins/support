@@ -7,14 +7,17 @@ use Flarum\Foundation\AbstractServiceProvider;
 use Flarum\Formatter\Formatter;
 use Flarum\User\User;
 use Illuminate\Contracts\Bus\Dispatcher;
+use Illuminate\Contracts\Events\Dispatcher as Events;
 use LinkRobins\Support\Access\SupportAbilities;
+use LinkRobins\Support\Event\ReplyPosted;
+use LinkRobins\Support\Event\TicketChanged;
 use LinkRobins\Support\Job\NotifyNewReply;
 use LinkRobins\Support\Job\NotifyNewTicket;
 use Psr\Log\LoggerInterface;
 
 class SupportServiceProvider extends AbstractServiceProvider
 {
-    public function boot(Formatter $formatter, Dispatcher $bus, LoggerInterface $log): void
+    public function boot(Formatter $formatter, Dispatcher $bus, Events $events, LoggerInterface $log): void
     {
         // Plug Flarum's formatter into the reply model so calling
         // setContentAttribute() runs Markdown/BBCode through the same
@@ -35,7 +38,7 @@ class SupportServiceProvider extends AbstractServiceProvider
         //   - If anyone replies to a `resolved` ticket, reopen it to
         //     `in_progress`. Closed tickets reject replies at the policy
         //     level, so we never see them here.
-        SupportReply::created(function (SupportReply $reply) use ($bus, $log) {
+        SupportReply::created(function (SupportReply $reply) use ($bus, $events, $log) {
             try {
                 $ticket = $reply->ticket;
                 if (! $ticket) {
@@ -75,7 +78,12 @@ class SupportServiceProvider extends AbstractServiceProvider
                     $ticket->assigned_staff_id = $reply->user_id;
                 }
 
+                // The reply's author is who moved the status or claimed the
+                // ticket, as far as the ticket timeline is concerned.
+                $ticket->eventActorId = $reply->user_id ? (int) $reply->user_id : null;
                 $ticket->save();
+
+                static::afterCommit(fn () => $events->dispatch(new ReplyPosted($reply, $reply->user)));
 
                 // Notifications: dispatched only for user-facing replies.
                 // Internal notes are staff coordination -- the ticket
@@ -100,13 +108,63 @@ class SupportServiceProvider extends AbstractServiceProvider
         // When a ticket is opened, notify staff so they can pick it up.
         // The actor themselves is excluded so a staff member filing a
         // ticket doesn't get notified about their own ticket.
-        SupportTicket::created(function (SupportTicket $ticket) use ($bus, $log) {
+        SupportTicket::created(function (SupportTicket $ticket) use ($bus, $events, $log) {
             try {
                 $bus->dispatch(new NotifyNewTicket($ticket->id));
+                static::afterCommit(fn () => $events->dispatch(new TicketChanged($ticket, $ticket->user)));
             } catch (\Throwable $e) {
                 $log->warning('[linkrobins/support] ticket post-save hook failed', ['exception' => $e]);
             }
         });
+
+        // Stamp when the status last changed. Auto-close counts a resolved
+        // ticket's quiet period from here (see CloseResolvedTicketsCommand).
+        SupportTicket::saving(function (SupportTicket $ticket) {
+            if (! $ticket->exists || $ticket->isDirty('status')) {
+                $ticket->status_changed_at = Carbon::now();
+            }
+        });
+
+        // Record status and assignment changes for the ticket timeline, then
+        // tell anyone listening (flarum/realtime) that the ticket moved. This
+        // is a model event rather than an API hook on purpose: replies and the
+        // auto-close command change status without going through the API,
+        // and their changes belong in the history too. A failure here is
+        // logged rather than thrown, so the save itself always stands.
+        SupportTicket::updated(function (SupportTicket $ticket) use ($events, $log) {
+            try {
+                SupportEvent::recordChanges($ticket);
+            } catch (\Throwable $e) {
+                $log->warning('[linkrobins/support] could not record ticket history', ['exception' => $e]);
+            }
+
+            try {
+                $actor = $ticket->eventActorId ? User::query()->find($ticket->eventActorId) : null;
+                static::afterCommit(fn () => $events->dispatch(new TicketChanged($ticket, $actor)));
+            } catch (\Throwable $e) {
+                $log->warning('[linkrobins/support] ticket change event failed', ['exception' => $e]);
+            }
+        });
+    }
+
+    /**
+     * Run $callback once the surrounding transaction commits, or now if there
+     * is none.
+     *
+     * Opening a ticket writes the ticket and its first reply in one
+     * transaction. A listener that queues work (flarum/realtime does) could
+     * otherwise run before the commit and find no ticket to load. Core binds
+     * the transactions manager this needs; the fallback covers a release
+     * candidate that predates that, where dispatching straight away is the
+     * old behaviour.
+     */
+    protected static function afterCommit(callable $callback): void
+    {
+        try {
+            SupportTicket::query()->getConnection()->afterCommit($callback);
+        } catch (\RuntimeException) {
+            $callback();
+        }
     }
 
     /**

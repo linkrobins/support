@@ -50,6 +50,32 @@ class TicketStatusChangedBlueprint implements BlueprintInterface, AlertableInter
         ];
     }
 
+    /**
+     * The email's opening line, worded for whoever is reading it. The ticket's
+     * owner hears that their ticket moved; staff hearing about something the
+     * owner did are told who did what, rather than "your ticket", which was
+     * what every recipient used to get.
+     */
+    public function emailBody(TranslatorInterface $translator, User $recipient): string
+    {
+        $status = $translator->trans(SupportTicket::statusLabelKey($this->status));
+        $ownerId = $this->ticket->user_id === null ? null : (int) $this->ticket->user_id;
+
+        if ($ownerId !== null && (int) $recipient->id === $ownerId) {
+            return $translator->trans('linkrobins-support.email.status_changed_body', ['status' => $status]);
+        }
+
+        $actorIsOwner = $this->actor !== null && $ownerId !== null && (int) $this->actor->id === $ownerId;
+        if ($actorIsOwner && $this->status === SupportTicket::STATUS_OPEN) {
+            return $translator->trans('linkrobins-support.email.reopened_by_owner_body', ['name' => $this->actor->display_name]);
+        }
+        if ($actorIsOwner && $this->status === SupportTicket::STATUS_CLOSED) {
+            return $translator->trans('linkrobins-support.email.confirmed_solved_body', ['name' => $this->actor->display_name]);
+        }
+
+        return $translator->trans('linkrobins-support.email.status_changed_body_generic', ['status' => $status]);
+    }
+
     public function getEmailViews(): array
     {
         return [

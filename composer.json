@@ -27,12 +27,14 @@
     },
     "require-dev": {
         "flarum/testing": "^2.0",
-        "flarum/phpstan": "^2.0"
+        "flarum/phpstan": "^2.0",
+        "flarum/realtime": "^2.0"
     },
     "minimum-stability": "beta",
     "prefer-stable": true,
     "suggest": {
-        "fof/upload": "For file attachments on tickets and replies. The support extension automatically renders an 'Attach files' button when this is installed."
+        "fof/upload": "For file attachments on tickets and replies. The support extension automatically renders an 'Attach files' button when this is installed.",
+        "flarum/realtime": "For live updates: new replies and ticket changes appear without reloading the page."
     },
     "autoload": {
         "psr-4": {

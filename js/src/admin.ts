@@ -1,9 +1,11 @@
 import SupportCategory from './common/models/SupportCategory';
+import SupportSavedReply from './common/models/SupportSavedReply';
 import SupportAdminPage from './admin/components/SupportAdminPage';
 import { tx } from './admin/utils';
 
 app.initializers.add('linkrobins-support', () => {
   app.store.models['linkrobins-support-categories'] = SupportCategory;
+  app.store.models['linkrobins-support-saved-replies'] = SupportSavedReply;
 
   if (!app.registry || typeof app.registry.for !== 'function') {
     console.warn('[linkrobins/support] app.registry not available');
