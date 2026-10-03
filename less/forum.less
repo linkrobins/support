@@ -109,16 +109,8 @@
 
 // --- Status badges --------------------------------------------------
 
-.LinkRobinsSupport-status {
-    display: inline-block;
-    padding: 3px 10px;
-    border-radius: 999px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    white-space: nowrap;
-
+// One colour per status, applied to the status chip wherever it appears.
+.lr-support-status-colours() {
     &.is-open {
         background: rgba(7, 173, 204, 0.15);
         color: #07adcc;
@@ -220,23 +212,49 @@
     white-space: nowrap;
 }
 
+// Category, opener and last activity as one quiet line, separated by dots.
+// The category keeps its colour as a dot rather than bold coloured text, so
+// nothing on the line competes with the subject.
 .LinkRobinsSupport-row-meta {
     display: flex;
     flex-wrap: wrap;
-    gap: 12px;
+    align-items: center;
+    gap: 4px 0;
     font-size: 0.8rem;
     color: var(--muted-color, #888);
+
+    // The separator trails each item rather than leading the next, so when a
+    // narrow row wraps, the new line never starts with a stray dot.
+    > * {
+        white-space: nowrap;
+    }
+    > *:not(:last-child)::after {
+        content: '\00B7';
+        margin: 0 8px;
+    }
 }
 
 .LinkRobinsSupport-row-cat {
-    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+
+    // Spacing on the dot, not a flex gap: a gap would also push the trailing
+    // separator away from the category name.
+    .LinkRobinsSupport-chip-dot {
+        margin-right: 6px;
+    }
 }
 
 .LinkRobinsSupport-row-user {}
 
 .LinkRobinsSupport-row-date {}
 
-.LinkRobinsSupport-row-status {
+// Status, and for staff the assignee, stacked on the right edge.
+.LinkRobinsSupport-row-side {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
     flex-shrink: 0;
 }
 
@@ -380,12 +398,19 @@
         overflow: hidden;
     }
     .LinkRobinsSupport-row-meta {
-        gap: 4px 10px;
         font-size: 0.75rem;
+
+        > *:not(:last-child)::after {
+            margin: 0 6px;
+        }
     }
-    .LinkRobinsSupport-status {
-        padding: 2px 8px;
-        font-size: 0.7rem;
+    .LinkRobinsSupport-row-side .LinkRobinsSupport-chip {
+        height: 22px;
+        padding: 0 8px;
+        font-size: 0.72rem;
+    }
+    .LinkRobinsSupport-row-side .LinkRobinsSupport-chip--assignee:not(.is-unassigned) {
+        padding-left: 3px;
     }
 
     // --- Replies and cards ---
@@ -719,25 +744,6 @@
     color: var(--primary-color, #07adcc);
 }
 
-// Who has the ticket, in the staff list. The avatar is sized to the meta line
-// so rows keep their height.
-.LinkRobinsSupport-row-assignee {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-
-    &.is-unassigned {
-        font-style: italic;
-    }
-}
-.LinkRobinsSupport-row-assigneeAvatar {
-    --size: 16px;
-    width: 16px;
-    height: 16px;
-    font-size: 8px;
-    line-height: 16px;
-}
-
 // Status and assignment changes in the ticket timeline: one quiet line
 // between replies, not a card of its own.
 // Laid out as one sentence (icon, text, date) that wraps like prose, so on a
@@ -764,26 +770,70 @@
     }
 }
 
-// Staff: the status pill doubles as the status picker. It keeps the pill's
-// colours and adds a caret, so it reads as the same badge members see.
+// Ticket header: status, category and assignee as matching chips (same
+// height, size and weight). Colour carries the meaning: the status chip is
+// tinted by status, the category chip shows its colour as a dot, and the
+// assignee chip shows their avatar. For staff the status chip is also the
+// status picker, so it carries a caret.
+.LinkRobinsSupport-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 26px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--control-bg, rgba(0, 0, 0, 0.05));
+    color: var(--control-color, inherit);
+    font-size: calc(0.8rem * var(--lr-text-scale, 1));
+    font-weight: 500;
+    line-height: 1;
+    white-space: nowrap;
+}
+.LinkRobinsSupport-chip--status {
+    .lr-support-status-colours();
+}
+.LinkRobinsSupport-chip-dot {
+    flex-shrink: 0;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+}
+.LinkRobinsSupport-chip--assignee {
+    padding-left: 4px;
+
+    .Avatar {
+        --size: 18px;
+        width: 18px;
+        height: 18px;
+        line-height: 18px;
+        font-size: 9px;
+    }
+    &.is-unassigned {
+        padding-left: 10px;
+        font-style: italic;
+        color: var(--muted-color, #888);
+    }
+}
 .LinkRobinsSupport-statusDropdown,
 .LinkRobinsSupport-decisionDropdown {
     display: inline-block;
 }
-.LinkRobinsSupport-statusToggle {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    border: 0;
+// The status chip as a dropdown toggle: Flarum wraps button content in
+// .Button-label, which must stay inline for the chip to keep its shape.
+button.LinkRobinsSupport-chip {
     cursor: pointer;
-    line-height: inherit;
 
-    .Button-label {
-        display: inline;
+    .Button-label,
+    .Button-labelText {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
     }
     .Button-caret {
         margin: 0;
-        font-size: 0.9em;
+        font-size: 0.85em;
     }
     &:hover,
     &:focus-visible {
@@ -794,10 +844,6 @@
     padding: 0;
     font-weight: 600;
     text-transform: capitalize;
-}
-
-.LinkRobinsSupport-ticket-assignee.is-unassigned {
-    font-style: italic;
 }
 
 // Assign modal: the team as a list of one-click rows.

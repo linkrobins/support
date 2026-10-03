@@ -1,8 +1,9 @@
 import Component from 'flarum/common/Component';
 import Button from 'flarum/common/components/Button';
 import Dropdown from 'flarum/common/components/Dropdown';
+import Avatar from 'flarum/common/components/Avatar';
 import { tr, trText } from '../utils/translate';
-import { statusBadge, statusClass, statusLabel, decisionLabel } from '../utils/status';
+import { statusChip, statusClass, statusLabel, decisionLabel } from '../utils/status';
 import AssignTicketModal from './AssignTicketModal';
 
 const STATUSES = ['open', 'in_progress', 'awaiting_user', 'resolved', 'closed'];
@@ -27,7 +28,7 @@ export default class TicketHeader extends Component {
       canModerate ? this.actions(ticket, isDeleted) : null,
       m('h1', { className: 'LinkRobinsSupport-title' }, ticket.subject()),
       m('div', { className: 'LinkRobinsSupport-ticket-meta' }, [
-        isStaff && !isDeleted ? this.statusControl(ticket) : statusBadge(ticket.status()),
+        isStaff && !isDeleted ? this.statusControl(ticket) : statusChip(ticket.status()),
         isDeleted
           ? m('span', { className: 'LinkRobinsSupport-reply-deletedBadge' }, [
               m('i', { className: 'fas fa-trash' }),
@@ -35,7 +36,12 @@ export default class TicketHeader extends Component {
               tr('show.deleted_badge', 'Deleted'),
             ])
           : null,
-        category ? m('span', { className: 'LinkRobinsSupport-row-cat', style: 'color: ' + (category.color() || 'inherit') }, category.name()) : null,
+        category
+          ? m('span', { className: 'LinkRobinsSupport-chip LinkRobinsSupport-chip--category' }, [
+              m('span', { className: 'LinkRobinsSupport-chip-dot', style: { background: category.color() || 'var(--muted-color)' } }),
+              category.name(),
+            ])
+          : null,
         isStaff ? this.assignee(ticket) : null,
       ]),
       ticket.decision()
@@ -63,8 +69,8 @@ export default class TicketHeader extends Component {
       Dropdown,
       {
         className: 'LinkRobinsSupport-statusDropdown',
-        buttonClassName: 'LinkRobinsSupport-status LinkRobinsSupport-statusToggle ' + statusClass(current),
-        label: statusLabel(current),
+        buttonClassName: 'LinkRobinsSupport-chip LinkRobinsSupport-chip--status ' + statusClass(current),
+        label: [m('span', { className: 'LinkRobinsSupport-chip-dot' }), statusLabel(current)],
         caretIcon: 'fas fa-caret-down',
         accessibleToggleLabel: trText('staff.change_status', 'Change status'),
       },
@@ -112,14 +118,16 @@ export default class TicketHeader extends Component {
   assignee(ticket: any) {
     const assigned = ticket.assignedStaff && ticket.assignedStaff();
     return assigned
-      ? m('span', { className: 'LinkRobinsSupport-ticket-assignee' }, [
-          m('i', { className: 'fas fa-user-check', 'aria-hidden': 'true' }),
-          ' ',
-          tr('show.assigned_to_name', 'Assigned to {name}', { name: assigned.displayName() || assigned.username() }),
-        ])
-      : m('span', { className: 'LinkRobinsSupport-ticket-assignee is-unassigned' }, [
+      ? m(
+          'span',
+          {
+            className: 'LinkRobinsSupport-chip LinkRobinsSupport-chip--assignee',
+            title: trText('show.assigned_to_name', 'Assigned to {name}', { name: assigned.displayName() || assigned.username() }),
+          },
+          [m(Avatar, { user: assigned }), assigned.displayName() || assigned.username()]
+        )
+      : m('span', { className: 'LinkRobinsSupport-chip LinkRobinsSupport-chip--assignee is-unassigned' }, [
           m('i', { className: 'fas fa-user-slash', 'aria-hidden': 'true' }),
-          ' ',
           tr('show.unassigned', 'Unassigned'),
         ]);
   }

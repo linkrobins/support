@@ -6,7 +6,7 @@ import SupportIndexSidebar from './SupportIndexSidebar';
 import { tr, trText } from '../utils/translate';
 import { basePath, BASE_PATH, formatDate, safeNavigate } from '../utils/helpers';
 import { canCreateSupportTicket, canHandleSupportTickets } from '../utils/permissions';
-import { statusBadge, FILTER_OPTIONS, filterLabel, emptyLabel } from '../utils/status';
+import { statusChip, FILTER_OPTIONS, filterLabel, emptyLabel } from '../utils/status';
 import { loadTickets } from '../utils/api';
 import { onLive } from '../utils/live';
 
@@ -171,22 +171,27 @@ export default class SupportIndexPage extends Page {
    * or an "Unassigned" marker. Members see their own tickets only and do not
    * need routing detail, so it is staff-only.
    */
+  /**
+   * Who has the ticket, for staff scanning the queue, as a chip under the
+   * status: their avatar and name, or "Unassigned". It sits apart from the
+   * meta line so it is never mistaken for the person who opened the ticket.
+   * Members see only their own tickets and do not need routing detail.
+   */
   _renderAssignee(ticket: any) {
     if (!canHandleSupportTickets()) return null;
     const assignee = ticket.assignedStaff && ticket.assignedStaff();
     if (!assignee) {
-      return m('span', { className: 'LinkRobinsSupport-row-assignee is-unassigned' }, [
+      return m('span', { className: 'LinkRobinsSupport-chip LinkRobinsSupport-chip--assignee is-unassigned' }, [
         m('i', { className: 'fas fa-user-slash', 'aria-hidden': 'true' }),
-        ' ',
         tr('index.unassigned', 'Unassigned'),
       ]);
     }
     const name = assignee.displayName() || assignee.username();
-    return m('span', { className: 'LinkRobinsSupport-row-assignee', title: trText('index.assigned_to', 'Assigned to {name}', { name }) }, [
-      m(Avatar, { user: assignee, className: 'LinkRobinsSupport-row-assigneeAvatar' }),
-      ' ',
-      name,
-    ]);
+    return m(
+      'span',
+      { className: 'LinkRobinsSupport-chip LinkRobinsSupport-chip--assignee', title: trText('index.assigned_to', 'Assigned to {name}', { name }) },
+      [m(Avatar, { user: assignee }), name]
+    );
   }
 
   _renderRow(ticket: any) {
@@ -212,13 +217,17 @@ export default class SupportIndexPage extends Page {
             isDeleted ? m('span', { className: 'LinkRobinsSupport-row-deletedBadge' }, tr('index.deleted_badge', 'Deleted')) : null,
           ]),
           m('div', { className: 'LinkRobinsSupport-row-meta' }, [
-            cat ? m('span', { className: 'LinkRobinsSupport-row-cat', style: 'color: ' + (cat.color() || 'inherit') }, cat.name()) : null,
+            cat
+              ? m('span', { className: 'LinkRobinsSupport-row-cat' }, [
+                  m('span', { className: 'LinkRobinsSupport-chip-dot', style: { background: cat.color() || 'var(--muted-color)' } }),
+                  cat.name(),
+                ])
+              : null,
             user ? m('span', { className: 'LinkRobinsSupport-row-user' }, user.displayName() || user.username()) : null,
             m('span', { className: 'LinkRobinsSupport-row-date' }, formatDate(ticket.lastReplyAt() || ticket.createdAt())),
-            this._renderAssignee(ticket),
           ]),
         ]),
-        m('div', { className: 'LinkRobinsSupport-row-status' }, statusBadge(ticket.status())),
+        m('div', { className: 'LinkRobinsSupport-row-side' }, [statusChip(ticket.status()), this._renderAssignee(ticket)]),
       ]
     );
   }

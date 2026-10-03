@@ -35,10 +35,15 @@ export function statusClass(status: string): string {
   return STATUS_CLASSES[status] || '';
 }
 
-export function statusBadge(status: string): any {
-  const label = statusLabel(status);
-  const cls = STATUS_CLASSES[status] || '';
-  return m('span', { className: 'LinkRobinsSupport-status ' + cls }, label);
+/**
+ * The status as a chip: tinted by status, with a dot, in sentence case. Used
+ * in the ticket header and the ticket list so both read the same.
+ */
+export function statusChip(status: string): any {
+  return m('span', { className: 'LinkRobinsSupport-chip LinkRobinsSupport-chip--status ' + statusClass(status) }, [
+    m('span', { className: 'LinkRobinsSupport-chip-dot' }),
+    statusLabel(status),
+  ]);
 }
 
 /**
