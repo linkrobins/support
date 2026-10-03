@@ -39,6 +39,12 @@ class TicketSearcher extends AbstractSearcher
         SupportTicket::withUnreadFor($query, $actor, $isStaff);
 
         if ($isStaff) {
+            // Urgent work first, low last, in every staff list. This ordering
+            // comes before whatever sort the request asks for, so within a
+            // priority the list keeps its usual activity order. The column is
+            // unqualified on purpose: no table name means no prefix to miss.
+            $query->orderByRaw("CASE priority WHEN 'urgent' THEN 0 WHEN 'low' THEN 2 ELSE 1 END");
+
             // Staff see soft-deleted tickets in list views too, rendered
             // with a "deleted" treatment, so a trashed ticket stays
             // visible (and restorable) until it is permanently removed --

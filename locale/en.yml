@@ -172,6 +172,9 @@ linkrobins-support:
       load_failed: 'Could not load the support team.'
       you: '(you)'
       unassign: 'Unassign'
+    priority:
+      urgent: Urgent
+      low: 'Low priority'
     event:
       status_changed: '{name} changed the status from {from} to {to}'
       status_changed_no_actor: 'The status changed from {from} to {to}'
@@ -195,6 +198,7 @@ linkrobins-support:
       load_ticket: 'Could not load this ticket. It may have been deleted, or you may not have permission to view it.'
       load_more_replies: 'Could not load more replies.'
       update_assignment: 'Could not update assignment.'
+      update_priority: 'Could not update the priority.'
       update_status: 'Could not update status.'
       update_decision: 'Could not update the appeal decision.'
       save_edit: 'Could not save the edit.'
@@ -277,6 +281,9 @@ linkrobins-support:
       delete: 'Delete ticket'
       restore: 'Restore ticket'
       assign: 'Assign…'
+      priority_urgent: 'Mark as urgent'
+      priority_normal: 'Normal priority'
+      priority_low: 'Mark as low priority'
       mod_actions: 'Ticket moderation actions'
     user_controls:
       allow_appeals: 'Allow support appeals'

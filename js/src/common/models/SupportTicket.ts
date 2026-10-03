@@ -10,6 +10,7 @@ export default class SupportTicket extends Model {
   subject = Model.attribute<string>('subject');
   status = Model.attribute<string>('status');
   decision = Model.attribute<string | null>('decision');
+  priority = Model.attribute<string | undefined>('priority');
   replyCount = Model.attribute<number>('replyCount');
 
   canReply = Model.attribute<boolean>('canReply');

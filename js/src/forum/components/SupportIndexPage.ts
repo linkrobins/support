@@ -7,7 +7,7 @@ import SupportIndexSidebar from './SupportIndexSidebar';
 import { tr, trText } from '../utils/translate';
 import { basePath, BASE_PATH, formatDate, safeNavigate, showError } from '../utils/helpers';
 import { canCreateSupportTicket, canHandleSupportTickets } from '../utils/permissions';
-import { statusChip, FILTER_OPTIONS, filterLabel, emptyLabel } from '../utils/status';
+import { statusChip, priorityChip, FILTER_OPTIONS, filterLabel, emptyLabel } from '../utils/status';
 import { loadTickets } from '../utils/api';
 import { onLive } from '../utils/live';
 
@@ -318,7 +318,11 @@ export default class SupportIndexPage extends Page {
             m('span', { className: 'LinkRobinsSupport-row-date' }, formatDate(ticket.lastReplyAt() || ticket.createdAt())),
           ]),
         ]),
-        m('div', { className: 'LinkRobinsSupport-row-side' }, [statusChip(ticket.status()), this._renderAssignee(ticket)]),
+        m('div', { className: 'LinkRobinsSupport-row-side' }, [
+          canHandleSupportTickets() ? priorityChip(ticket.priority && ticket.priority()) : null,
+          statusChip(ticket.status()),
+          this._renderAssignee(ticket),
+        ]),
       ]
     );
   }

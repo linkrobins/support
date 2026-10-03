@@ -212,6 +212,7 @@ export default class SupportShowPage extends Page {
           onSetStatus: (s: string) => this._setStatus(s),
           onSetDecision: (d: string) => this._setDecision(d),
           onAssign: (member: any) => this._assignTo(member),
+          onSetPriority: (priority: string) => this._setPriority(priority),
           ticketBusy: this._ticketBusy,
           onSoftDelete: () => this._softDeleteTicket(),
           onRestore: () => this._restoreTicket(),
@@ -479,6 +480,23 @@ export default class SupportShowPage extends Page {
         this.updating = false;
         console.error('[linkrobins/support] status update failed:', err);
         showError(tr('errors.update_status', 'Could not update status.'));
+        m.redraw();
+      });
+  }
+
+  _setPriority(priority: string) {
+    this.updating = true;
+    m.redraw();
+    this.ticket
+      .save({ priority })
+      .then(() => {
+        this.updating = false;
+        m.redraw();
+      })
+      .catch((err: any) => {
+        this.updating = false;
+        console.error('[linkrobins/support] priority update failed:', err);
+        showError(tr('errors.update_priority', 'Could not update the priority.'));
         m.redraw();
       });
   }

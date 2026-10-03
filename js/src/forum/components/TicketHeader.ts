@@ -3,7 +3,7 @@ import Button from 'flarum/common/components/Button';
 import Dropdown from 'flarum/common/components/Dropdown';
 import Avatar from 'flarum/common/components/Avatar';
 import { tr, trText } from '../utils/translate';
-import { statusChip, statusClass, statusLabel, decisionLabel } from '../utils/status';
+import { statusChip, statusClass, statusLabel, decisionLabel, priorityChip } from '../utils/status';
 import AssignTicketModal from './AssignTicketModal';
 
 const STATUSES = ['open', 'in_progress', 'awaiting_user', 'resolved', 'closed'];
@@ -29,6 +29,7 @@ export default class TicketHeader extends Component {
       m('h1', { className: 'LinkRobinsSupport-title' }, ticket.subject()),
       m('div', { className: 'LinkRobinsSupport-ticket-meta' }, [
         isStaff && !isDeleted ? this.statusControl(ticket) : statusChip(ticket.status()),
+        isStaff ? priorityChip(ticket.priority && ticket.priority()) : null,
         isDeleted
           ? m('span', { className: 'LinkRobinsSupport-reply-deletedBadge' }, [
               m('i', { className: 'fas fa-trash' }),
@@ -133,7 +134,7 @@ export default class TicketHeader extends Component {
   }
 
   actions(ticket: any, isDeleted: boolean) {
-    const { ticketBusy, onSoftDelete, onRestore, onForceDelete, onAssign, isStaff, updating } = this.attrs as any;
+    const { ticketBusy, onSoftDelete, onRestore, onForceDelete, onAssign, onSetPriority, isStaff, updating } = this.attrs as any;
     // Soft-delete and restore are staff-only on the server (isDeleted is
     // writable for staff alone). canUpdate is also true for an owner on their
     // own closed ticket, which is how Reopen works, so on its own it offered
@@ -161,6 +162,19 @@ export default class TicketHeader extends Component {
             tr('ticket.assign', 'Assign…')
           )
         );
+
+        // Priority: offer the two levels it is not on.
+        const current = (ticket.priority && ticket.priority()) || 'normal';
+        const levels: Array<[string, string, any]> = [
+          ['urgent', 'fas fa-exclamation', tr('ticket.priority_urgent', 'Mark as urgent')],
+          ['normal', 'fas fa-minus', tr('ticket.priority_normal', 'Normal priority')],
+          ['low', 'fas fa-arrow-down', tr('ticket.priority_low', 'Mark as low priority')],
+        ];
+        levels
+          .filter(([level]) => level !== current)
+          .forEach(([level, icon, label]) => {
+            items.push(m(Button, { icon, disabled: busy || !!updating, onclick: () => onSetPriority(level) }, label));
+          });
       }
       if (canUpdate && isStaff) {
         items.push(

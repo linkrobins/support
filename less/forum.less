@@ -964,3 +964,16 @@ button.LinkRobinsSupport-chip {
         color: var(--primary-color, #07adcc);
     }
 }
+
+// Priority chips (staff only, and only when not normal). Urgent borrows the
+// danger red so it reads at a glance; low recedes.
+.LinkRobinsSupport-chip--priority {
+    &.is-urgent {
+        background: rgba(192, 57, 43, 0.12);
+        color: #c0392b;
+        font-weight: 600;
+    }
+    &.is-low {
+        color: var(--muted-color, #888);
+    }
+}

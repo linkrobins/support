@@ -123,3 +123,15 @@ export function emptyLabel(filter: string | null, canCreate: boolean): string {
       return tr('index.empty', 'No tickets to show.');
   }
 }
+
+/**
+ * The priority chip, for staff: only for low and urgent, since normal is the
+ * default and a chip on every ticket would say nothing.
+ */
+export function priorityChip(priority: string | null | undefined): any {
+  if (priority !== 'urgent' && priority !== 'low') return null;
+  return m('span', { className: 'LinkRobinsSupport-chip LinkRobinsSupport-chip--priority is-' + priority }, [
+    m('i', { className: priority === 'urgent' ? 'fas fa-exclamation' : 'fas fa-arrow-down', 'aria-hidden': 'true' }),
+    priority === 'urgent' ? tr('priority.urgent', 'Urgent') : tr('priority.low', 'Low priority'),
+  ]);
+}

@@ -187,6 +187,19 @@ class SupportTicketResource extends AbstractDatabaseResource
                     }
                 }),
 
+            // Staff triage only: members neither see nor set it.
+            Schema\Str::make('priority')
+                ->visible(fn (SupportTicket $ticket, FlarumContext $context) => SupportAbilities::isStaff($context->getActor()))
+                ->writableOnUpdate()
+                ->set(function (SupportTicket $ticket, $value, FlarumContext $context) {
+                    if (! SupportAbilities::isStaff($context->getActor())) {
+                        return;
+                    }
+                    if (is_string($value) && in_array($value, SupportTicket::ALL_PRIORITIES, true)) {
+                        $ticket->priority = $value;
+                    }
+                }),
+
             Schema\Str::make('decision')
                 ->writableOnUpdate()
                 ->nullable()

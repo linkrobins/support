@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string $subject
  * @property string $status
  * @property string|null $decision
+ * @property string $priority
  * @property \Carbon\Carbon|null $last_reply_at
  * @property \Carbon\Carbon|null $status_changed_at
  * @property \Carbon\Carbon|null $created_at
@@ -53,6 +54,16 @@ class SupportTicket extends AbstractModel
     public const STATUS_AWAITING_USER = 'awaiting_user';
     public const STATUS_RESOLVED      = 'resolved';
     public const STATUS_CLOSED        = 'closed';
+
+    public const PRIORITY_LOW    = 'low';
+    public const PRIORITY_NORMAL = 'normal';
+    public const PRIORITY_URGENT = 'urgent';
+
+    public const ALL_PRIORITIES = [
+        self::PRIORITY_LOW,
+        self::PRIORITY_NORMAL,
+        self::PRIORITY_URGENT,
+    ];
 
     public const DECISION_PENDING  = 'pending';
     public const DECISION_ACCEPTED = 'accepted';
