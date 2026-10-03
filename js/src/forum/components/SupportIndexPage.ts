@@ -1,19 +1,25 @@
 import Page from 'flarum/common/components/Page';
 import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
 import Avatar from 'flarum/common/components/Avatar';
+import Button from 'flarum/common/components/Button';
 import PageStructure from 'flarum/forum/components/PageStructure';
 import SupportIndexSidebar from './SupportIndexSidebar';
 import { tr, trText } from '../utils/translate';
-import { basePath, BASE_PATH, formatDate, safeNavigate } from '../utils/helpers';
+import { basePath, BASE_PATH, formatDate, safeNavigate, showError } from '../utils/helpers';
 import { canCreateSupportTicket, canHandleSupportTickets } from '../utils/permissions';
 import { statusChip, FILTER_OPTIONS, filterLabel, emptyLabel } from '../utils/status';
 import { loadTickets } from '../utils/api';
 import { onLive } from '../utils/live';
 
+const PAGE_SIZE = 25;
+
 export default class SupportIndexPage extends Page {
   loading = true;
   error: any = null;
   tickets: any[] = [];
+  // Lists load a page at a time; "Load more" fetches the next one.
+  hasMore = false;
+  loadingMore = false;
   filter: string | null = 'mine';
   _lastLoadedFilter: string | null = 'mine';
   _stopLive: (() => void) | null = null;
@@ -78,6 +84,48 @@ export default class SupportIndexPage extends Page {
       m.redraw();
     }
 
+    // A quiet (live) reload refetches everything already on screen, so a list
+    // the viewer has paged through does not snap back to the first page.
+    const limit = quiet ? Math.min(100, Math.max(PAGE_SIZE, this.tickets.length)) : PAGE_SIZE;
+
+    loadTickets(this._params(0, limit))
+      .then((tickets: any) => {
+        this.tickets = tickets || [];
+        this.hasMore = !!(tickets && tickets.payload && tickets.payload.links && tickets.payload.links.next);
+        this.loading = false;
+        m.redraw();
+      })
+      .catch((err: any) => {
+        this.error = err;
+        this.loading = false;
+        console.error('[linkrobins/support] index load failed:', err);
+        m.redraw();
+      });
+  }
+
+  _loadMore() {
+    if (this.loadingMore) return;
+    this.loadingMore = true;
+    m.redraw();
+
+    loadTickets(this._params(this.tickets.length, PAGE_SIZE))
+      .then((more: any) => {
+        // Skip anything already shown, in case the list shifted between pages.
+        const seen = new Set(this.tickets.map((t: any) => String(t.id())));
+        this.tickets = this.tickets.concat((more || []).filter((t: any) => !seen.has(String(t.id()))));
+        this.hasMore = !!(more && more.payload && more.payload.links && more.payload.links.next);
+        this.loadingMore = false;
+        m.redraw();
+      })
+      .catch((err: any) => {
+        this.loadingMore = false;
+        console.error('[linkrobins/support] load more tickets failed:', err);
+        showError(tr('errors.load_more_tickets', 'Could not load more tickets.'));
+        m.redraw();
+      });
+  }
+
+  _params(offset: number, limit: number) {
     const filter: any = {};
     if (canHandleSupportTickets() && this.filter !== 'mine') {
       if (this.filter === 'assigned_to_me' || this.filter === 'unassigned') {
@@ -90,23 +138,11 @@ export default class SupportIndexPage extends Page {
     } else {
       filter.mine = '1';
     }
-    const params: any = { page: { limit: 25 } };
+    const params: any = { page: { offset, limit } };
     if (Object.keys(filter).length) {
       params.filter = filter;
     }
-
-    loadTickets(params)
-      .then((tickets: any[]) => {
-        this.tickets = tickets || [];
-        this.loading = false;
-        m.redraw();
-      })
-      .catch((err: any) => {
-        this.error = err;
-        this.loading = false;
-        console.error('[linkrobins/support] index load failed:', err);
-        m.redraw();
-      });
+    return params;
   }
 
   view() {
@@ -159,18 +195,26 @@ export default class SupportIndexPage extends Page {
     if (!this.tickets.length) {
       return m('div', { className: 'LinkRobinsSupport-empty' }, emptyLabel(this.filter, canCreateSupportTicket()));
     }
-    return m(
-      'div',
-      { className: 'LinkRobinsSupport-list' },
-      this.tickets.map((t: any) => this._renderRow(t))
-    );
+    return [
+      m(
+        'div',
+        { className: 'LinkRobinsSupport-list' },
+        this.tickets.map((t: any) => this._renderRow(t))
+      ),
+      this.hasMore
+        ? m(
+            'div',
+            { className: 'LinkRobinsSupport-loadMore' },
+            m(
+              Button,
+              { className: 'Button Button--default LinkRobinsSupport-loadMoreBtn', loading: this.loadingMore, onclick: () => this._loadMore() },
+              tr('action.load_more_tickets', 'Load more tickets')
+            )
+          )
+        : null,
+    ];
   }
 
-  /**
-   * Who has the ticket, for staff scanning the queue: their avatar and name,
-   * or an "Unassigned" marker. Members see their own tickets only and do not
-   * need routing detail, so it is staff-only.
-   */
   /**
    * Who has the ticket, for staff scanning the queue, as a chip under the
    * status: their avatar and name, or "Unassigned". It sits apart from the

@@ -164,6 +164,7 @@ linkrobins-support:
       deleted_user: 'a deleted user'
     errors:
       load_tickets: 'Could not load tickets.'
+      load_more_tickets: 'Could not load more tickets.'
       unknown: 'Unknown error.'
       submit: 'Could not submit.'
       submit_ticket: 'Could not submit the ticket.'
@@ -241,6 +242,7 @@ linkrobins-support:
       restore: 'Restore'
       cancel: 'Cancel'
       load_more_replies: 'Load more replies'
+      load_more_tickets: 'Load more tickets'
       loading_more: 'Loading…'
     confirm:
       close_ticket: 'Close this ticket? It cannot be replied to until it is reopened.'
