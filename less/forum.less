@@ -1272,19 +1272,23 @@ button.LinkRobinsSupport-chip {
 // The sidebar's "Support stats" item is a button (it opens a modal), dressed
 // like the link items around it: these mirror core's
 // `.sideNav .Dropdown--select .Dropdown-menu > li > a` rules, theme
-// variables included.
-.sideNav .Dropdown--select .Dropdown-menu > li > button.LinkRobinsSupport-statsLink {
-    color: var(--sidenav-color, var(--muted-color));
-    gap: 15px;
-    padding-left: 0;
-    padding-right: 0;
+// variables included. Core only applies those where the sidebar is a plain
+// list, so this does too; on phones the list is a dropdown sheet and the
+// button keeps core's ordinary menu-item styling like its neighbours.
+@media @expand-side-nav {
+    .sideNav .Dropdown--select .Dropdown-menu > li > button.LinkRobinsSupport-statsLink {
+        color: var(--sidenav-color, var(--muted-color));
+        gap: 15px;
+        padding-left: 0;
+        padding-right: 0;
 
-    .Button-icon {
-        font-size: 15px;
-    }
-    &:hover,
-    &:focus-visible {
-        background: none;
-        color: var(--sidenav-color-hover, var(--link-color));
+        .Button-icon {
+            font-size: 15px;
+        }
+        &:hover,
+        &:focus-visible {
+            background: none;
+            color: var(--sidenav-color-hover, var(--link-color));
+        }
     }
 }
