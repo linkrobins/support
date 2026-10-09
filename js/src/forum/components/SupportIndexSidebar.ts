@@ -12,6 +12,24 @@ import { refreshCounts, supportCount, COUNT_FOR_FILTER } from '../utils/counts';
 import { onLive } from '../utils/live';
 import SupportStatsModal from './SupportStatsModal';
 
+/**
+ * The views menu. Core's SelectDropdown labels its button with the active
+ * item's own children, so the very same vnodes are rendered twice: once in
+ * the menu, once in the button. Ours carry a count badge that appears,
+ * changes and disappears as tickets move, and a vnode rendered in two places
+ * cannot be diffed: Mithril tries to remove the badge from the button using
+ * the menu's copy of it, and throws "removeChild: The node to be removed is
+ * not a child of this node" on every status change.
+ *
+ * So the button is labelled from defaultLabel instead, which the sidebar
+ * builds fresh on each render from the active view's name (no badge).
+ */
+class SupportViewsDropdown extends SelectDropdown<any> {
+  getButtonContent(children: any) {
+    return super.getButtonContent([]);
+  }
+}
+
 export default class SupportIndexSidebar extends IndexSidebar {
   _stopLive: (() => void) | null = null;
 
@@ -53,14 +71,16 @@ export default class SupportIndexSidebar extends IndexSidebar {
       );
     }
 
+    const active = FILTER_OPTIONS.find((opt) => opt.id === this._activeFilter());
+
     items.add(
       'nav',
       m(
-        SelectDropdown,
+        SupportViewsDropdown,
         {
           buttonClassName: 'Button',
           className: 'App-titleControl',
-          defaultLabel: tr('nav', 'Support'),
+          defaultLabel: active ? filterLabel(active) : tr('nav', 'Support'),
         },
         this.navItems().toArray()
       ),
@@ -84,7 +104,7 @@ export default class SupportIndexSidebar extends IndexSidebar {
     const items = showForumNavOnSupportPages() ? this.forumNavItems() : new ItemList();
 
     const canHandle = canHandleSupportTickets();
-    const currentFilter = this.attrs && Object.prototype.hasOwnProperty.call(this.attrs, 'activeFilter') ? this.attrs.activeFilter : 'mine'; // may be null (= nothing active)
+    const currentFilter = this._activeFilter();
 
     // Only worth a divider when there is something above to divide from.
     if (showForumNavOnSupportPages()) {
@@ -123,6 +143,11 @@ export default class SupportIndexSidebar extends IndexSidebar {
     }
 
     return items;
+  }
+
+  /** The view being shown: 'mine' by default, null when none is (a ticket page). */
+  _activeFilter(): string | null {
+    return this.attrs && Object.prototype.hasOwnProperty.call(this.attrs, 'activeFilter') ? this.attrs.activeFilter : 'mine';
   }
 
   /**
