@@ -10,8 +10,10 @@
 namespace LinkRobins\Support\Tests\integration\console;
 
 use Carbon\Carbon;
+use Flarum\Extend;
 use Flarum\Testing\integration\ConsoleTestCase;
 use Flarum\Testing\integration\RetrievesAuthorizedUsers;
+use LinkRobins\Support\Event\TicketStatusChanged;
 use PHPUnit\Framework\Attributes\Test;
 
 /**
@@ -80,6 +82,23 @@ class CloseResolvedTicketsTest extends ConsoleTestCase
         $this->assertNull($event->user_id);
 
         $this->assertEquals(0, $this->database()->table('notifications')->count());
+    }
+
+    #[Test]
+    public function the_close_is_announced_to_other_extensions_with_no_actor(): void
+    {
+        $seen = [];
+        $this->extend((new Extend\Event())->listen(TicketStatusChanged::class, function (TicketStatusChanged $e) use (&$seen) {
+            $seen[] = $e;
+        }));
+
+        $this->runCommand(['command' => 'lr-support:close-resolved']);
+
+        $this->assertCount(1, $seen);
+        $this->assertEquals(1, $seen[0]->ticket->id);
+        $this->assertEquals('resolved', $seen[0]->oldStatus);
+        $this->assertEquals('closed', $seen[0]->newStatus);
+        $this->assertNull($seen[0]->actor);
     }
 
     #[Test]
