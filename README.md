@@ -302,6 +302,33 @@ unrecognized top-level params):
 - On replies: `filter[ticketId]=N`
 - On history: `filter[ticketId]=N`
 
+## Events for other extensions
+
+Other extensions can react to tickets (webhooks, bots, audit logs) by listening for these events with Flarum's `Extend\Event` extender. Every event is dispatched after the database transaction commits, so a listener never sees a change that is then rolled back. All live in the `LinkRobins\Support\Event` namespace.
+
+| Event | When | Properties |
+|---|---|---|
+| `TicketCreated` | A ticket is opened, with its opening message saved | `ticket`, `actor` |
+| `TicketStatusChanged` | The status changes: picked by staff or the owner, moved on by a reply, or by the scheduled auto-close (`actor` is null then) | `ticket`, `actor`, `oldStatus`, `newStatus` |
+| `TicketDecided` | The decision on an appeal ticket changes | `ticket`, `actor`, `oldDecision`, `newDecision` |
+| `TicketAssigned` | The assignee changes: assigned, claimed by a staff reply, or unassigned (`assignee` is null) | `ticket`, `actor`, `assignee`, `oldAssignee` |
+| `ReplyCreated` | A follow-up reply or internal note is posted (not the opening message, which `TicketCreated` covers) | `reply`, `actor` |
+
+`ReplyCreated` fires for internal notes too, so check `$reply->is_internal_note` before showing a reply to anyone but staff.
+
+```php
+use Flarum\Extend;
+use LinkRobins\Support\Event\TicketStatusChanged;
+
+return [
+    (new Extend\Event())->listen(TicketStatusChanged::class, function (TicketStatusChanged $event) {
+        // $event->ticket, $event->oldStatus, $event->newStatus, $event->actor
+    }),
+];
+```
+
+The extension also dispatches `TicketChanged` and `ReplyPosted`, broader events that drive live updates; prefer the specific ones above.
+
 ## License
 
 MIT.

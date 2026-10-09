@@ -9,8 +9,13 @@ use Flarum\User\User;
 use Illuminate\Contracts\Bus\Dispatcher;
 use Illuminate\Contracts\Events\Dispatcher as Events;
 use LinkRobins\Support\Access\SupportAbilities;
+use LinkRobins\Support\Event\ReplyCreated;
 use LinkRobins\Support\Event\ReplyPosted;
+use LinkRobins\Support\Event\TicketAssigned;
 use LinkRobins\Support\Event\TicketChanged;
+use LinkRobins\Support\Event\TicketCreated;
+use LinkRobins\Support\Event\TicketDecided;
+use LinkRobins\Support\Event\TicketStatusChanged;
 use LinkRobins\Support\Job\NotifyNewReply;
 use LinkRobins\Support\Job\NotifyNewTicket;
 use Psr\Log\LoggerInterface;
@@ -47,6 +52,7 @@ class SupportServiceProvider extends AbstractServiceProvider
                 $ticket->last_reply_at = Carbon::now();
 
                 $isStaff = static::actorIsStaff($reply->user);
+                $isOpening = static::isOpeningMessage($reply);
 
                 if (! $reply->is_internal_note) {
                     if ($ticket->status === SupportTicket::STATUS_RESOLVED) {
@@ -81,9 +87,16 @@ class SupportServiceProvider extends AbstractServiceProvider
                 // The reply's author is who moved the status or claimed the
                 // ticket, as far as the ticket timeline is concerned.
                 $ticket->eventActorId = $reply->user_id ? (int) $reply->user_id : null;
+                $ticket->savingOpeningMessage = $isOpening;
                 $ticket->save();
+                $ticket->savingOpeningMessage = false;
 
                 static::afterCommit(fn () => $events->dispatch(new ReplyPosted($reply, $reply->user)));
+
+                // The opening message is announced by TicketCreated.
+                if (! $isOpening) {
+                    static::afterCommit(fn () => $events->dispatch(new ReplyCreated($reply, $reply->user)));
+                }
 
                 // Notifications: dispatched only for user-facing replies.
                 // Internal notes are staff coordination -- the ticket
@@ -97,7 +110,7 @@ class SupportServiceProvider extends AbstractServiceProvider
                 // the same words -- and, now that a category can route its
                 // tickets to one person, the reply notification would go to
                 // the whole staff list and undo that routing.
-                if (! $reply->is_internal_note && ! static::isOpeningMessage($reply)) {
+                if (! $reply->is_internal_note && ! $isOpening) {
                     $bus->dispatch(new NotifyNewReply($reply->id));
                 }
             } catch (\Throwable $e) {
@@ -112,6 +125,9 @@ class SupportServiceProvider extends AbstractServiceProvider
             try {
                 $bus->dispatch(new NotifyNewTicket($ticket->id));
                 static::afterCommit(fn () => $events->dispatch(new TicketChanged($ticket, $ticket->user)));
+                // After the commit, which on the API's create path is after
+                // the opening message is saved too.
+                static::afterCommit(fn () => $events->dispatch(new TicketCreated($ticket, $ticket->user)));
             } catch (\Throwable $e) {
                 $log->warning('[linkrobins/support] ticket post-save hook failed', ['exception' => $e]);
             }
@@ -140,6 +156,11 @@ class SupportServiceProvider extends AbstractServiceProvider
 
             try {
                 $actor = $ticket->eventActorId ? User::query()->find($ticket->eventActorId) : null;
+
+                foreach (static::lifecycleEvents($ticket, $actor) as $event) {
+                    static::afterCommit(fn () => $events->dispatch($event));
+                }
+
                 static::afterCommit(fn () => $events->dispatch(new TicketChanged($ticket, $actor)));
             } catch (\Throwable $e) {
                 $log->warning('[linkrobins/support] ticket change event failed', ['exception' => $e]);
@@ -158,6 +179,51 @@ class SupportServiceProvider extends AbstractServiceProvider
      * candidate that predates that, where dispatching straight away is the
      * old behaviour.
      */
+    /**
+     * The specific events for what this save changed, for other extensions to
+     * listen to (webhooks, bots, audit logs). Built here, from the model, so
+     * every route that changes a ticket is covered: the API, a reply moving
+     * the status on or claiming the ticket, and the auto-close command.
+     *
+     * Called from the updated hook, where getOriginal() still holds the values
+     * from before the save.
+     *
+     * @return list<object>
+     */
+    protected static function lifecycleEvents(SupportTicket $ticket, ?User $actor): array
+    {
+        if ($ticket->savingOpeningMessage) {
+            return [];
+        }
+
+        $changes = $ticket->getChanges();
+        $events = [];
+
+        if (array_key_exists('status', $changes) && $ticket->getOriginal('status') !== $changes['status']) {
+            $events[] = new TicketStatusChanged($ticket, $actor, $ticket->getOriginal('status'), (string) $changes['status']);
+        }
+
+        if (array_key_exists('decision', $changes) && $ticket->getOriginal('decision') !== $changes['decision']) {
+            $events[] = new TicketDecided($ticket, $actor, $ticket->getOriginal('decision'), $changes['decision']);
+        }
+
+        if (array_key_exists('assigned_staff_id', $changes)) {
+            $from = $ticket->getOriginal('assigned_staff_id');
+            $to = $changes['assigned_staff_id'];
+            $from = $from === null ? null : (int) $from;
+            $to = $to === null ? null : (int) $to;
+
+            if ($from !== $to) {
+                // The actor is usually one of the two (claiming, or handing
+                // over); reuse it rather than look them up again.
+                $user = fn (?int $id) => $id === null ? null : ($actor && (int) $actor->id === $id ? $actor : User::query()->find($id));
+                $events[] = new TicketAssigned($ticket, $actor, $user($to), $user($from));
+            }
+        }
+
+        return $events;
+    }
+
     protected static function afterCommit(callable $callback): void
     {
         try {

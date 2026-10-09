@@ -50,6 +50,16 @@ class SupportTicket extends AbstractModel
      */
     public ?int $eventActorId = null;
 
+    /**
+     * Set while the ticket's opening message is being saved. Not a column.
+     *
+     * A staff member's own opening message moves their ticket to in progress
+     * and assigns it to them, through the same reply hook as any other reply.
+     * TicketCreated already announces that ticket, so the status and
+     * assignment events stay quiet for it.
+     */
+    public bool $savingOpeningMessage = false;
+
     public const STATUS_OPEN          = 'open';
     public const STATUS_IN_PROGRESS   = 'in_progress';
     public const STATUS_AWAITING_USER = 'awaiting_user';
