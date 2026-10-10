@@ -8,6 +8,7 @@ import { BASE_PATH, showError } from '../utils/helpers';
 import { isUserSuspended, supportAppealBanned } from '../utils/permissions';
 import { loadCategories, createTicket, uploadFilesToBody } from '../utils/api';
 import { supportComposerSupported, supportComposerOpenFor, openSupportComposer, supportComposerPreview } from '../utils/composer';
+import { ticketTypes } from '../../common/ticketTypes';
 
 export default class SupportComposePage extends Page {
   loading = true;
@@ -280,6 +281,15 @@ export default class SupportComposePage extends Page {
       -100
     );
 
+    const cat = this._chosenCategory();
+    if (cat) {
+      const typeId = (cat.ticketType && cat.ticketType()) || (cat.isAppeal && cat.isAppeal() ? 'appeal' : 'standard');
+      const driver = ticketTypes.get(typeId);
+      if (driver && driver.fields) {
+        driver.fields(items, this);
+      }
+    }
+
     return items;
   }
 
@@ -451,11 +461,21 @@ export default class SupportComposePage extends Page {
     const bodyText = typeof content === 'string' ? content : this.body;
     const category = this._chosenCategory();
 
-    return {
+    const data: Record<string, any> = {
       subject: this.subject.trim(),
       firstPost: bodyText,
       relationships: { category },
     };
+
+    if (category) {
+      const typeId = (category.ticketType && category.ticketType()) || (category.isAppeal && category.isAppeal() ? 'appeal' : 'standard');
+      const driver = ticketTypes.get(typeId);
+      if (driver && driver.submitData) {
+        driver.submitData(data, this);
+      }
+    }
+
+    return data;
   }
 
   // Create the ticket. Called from the docked composer with (content, body),

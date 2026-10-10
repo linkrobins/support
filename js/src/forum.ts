@@ -26,8 +26,11 @@ import {
 import { tr } from './forum/utils/translate';
 import { installRealtime } from './forum/utils/live';
 import { basePath, BASE_PATH, showNavInSidebar, showNavInAccountMenu, readForumAttribute, showError } from './forum/utils/helpers';
+export { ticketTypes, TicketTypeRegistry, TicketTypeClientDriver } from './common/ticketTypes';
 
 app.initializers.add('linkrobins-support', () => {
+  (app as any).support = { ticketTypes };
+
   // Register the store models so app.store.find()/createRecord() return typed,
   // cached, relationship-aware records for our resources.
   app.store.models['linkrobins-support-categories'] = SupportCategory;

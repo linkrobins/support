@@ -6,6 +6,7 @@ import ItemList from 'flarum/common/utils/ItemList';
 import { tr, trText } from '../utils/translate';
 import { statusChip, statusClass, statusLabel, decisionLabel, priorityChip } from '../utils/status';
 import AssignTicketModal from './AssignTicketModal';
+import { ticketTypes } from '../../common/ticketTypes';
 
 const STATUSES = ['open', 'in_progress', 'awaiting_user', 'resolved', 'closed'];
 const DECISIONS = ['pending', 'accepted', 'rejected'];
@@ -80,6 +81,12 @@ export default class TicketHeader extends Component {
         ]),
         70
       );
+
+      const typeId = (category.ticketType && category.ticketType()) || (category.isAppeal && category.isAppeal() ? 'appeal' : 'standard');
+      const driver = ticketTypes.get(typeId);
+      if (driver && driver.metaItems) {
+        driver.metaItems(items, ticket);
+      }
     }
 
     if (isStaff) items.add('assignee', this.assignee(ticket), 60);
@@ -120,8 +127,8 @@ export default class TicketHeader extends Component {
   }
 
   decisionControl(ticket: any) {
-    const { onSetDecision, updating } = this.attrs as any;
     const current = ticket.decision();
+    const items = this.decisionItems(ticket);
 
     return m(
       Dropdown,
@@ -132,7 +139,18 @@ export default class TicketHeader extends Component {
         caretIcon: 'fas fa-caret-down',
         accessibleToggleLabel: trText('staff.change_decision', 'Change appeal decision'),
       },
-      DECISIONS.map((d) =>
+      items.toArray()
+    );
+  }
+
+  decisionItems(ticket: any) {
+    const { onSetDecision, updating } = this.attrs as any;
+    const current = ticket.decision();
+    const items = new ItemList();
+
+    DECISIONS.forEach((d) => {
+      items.add(
+        d,
         m(
           Button,
           {
@@ -142,8 +160,19 @@ export default class TicketHeader extends Component {
           },
           decisionLabel(d)
         )
-      )
-    );
+      );
+    });
+
+    const category = ticket && ticket.category && ticket.category();
+    if (category) {
+      const typeId = (category.ticketType && category.ticketType()) || (category.isAppeal && category.isAppeal() ? 'appeal' : 'standard');
+      const driver = ticketTypes.get(typeId);
+      if (driver && driver.decisionItems) {
+        driver.decisionItems(items, ticket);
+      }
+    }
+
+    return items;
   }
 
   assignee(ticket: any) {
@@ -273,6 +302,15 @@ export default class TicketHeader extends Component {
           ),
           -100
         );
+      }
+    }
+
+    const category = ticket && ticket.category && ticket.category();
+    if (category) {
+      const typeId = (category.ticketType && category.ticketType()) || (category.isAppeal && category.isAppeal() ? 'appeal' : 'standard');
+      const driver = ticketTypes.get(typeId);
+      if (driver && driver.actionItems) {
+        driver.actionItems(items, ticket);
       }
     }
 

@@ -140,6 +140,7 @@ export default class SupportAdminPage extends ExtensionPage {
                   null,
                   m('tr', null, [
                     m('th', null, tx('linkrobins-support.admin.categories.column_name')),
+                    m('th', null, tx('linkrobins-support.admin.categories.column_type')),
                     m('th', null, tx('linkrobins-support.admin.categories.column_assignee')),
                     m('th', null, tx('linkrobins-support.admin.categories.column_tickets')),
                     m('th', null, ''),
@@ -155,6 +156,7 @@ export default class SupportAdminPage extends ExtensionPage {
                         ' ',
                         m('strong', null, c.name()),
                       ]),
+                      m('td', null, this._typeLabel(c)),
                       m('td', null, this._assigneeLabel(c)),
                       m('td', null, c.ticketCount() || 0),
                       m(
@@ -198,6 +200,24 @@ export default class SupportAdminPage extends ExtensionPage {
       return m('span', { className: 'LinkRobinsSupportAdmin-noAssignee' }, tx('linkrobins-support.admin.categories.assignee_all_staff'));
     }
     return user.displayName() || user.username();
+  }
+
+  _typeLabel(category: any) {
+    const typeId = category.getTicketTypeId
+      ? category.getTicketTypeId()
+      : (category.ticketType && category.ticketType()) || (category.isAppeal && category.isAppeal() ? 'appeal' : 'standard');
+    const types = (app.forum && app.forum.attribute('supportTicketTypes')) || [];
+    const matched = types.find((t: any) => t.id === typeId);
+    if (matched && matched.name) {
+      return m('span', { className: 'badge' }, matched.name);
+    }
+    return m(
+      'span',
+      { className: 'badge' },
+      typeId === 'appeal'
+        ? tx('linkrobins-support.admin.categories.appeal_badge')
+        : tx('linkrobins-support.admin.categories.general_badge')
+    );
   }
 
   _openEditor(category: any) {

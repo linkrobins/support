@@ -16,6 +16,7 @@ import { loadTicket, loadReplies, loadEvents, markTicketRead, postReply, uploadF
 import { onLive } from '../utils/live';
 import { refreshCounts } from '../utils/counts';
 import { openSupportComposer, supportComposerSupported } from '../utils/composer';
+import { ticketTypes } from '../../common/ticketTypes';
 
 // Orchestrates the ticket detail page: owns loading/error state, the ticket and
 // its (paginated) replies, and all mutation logic. Rendering is delegated to
@@ -296,12 +297,17 @@ export default class SupportShowPage extends Page {
     return m('div', { className: 'LinkRobinsSupport-ticket-content' }, items.toArray());
   }
 
-  /**
-   * Additional widgets or panels shown between the header and the reply timeline
-   * (e.g. custom information cards or review widgets from other extensions).
-   */
   contentItems(ticket: any) {
-    return new ItemList();
+    const items = new ItemList();
+    const category = ticket && ticket.category && ticket.category();
+    if (category) {
+      const typeId = (category.ticketType && category.ticketType()) || (category.isAppeal && category.isAppeal() ? 'appeal' : 'standard');
+      const driver = ticketTypes.get(typeId);
+      if (driver && driver.contentItems) {
+        driver.contentItems(items, ticket);
+      }
+    }
+    return items;
   }
 
   /**

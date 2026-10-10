@@ -25,6 +25,7 @@ export default class CategoryEditorModal extends FormModal {
   icon = 'fas fa-folder';
   position = 0;
   isAppeal = false;
+  ticketType = 'standard';
   // '' means nobody -- no auto-assign, all staff notified.
   defaultAssigneeId = '';
   staff: any[] = [];
@@ -44,6 +45,9 @@ export default class CategoryEditorModal extends FormModal {
     this.color = (category && category.color()) || '#07adcc';
     this.icon = (category && category.icon()) || 'fas fa-folder';
     this.position = category && category.position() !== undefined ? category.position() : 0;
+    this.ticketType =
+      (category && category.ticketType && category.ticketType()) ||
+      (category && category.isAppeal && category.isAppeal() ? 'appeal' : 'standard');
     this.isAppeal = !!(category && category.isAppeal());
     const assignee = category && category.defaultAssignee && category.defaultAssignee();
     this.defaultAssigneeId = assignee ? String(assignee.id()) : '';
@@ -174,22 +178,18 @@ export default class CategoryEditorModal extends FormModal {
       ]),
 
       m('div', { className: 'Form-group' }, [
-        m(
-          'div',
-          null,
-          m('label', { className: 'checkbox' }, [
-            m('input', {
-              type: 'checkbox',
-              checked: this.isAppeal,
-              disabled: this.saving,
-              onchange: (e: any) => {
-                this.isAppeal = !!e.target.checked;
-              },
-            }),
-            ' ' + tx('linkrobins-support.admin.category_editor.field_is_appeal'),
-          ])
-        ),
-        m('div', { className: 'helpText' }, tx('linkrobins-support.admin.category_editor.field_is_appeal_help')),
+        m('label', null, tx('linkrobins-support.admin.category_editor.field_ticket_type')),
+        m(Select, {
+          value: this.ticketType,
+          disabled: this.saving,
+          options: this._ticketTypeOptions(),
+          onchange: (value: string) => {
+            this.ticketType = value;
+            const chosen = this._allTicketTypes().find((t: any) => t.id === value);
+            this.isAppeal = chosen ? !!chosen.isAppeal : value === 'appeal';
+          },
+        }),
+        m('div', { className: 'helpText' }, tx('linkrobins-support.admin.category_editor.field_ticket_type_help')),
       ]),
 
       m('div', { className: 'Form-group' }, [
@@ -240,6 +240,23 @@ export default class CategoryEditorModal extends FormModal {
       this.error ? m('div', { className: 'Alert Alert--danger' }, this._errorMessage()) : null,
       m(Form, null, groups),
     ]);
+  }
+
+  _ticketTypeOptions(): Record<string, string> {
+    const opts: Record<string, string> = {};
+    this._allTicketTypes().forEach((t: any) => {
+      opts[t.id] = t.name || t.id;
+    });
+    return opts;
+  }
+
+  _allTicketTypes(): Array<{ id: string; name?: string; isAppeal?: boolean }> {
+    return (
+      (app.forum && app.forum.attribute('supportTicketTypes')) || [
+        { id: 'standard', name: tx('linkrobins-support.admin.ticket_types.standard'), isAppeal: false },
+        { id: 'appeal', name: tx('linkrobins-support.admin.ticket_types.appeal'), isAppeal: true },
+      ]
+    );
   }
 
   /**
@@ -315,6 +332,7 @@ export default class CategoryEditorModal extends FormModal {
       icon: this.icon,
       position: this.position,
       isAppeal: this.isAppeal,
+      ticketType: this.ticketType,
     };
     if (this.slug && this.slug.trim()) {
       attrs.slug = this.slug.trim();
