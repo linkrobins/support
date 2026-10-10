@@ -29,10 +29,6 @@ class StandardTicketType extends AbstractTicketType
             : 'Standard Support';
     }
 
-    public function icon(): string
-    {
-        return 'fas fa-life-ring';
-    }
 
     public function canCreate(User $actor, SupportCategory $category): bool
     {

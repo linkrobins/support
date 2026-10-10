@@ -18,10 +18,6 @@ interface TicketTypeInterface
      */
     public function name(): string;
 
-    /**
-     * Icon class (e.g. 'fas fa-life-ring', 'fas fa-gavel').
-     */
-    public function icon(): string;
 
     /**
      * Whether the actor is allowed to create a ticket in this category.

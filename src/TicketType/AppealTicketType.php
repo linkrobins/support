@@ -28,10 +28,6 @@ class AppealTicketType extends AbstractTicketType
             : 'Ban Appeal';
     }
 
-    public function icon(): string
-    {
-        return 'fas fa-gavel';
-    }
 
     public function canCreate(User $actor, SupportCategory $category): bool
     {

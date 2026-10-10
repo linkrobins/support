@@ -14,10 +14,6 @@ abstract class AbstractTicketType implements TicketTypeInterface
         return defined('static::ID') ? static::ID : '';
     }
 
-    public function icon(): string
-    {
-        return 'fas fa-tag';
-    }
 
     public function canCreate(User $actor, SupportCategory $category): bool
     {

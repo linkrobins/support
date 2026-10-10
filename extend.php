@@ -233,7 +233,6 @@ return [
                             $types[] = [
                                 'id' => $id,
                                 'name' => $driver->name(),
-                                'icon' => $driver->icon(),
                                 'isAppeal' => $driver->isAppeal(),
                             ];
                         }
