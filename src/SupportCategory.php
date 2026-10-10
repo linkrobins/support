@@ -7,6 +7,10 @@ use Flarum\User\User;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use LinkRobins\Support\Access\SupportAbilities;
+use LinkRobins\Support\TicketType\AppealTicketType;
+use LinkRobins\Support\TicketType\StandardTicketType;
+use LinkRobins\Support\TicketType\TicketTypeInterface;
+use LinkRobins\Support\TicketType\TicketTypeManager;
 
 /**
  * @property int $id
@@ -17,6 +21,7 @@ use LinkRobins\Support\Access\SupportAbilities;
  * @property string|null $icon
  * @property int $position
  * @property bool $is_appeal
+ * @property string|null $ticket_type
  * @property int|null $default_assignee_id
  * @property \Carbon\Carbon|null $created_at
  * @property \Carbon\Carbon|null $updated_at
@@ -37,6 +42,7 @@ class SupportCategory extends AbstractModel
         'icon',
         'position',
         'is_appeal',
+        'ticket_type',
         'default_assignee_id',
     ];
 
@@ -44,6 +50,48 @@ class SupportCategory extends AbstractModel
         'position'  => 'integer',
         'is_appeal' => 'boolean',
     ];
+
+    public static function boot()
+    {
+        parent::boot();
+
+        static::saving(function (self $category) {
+            if ($category->ticket_type) {
+                // Keep legacy is_appeal column in sync with driver definition
+                try {
+                    /** @var TicketTypeManager $manager */
+                    $manager = resolve(TicketTypeManager::class);
+                    $type = $manager->get($category->ticket_type);
+                    $category->is_appeal = $type->isAppeal();
+                } catch (\Throwable) {
+                    // Ignore resolution errors during early boots or migrations
+                }
+            }
+        });
+    }
+
+    /**
+     * Resolve the ticket type driver for this category.
+     * Falls back to Appeal if is_appeal is true, or Standard otherwise.
+     */
+    public function ticketType(): TicketTypeInterface
+    {
+        $typeId = $this->ticket_type;
+
+        if (! $typeId) {
+            $typeId = $this->is_appeal
+                ? AppealTicketType::ID
+                : StandardTicketType::ID;
+        }
+
+        try {
+            /** @var TicketTypeManager $manager */
+            $manager = resolve(TicketTypeManager::class);
+            return $manager->get($typeId);
+        } catch (\Throwable) {
+            return new StandardTicketType();
+        }
+    }
 
     public function tickets(): HasMany
     {
