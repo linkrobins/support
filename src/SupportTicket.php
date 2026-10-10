@@ -51,6 +51,13 @@ class SupportTicket extends AbstractModel
     public ?int $eventActorId = null;
 
     /**
+     * Set when the forum, not a person, is moving the status: a reply's
+     * status rules or the auto-close command. Not a column. The timeline
+     * words those changes as automatic.
+     */
+    public bool $eventAutomatic = false;
+
+    /**
      * Set while the ticket's opening message is being saved. Not a column.
      *
      * A staff member's own opening message moves their ticket to in progress

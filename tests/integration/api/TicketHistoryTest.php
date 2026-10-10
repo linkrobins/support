@@ -142,6 +142,37 @@ class TicketHistoryTest extends TestCase
             ->where('from_status', 'resolved')->where('to_status', 'in_progress')->first();
         $this->assertNotNull($row);
         $this->assertEquals(2, (int) $row->user_id);
+        $this->assertTrue((bool) $row->is_automatic);
+    }
+
+    #[Test]
+    public function a_staff_reply_to_an_open_ticket_moves_it_automatically(): void
+    {
+        $response = $this->send(
+            $this->request('POST', '/api/linkrobins-support-replies', [
+                'authenticatedAs' => 3,
+                'json' => ['data' => [
+                    'type' => 'linkrobins-support-replies',
+                    'attributes' => ['content' => 'Looking into it.'],
+                    'relationships' => ['ticket' => ['data' => ['type' => 'linkrobins-support-tickets', 'id' => '1']]],
+                ]],
+            ])
+        );
+        $this->assertEquals(201, $response->getStatusCode(), (string) $response->getBody());
+
+        $event = collect($this->historyAs(3))->firstWhere('attributes.type', 'status');
+        $this->assertNotNull($event);
+        $this->assertEquals('in_progress', $event['attributes']['toStatus']);
+        $this->assertTrue($event['attributes']['isAutomatic']);
+    }
+
+    #[Test]
+    public function a_status_picked_by_hand_is_not_automatic(): void
+    {
+        $this->patch(3, ['attributes' => ['status' => 'awaiting_user']]);
+
+        $this->assertFalse((bool) $this->database()->table('linkrobins_support_events')->value('is_automatic'));
+        $this->assertFalse($this->historyAs(3)[0]['attributes']['isAutomatic']);
     }
 
     #[Test]

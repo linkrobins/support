@@ -69,6 +69,7 @@ class CloseResolvedTicketsCommand extends Command
                     }
                     $ticket->status = SupportTicket::STATUS_CLOSED;
                     $ticket->eventActorId = null;
+                    $ticket->eventAutomatic = true;
                     $ticket->save();
                     $closed++;
                 }

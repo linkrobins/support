@@ -40,6 +40,10 @@ export default class TicketEventItem extends Component {
       if (!actor && event.fromStatus() === 'resolved' && event.toStatus() === 'closed') {
         return tr('event.auto_closed', 'Closed automatically after a period with no activity');
       }
+      // Moved by a reply's status rules, not picked by whoever replied.
+      if (event.isAutomatic()) {
+        return tr('event.status_changed_automatically', 'The status changed automatically from {from} to {to}', { from, to });
+      }
       return actor
         ? tr('event.status_changed', '{name} changed the status from {from} to {to}', { name: actor, from, to })
         : tr('event.status_changed_no_actor', 'The status changed from {from} to {to}', { from, to });

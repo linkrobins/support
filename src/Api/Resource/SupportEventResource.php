@@ -75,6 +75,10 @@ class SupportEventResource extends AbstractDatabaseResource
                 ->get(fn (SupportEvent $event) => $event->from_user_id !== null),
             Schema\Boolean::make('hasAssignee')
                 ->get(fn (SupportEvent $event) => $event->to_user_id !== null),
+            // Made by the forum (a reply's status rules, auto-close), not
+            // picked by the person in `user`.
+            Schema\Boolean::make('isAutomatic')
+                ->property('is_automatic'),
             Schema\DateTime::make('createdAt')
                 ->property('created_at'),
 

@@ -12,6 +12,7 @@ export default class SupportEvent extends Model {
   toStatus = Model.attribute<string | null>('toStatus');
   hadAssignee = Model.attribute<boolean>('hadAssignee');
   hasAssignee = Model.attribute<boolean>('hasAssignee');
+  isAutomatic = Model.attribute<boolean>('isAutomatic');
   createdAt = Model.attribute('createdAt', Model.transformDate);
 
   user = Model.hasOne<User | null>('user');

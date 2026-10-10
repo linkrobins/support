@@ -80,6 +80,7 @@ class CloseResolvedTicketsTest extends ConsoleTestCase
         $this->assertEquals('resolved', $event->from_status);
         $this->assertEquals('closed', $event->to_status);
         $this->assertNull($event->user_id);
+        $this->assertTrue((bool) $event->is_automatic);
 
         $this->assertEquals(0, $this->database()->table('notifications')->count());
     }

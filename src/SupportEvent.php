@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $to_status
  * @property int|null $from_user_id
  * @property int|null $to_user_id
+ * @property bool $is_automatic
  * @property Carbon $created_at
  * @property-read SupportTicket|null $ticket
  * @property-read User|null $user
@@ -37,6 +38,7 @@ class SupportEvent extends AbstractModel
         'created_at'   => 'datetime',
         'from_user_id' => 'integer',
         'to_user_id'   => 'integer',
+        'is_automatic' => 'boolean',
     ];
 
     public function ticket(): BelongsTo
@@ -80,6 +82,7 @@ class SupportEvent extends AbstractModel
             $event->type = self::TYPE_STATUS;
             $event->from_status = $ticket->getOriginal('status');
             $event->to_status = $changes['status'];
+            $event->is_automatic = $ticket->eventAutomatic;
             $event->created_at = $now;
             $event->save();
         }
