@@ -210,7 +210,8 @@ class SupportTicketResource extends AbstractDatabaseResource
                 ->writableOnUpdate()
                 ->nullable()
                 ->set(function (SupportTicket $ticket, $value, FlarumContext $context) {
-                    if ($value !== null && ! in_array($value, SupportTicket::ALL_DECISIONS, true)) {
+                    $allowed = $ticket->category ? $ticket->category->ticketType()->allowedDecisions() : SupportTicket::ALL_DECISIONS;
+                    if ($value !== null && ! in_array($value, $allowed, true)) {
                         return;
                     }
                     $actor = $context->getActor();
@@ -441,7 +442,7 @@ class SupportTicketResource extends AbstractDatabaseResource
         }
         $category = $ticket->category;
 
-        return ! ($category && $category->is_appeal);
+        return $category ? $category->ticketType()->canConfirmSolved($ticket, $actor) : true;
     }
 
     protected function ownerMayReopen(SupportTicket $ticket, User $actor): bool
@@ -454,7 +455,7 @@ class SupportTicketResource extends AbstractDatabaseResource
         }
         $category = $ticket->category;
 
-        return ! ($category && $category->is_appeal);
+        return $category ? $category->ticketType()->canReopen($ticket, $actor) : true;
     }
 
     public function creating(object $model, Context $context): ?object
@@ -493,16 +494,10 @@ class SupportTicketResource extends AbstractDatabaseResource
             throw new ForbiddenException($this->rateLimiter->describe($rate));
         }
 
-        // Ban-state vs. category. A suspended user can create *appeal*
-        // tickets but not general ones. Without this check, a suspended
-        // user could bypass their ban by filing a general support
-        // ticket and using it as a chat channel.
-        // Note: Flarum has no built-in isBanned() method. We treat a
-        // currently-suspended user (from flarum/suspend) as banned for
-        // support purposes -- via UserState::isSuspended().
-        if (UserState::isSuspended($actor) && ! $category->is_appeal) {
+        // Eligibility check via category ticket type.
+        if (! $category->ticketType()->canCreate($actor, $category)) {
             throw new ForbiddenException(
-                'Your account is restricted from creating general support tickets. You may file an appeal instead.'
+                'Your account is not permitted to create tickets in this category.'
             );
         }
 
@@ -520,12 +515,9 @@ class SupportTicketResource extends AbstractDatabaseResource
             $model->assigned_staff_id = $assignee->id;
         }
 
-        // Initial status. For appeal tickets we also set decision=pending so
-        // the staff list shows it explicitly as awaiting decision.
+        // Initial status and decision from the ticket type driver.
         $model->status = SupportTicket::STATUS_OPEN;
-        if ($category->is_appeal) {
-            $model->decision = SupportTicket::DECISION_PENDING;
-        }
+        $model->decision = $category->ticketType()->initialDecision($model);
 
         // last_reply_at starts at created_at so newly-opened tickets sort
         // correctly on the activity-sorted list.

@@ -43,7 +43,7 @@ class RateLimiter
      */
     public function check(User $actor, SupportCategory $category): array
     {
-        if ($category->is_appeal) {
+        if ($category->ticketType()->isAppeal()) {
             return $this->checkAppeal($actor, $category);
         }
         return $this->checkGeneral($actor, $category);

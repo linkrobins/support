@@ -18,10 +18,18 @@ use LinkRobins\Support\Event\TicketDecided;
 use LinkRobins\Support\Event\TicketStatusChanged;
 use LinkRobins\Support\Job\NotifyNewReply;
 use LinkRobins\Support\Job\NotifyNewTicket;
+use LinkRobins\Support\TicketType\TicketTypeManager;
 use Psr\Log\LoggerInterface;
 
 class SupportServiceProvider extends AbstractServiceProvider
 {
+    public function register(): void
+    {
+        $this->container->singleton(TicketTypeManager::class, function ($container) {
+            return new TicketTypeManager($container);
+        });
+    }
+
     public function boot(Formatter $formatter, Dispatcher $bus, Events $events, LoggerInterface $log): void
     {
         // Plug Flarum's formatter into the reply model so calling
