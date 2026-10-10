@@ -43,8 +43,6 @@ linkrobins-support:
       field_icon_help: 'A Font Awesome class, e.g. fas fa-life-ring.'
       field_position: Position
       field_position_help: 'Categories are ordered by this value, lowest first.'
-      field_is_appeal: 'Appeal category'
-      field_is_appeal_help: 'Tickets opened in this category are treated as ban appeals.'
       field_ticket_type: 'Ticket type'
       field_ticket_type_help: 'Determines the workflow, decision options, and rate limits for tickets in this category.'
       field_default_assignee: 'Assign new tickets to'
