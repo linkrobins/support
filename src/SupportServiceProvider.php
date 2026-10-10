@@ -87,9 +87,14 @@ class SupportServiceProvider extends AbstractServiceProvider
                 // The reply's author is who moved the status or claimed the
                 // ticket, as far as the ticket timeline is concerned.
                 $ticket->eventActorId = $reply->user_id ? (int) $reply->user_id : null;
+                // Any status move here comes from the rules above, not a
+                // choice the author made, so the timeline says it happened
+                // automatically.
+                $ticket->eventAutomatic = true;
                 $ticket->savingOpeningMessage = $isOpening;
                 $ticket->save();
                 $ticket->savingOpeningMessage = false;
+                $ticket->eventAutomatic = false;
 
                 static::afterCommit(fn () => $events->dispatch(new ReplyPosted($reply, $reply->user)));
 
