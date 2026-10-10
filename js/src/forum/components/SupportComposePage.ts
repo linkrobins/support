@@ -443,6 +443,21 @@ export default class SupportComposePage extends Page {
     return tr('errors.submit_ticket', 'Could not submit the ticket.');
   }
 
+  /**
+   * Builds the payload dictionary sent to createTicket(). Extensions can extend
+   * this method with extend() to attach custom attributes or relationships.
+   */
+  submitData(content?: string): Record<string, any> {
+    const bodyText = typeof content === 'string' ? content : this.body;
+    const category = this._chosenCategory();
+
+    return {
+      subject: this.subject.trim(),
+      firstPost: bodyText,
+      relationships: { category },
+    };
+  }
+
   // Create the ticket. Called from the docked composer with (content, body),
   // or from the fallback page button with no args (it reads this.body).
   _submit(content?: string, body?: any) {
@@ -463,7 +478,9 @@ export default class SupportComposePage extends Page {
     if (body) body.loading = true;
     m.redraw();
 
-    createTicket(this.subject.trim(), category, bodyText)
+    const data = this.submitData(content);
+
+    createTicket(data)
       .then((ticket: any) => {
         this.saving = false;
         this.body = '';

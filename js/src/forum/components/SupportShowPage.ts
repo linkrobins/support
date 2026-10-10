@@ -1,4 +1,5 @@
 import Page from 'flarum/common/components/Page';
+import ItemList from 'flarum/common/utils/ItemList';
 import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
 import Button from 'flarum/common/components/Button';
 import PageStructure from 'flarum/forum/components/PageStructure';
@@ -220,6 +221,8 @@ export default class SupportShowPage extends Page {
           onForceDelete: () => this._forceDeleteTicket(),
         }),
 
+        this.content(ticket),
+
         m(
           'div',
           { className: 'LinkRobinsSupport-replies' },
@@ -284,6 +287,21 @@ export default class SupportShowPage extends Page {
             ]),
       ])
     );
+  }
+
+  content(ticket: any) {
+    const items = this.contentItems(ticket);
+    if (items.isEmpty()) return null;
+
+    return m('div', { className: 'LinkRobinsSupport-ticket-content' }, items.toArray());
+  }
+
+  /**
+   * Additional widgets or panels shown between the header and the reply timeline
+   * (e.g. custom information cards or review widgets from other extensions).
+   */
+  contentItems(ticket: any) {
+    return new ItemList();
   }
 
   /**

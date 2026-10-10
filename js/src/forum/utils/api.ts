@@ -96,12 +96,17 @@ export function loadCategories(): Promise<any> {
 
 // --- Writes (store records: cached, reactive, relationship-aware) --------
 
-export function createTicket(subject: string, category: SupportCategory, body: string): Promise<SupportTicket> {
+export function createTicket(subjectOrData: string | Record<string, any>, category?: SupportCategory, body?: string): Promise<SupportTicket> {
   // Single atomic create: the opening message rides along as `firstPost` and
   // the backend posts it as the first reply in the same transaction. This used
   // to be two requests (save ticket, then postReply); if the second failed it
   // left a subject-only ticket the owner couldn't fix.
-  return app.store.createRecord('linkrobins-support-tickets').save({ subject, firstPost: body, relationships: { category } });
+  const payload =
+    typeof subjectOrData === 'object' && subjectOrData !== null
+      ? subjectOrData
+      : { subject: subjectOrData, firstPost: body, relationships: { category } };
+
+  return app.store.createRecord('linkrobins-support-tickets').save(payload);
 }
 
 export function postReply(ticket: SupportTicket, content: string, isInternal: boolean): Promise<SupportReply> {
