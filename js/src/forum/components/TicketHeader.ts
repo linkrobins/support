@@ -82,7 +82,7 @@ export default class TicketHeader extends Component {
         70
       );
 
-      const typeId = (category.ticketType && category.ticketType()) || (category.isAppeal && category.isAppeal() ? 'appeal' : 'standard');
+      const typeId = category.getTicketTypeId ? category.getTicketTypeId() : 'standard';
       const driver = ticketTypes.get(typeId);
       if (driver && driver.metaItems) {
         driver.metaItems(items, ticket);
@@ -165,7 +165,7 @@ export default class TicketHeader extends Component {
 
     const category = ticket && ticket.category && ticket.category();
     if (category) {
-      const typeId = (category.ticketType && category.ticketType()) || (category.isAppeal && category.isAppeal() ? 'appeal' : 'standard');
+      const typeId = category.getTicketTypeId ? category.getTicketTypeId() : 'standard';
       const driver = ticketTypes.get(typeId);
       if (driver && driver.decisionItems) {
         driver.decisionItems(items, ticket);
@@ -307,7 +307,7 @@ export default class TicketHeader extends Component {
 
     const category = ticket && ticket.category && ticket.category();
     if (category) {
-      const typeId = (category.ticketType && category.ticketType()) || (category.isAppeal && category.isAppeal() ? 'appeal' : 'standard');
+      const typeId = category.getTicketTypeId ? category.getTicketTypeId() : 'standard';
       const driver = ticketTypes.get(typeId);
       if (driver && driver.actionItems) {
         driver.actionItems(items, ticket);

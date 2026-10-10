@@ -283,7 +283,7 @@ export default class SupportComposePage extends Page {
 
     const cat = this._chosenCategory();
     if (cat) {
-      const typeId = (cat.ticketType && cat.ticketType()) || (cat.isAppeal && cat.isAppeal() ? 'appeal' : 'standard');
+      const typeId = cat.getTicketTypeId ? cat.getTicketTypeId() : 'standard';
       const driver = ticketTypes.get(typeId);
       if (driver && driver.fields) {
         driver.fields(items, this);
@@ -468,7 +468,7 @@ export default class SupportComposePage extends Page {
     };
 
     if (category) {
-      const typeId = (category.ticketType && category.ticketType()) || (category.isAppeal && category.isAppeal() ? 'appeal' : 'standard');
+      const typeId = category.getTicketTypeId ? category.getTicketTypeId() : 'standard';
       const driver = ticketTypes.get(typeId);
       if (driver && driver.submitData) {
         driver.submitData(data, this);
