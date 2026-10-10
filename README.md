@@ -329,6 +329,108 @@ return [
 
 The extension also dispatches `TicketChanged` and `ReplyPosted`, broader events that drive live updates; prefer the specific ones above.
 
+## Extending Ticket Types
+
+Other extensions can register custom ticket types to introduce specialized workflows, custom fields, rate limits, and review actions.
+
+### Backend Driver (PHP)
+
+Create a driver extending `LinkRobins\Support\TicketType\AbstractTicketType`:
+
+```php
+namespace Vendor\Example\TicketType;
+
+use Flarum\User\User;
+use LinkRobins\Support\SupportCategory;
+use LinkRobins\Support\SupportTicket;
+use LinkRobins\Support\TicketType\AbstractTicketType;
+
+class VerificationTicketType extends AbstractTicketType
+{
+    public const ID = 'verification';
+
+    public function id(): string
+    {
+        return self::ID;
+    }
+
+    public function name(): string
+    {
+        return 'Identity Verification';
+    }
+
+    public function isAppeal(): bool
+    {
+        return false;
+    }
+
+    public function canCreate(User $actor, SupportCategory $category): bool
+    {
+        // Custom eligibility check (e.g. require email confirmation)
+        return $actor->is_email_confirmed;
+    }
+
+    public function initialDecision(SupportTicket $ticket): ?string
+    {
+        return 'pending';
+    }
+
+    public function allowedDecisions(): array
+    {
+        return ['pending', 'accepted', 'rejected'];
+    }
+
+    public function canReopen(SupportTicket $ticket, User $actor): bool
+    {
+        return false;
+    }
+}
+```
+
+Register your driver in `extend.php`:
+
+```php
+use LinkRobins\Support\Extend\TicketType;
+use Vendor\Example\TicketType\VerificationTicketType;
+
+return [
+    (new TicketType())
+        ->add(VerificationTicketType::ID, VerificationTicketType::class),
+];
+```
+
+### Frontend Driver (TypeScript / Mithril)
+
+Register a client-side driver in your forum and admin initializers:
+
+```typescript
+app.initializers.add('vendor-example-support', () => {
+  if (app.support?.ticketTypes) {
+    app.support.ticketTypes.register({
+      id: 'verification',
+
+      // Add custom fields to the composer
+      fields(items, context) {
+        items.add('id-code', m('input.FormControl', {
+          placeholder: 'Verification Code',
+          oninput: (e: any) => { context.verificationCode = e.target.value; },
+        }));
+      },
+
+      // Append custom fields to the ticket creation payload
+      submitData(data, context) {
+        data.verificationCode = context.verificationCode;
+      },
+
+      // Add custom panels or cards above the ticket replies
+      contentItems(items, ticket) {
+        items.add('id-badge', m('div.VerificationBadge', 'ID Verification Pending'));
+      },
+    });
+  }
+});
+```
+
 ## License
 
 MIT.
