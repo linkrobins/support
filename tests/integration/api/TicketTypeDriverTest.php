@@ -17,6 +17,7 @@ use LinkRobins\Support\Extend\TicketType as TicketTypeExtend;
 use LinkRobins\Support\SupportTicket;
 use LinkRobins\Support\TicketType\AbstractTicketType;
 use PHPUnit\Framework\Attributes\Test;
+use Tobyz\JsonApiServer\Exception\BadRequestException;
 
 class TicketTypeDriverTest extends TestCase
 {
@@ -187,8 +188,8 @@ class TicketTypeDriverTest extends TestCase
         $data = json_decode((string) $response->getBody(), true);
         $ticketId = $data['data']['id'];
 
-        // Custom driver sets initial decision to 'accepted'
-        $this->assertEquals('accepted', $data['data']['attributes']['decision']);
+        // Custom driver sets initial decision to 'pending'
+        $this->assertEquals('pending', $data['data']['attributes']['decision']);
 
         // Staff closes ticket
         $this->send(
@@ -211,11 +212,87 @@ class TicketTypeDriverTest extends TestCase
         $showData = json_decode((string) $showResponse->getBody(), true);
         $this->assertFalse($showData['data']['attributes']['canReopen']);
     }
+
+    #[Test]
+    public function custom_ticket_type_lifecycle_hooks_are_triggered_on_creation(): void
+    {
+        CustomTestTicketType::resetState();
+
+        $response = $this->send(
+            $this->request('POST', '/api/linkrobins-support-tickets', [
+                'authenticatedAs' => 2,
+                'json' => $this->ticketBody(['subject' => 'Hook test', 'firstPost' => 'Testing lifecycle.'], categoryId: 3),
+            ])
+        );
+
+        $this->assertEquals(201, $response->getStatusCode());
+        $this->assertTrue(CustomTestTicketType::$onCreatingCalled);
+        $this->assertTrue(CustomTestTicketType::$onCreatedCalled);
+    }
+
+    #[Test]
+    public function custom_ticket_type_on_creating_hook_can_reject_invalid_submission(): void
+    {
+        CustomTestTicketType::resetState();
+
+        $response = $this->send(
+            $this->request('POST', '/api/linkrobins-support-tickets', [
+                'authenticatedAs' => 2,
+                'json' => $this->ticketBody([
+                    'subject' => 'Hook test',
+                    'firstPost' => 'Testing validation.',
+                    'require_code' => true,
+                ], categoryId: 3),
+            ])
+        );
+
+        $this->assertEquals(400, $response->getStatusCode());
+    }
+
+    #[Test]
+    public function custom_ticket_type_on_decided_hook_is_triggered_on_decision_change(): void
+    {
+        CustomTestTicketType::resetState();
+
+        $createResponse = $this->send(
+            $this->request('POST', '/api/linkrobins-support-tickets', [
+                'authenticatedAs' => 2,
+                'json' => $this->ticketBody(['subject' => 'Decision test', 'firstPost' => 'Testing decision hook.'], categoryId: 3),
+            ])
+        );
+
+        $this->assertEquals(201, $createResponse->getStatusCode());
+        $ticketId = json_decode((string) $createResponse->getBody(), true)['data']['id'];
+
+        $patchResponse = $this->send(
+            $this->request('PATCH', '/api/linkrobins-support-tickets/' . $ticketId, [
+                'authenticatedAs' => 3,
+                'json' => [
+                    'data' => [
+                        'attributes' => ['decision' => 'accepted'],
+                    ],
+                ],
+            ])
+        );
+
+        $this->assertEquals(200, $patchResponse->getStatusCode());
+        $this->assertEquals('accepted', CustomTestTicketType::$decidedTo);
+    }
 }
 
 class CustomTestTicketType extends AbstractTicketType
 {
     public const ID = 'custom_type';
+    public static bool $onCreatingCalled = false;
+    public static bool $onCreatedCalled = false;
+    public static ?string $decidedTo = null;
+
+    public static function resetState(): void
+    {
+        self::$onCreatingCalled = false;
+        self::$onCreatedCalled = false;
+        self::$decidedTo = null;
+    }
 
     public function id(): string
     {
@@ -229,11 +306,35 @@ class CustomTestTicketType extends AbstractTicketType
 
     public function initialDecision(SupportTicket $ticket): ?string
     {
-        return 'accepted';
+        return 'pending';
+    }
+
+    public function allowedDecisions(): array
+    {
+        return ['pending', 'accepted', 'rejected'];
     }
 
     public function canReopen(SupportTicket $ticket, User $actor): bool
     {
         return false;
+    }
+
+    public function onCreating(SupportTicket $ticket, array $data, User $actor): void
+    {
+        self::$onCreatingCalled = true;
+
+        if (isset($data['attributes']['require_code']) && empty($data['attributes']['verification_code'])) {
+            throw new BadRequestException('verification_code is required');
+        }
+    }
+
+    public function onCreated(SupportTicket $ticket, array $data, User $actor): void
+    {
+        self::$onCreatedCalled = true;
+    }
+
+    public function onDecided(SupportTicket $ticket, string $newDecision, ?string $oldDecision, ?User $actor): void
+    {
+        self::$decidedTo = $newDecision;
     }
 }
