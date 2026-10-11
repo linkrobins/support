@@ -384,6 +384,27 @@ class VerificationTicketType extends AbstractTicketType
     {
         return false;
     }
+
+    public function onCreating(SupportTicket $ticket, array $data, User $actor): void
+    {
+        // Server-side validation or custom attribute mutation before saving
+        if (empty($data['attributes']['verificationCode'])) {
+            throw new \Tobyz\JsonApiServer\Exception\BadRequestException('Verification code is required.');
+        }
+    }
+
+    public function onCreated(SupportTicket $ticket, array $data, User $actor): void
+    {
+        // Trigger post-creation integrations or external sync jobs
+    }
+
+    public function onDecided(SupportTicket $ticket, string $newDecision, ?string $oldDecision, ?User $actor): void
+    {
+        // Automated workflows upon approval/rejection (e.g. assign group or update external API)
+        if ($newDecision === 'accepted') {
+            $ticket->user->groups()->syncWithoutDetaching([/* verified group ID */]);
+        }
+    }
 }
 ```
 
@@ -415,6 +436,13 @@ app.initializers.add('vendor-example-support', () => {
           placeholder: 'Verification Code',
           oninput: (e: any) => { context.verificationCode = e.target.value; },
         }));
+      },
+
+      // Client-side pre-submit validation (return an error message string to halt submission)
+      validate(data, context) {
+        if (!context.verificationCode) {
+          return 'Please provide a verification code before submitting.';
+        }
       },
 
       // Append custom fields to the ticket creation payload
