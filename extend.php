@@ -78,6 +78,7 @@ return [
         ->addFilter(TicketSearcher::class, Filters\CategoryIdFilter::class)
         ->addFilter(TicketSearcher::class, Filters\MineFilter::class)
         ->addFilter(TicketSearcher::class, Filters\AssignedFilter::class)
+        ->addFilter(TicketSearcher::class, Filters\TicketTypeFilter::class)
         ->addSearcher(SupportReply::class, ReplySearcher::class)
         ->addFilter(ReplySearcher::class, Filters\TicketIdFilter::class)
         ->addSearcher(SupportEvent::class, EventSearcher::class)
