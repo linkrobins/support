@@ -13,7 +13,6 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
 use LinkRobins\Support\Access\SupportAbilities;
 use LinkRobins\Support\SupportCategory;
-use LinkRobins\Support\TicketType\AppealTicketType;
 use LinkRobins\Support\TicketType\StandardTicketType;
 use Tobyz\JsonApiServer\Context;
 use Tobyz\JsonApiServer\Exception\BadRequestException;
@@ -143,17 +142,17 @@ class SupportCategoryResource extends AbstractDatabaseResource
                 ->writable(),
 
             Schema\Boolean::make('isAppeal')
-                ->property('is_appeal')
-                ->writable(),
+                ->get(function (SupportCategory $cat) {
+                    return $cat->ticketType()->isAppeal();
+                }),
 
             Schema\Str::make('ticketType')
                 ->get(function (SupportCategory $cat) {
-                    return $cat->ticket_type ?: ($cat->is_appeal ? AppealTicketType::ID : StandardTicketType::ID);
+                    return $cat->ticket_type ?: StandardTicketType::ID;
                 })
                 ->writable()
-                ->nullable()
                 ->set(function (SupportCategory $cat, $value) {
-                    $cat->ticket_type = is_string($value) && trim($value) !== '' ? trim($value) : null;
+                    $cat->ticket_type = is_string($value) && trim($value) !== '' ? trim($value) : StandardTicketType::ID;
                 }),
 
             Schema\Arr::make('allowedGroupIds')

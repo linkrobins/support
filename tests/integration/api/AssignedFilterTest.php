@@ -47,7 +47,7 @@ class AssignedFilterTest extends TestCase
                 ['group_id' => 100, 'permission' => 'lr-support.handle_tickets'],
             ],
             'linkrobins_support_categories' => [
-                ['id' => 1, 'name' => 'General', 'slug' => 'general', 'is_appeal' => 0, 'position' => 0, 'created_at' => $now, 'updated_at' => $now],
+                ['id' => 1, 'name' => 'General', 'slug' => 'general', 'ticket_type' => 'standard', 'position' => 0, 'created_at' => $now, 'updated_at' => $now],
             ],
             'linkrobins_support_tickets' => [
                 ['id' => 1, 'category_id' => 1, 'user_id' => 2, 'assigned_staff_id' => 3, 'subject' => 'Mine to handle', 'status' => 'open', 'last_reply_at' => $now, 'created_at' => $now, 'updated_at' => $now],

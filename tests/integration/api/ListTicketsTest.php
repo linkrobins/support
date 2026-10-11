@@ -30,7 +30,7 @@ class ListTicketsTest extends TestCase
                 ['id' => 3, 'username' => 'other', 'email' => 'other@machine.local', 'is_email_confirmed' => 1, 'password' => 'too-obscure'],
             ],
             'linkrobins_support_categories' => [
-                ['id' => 1, 'name' => 'General', 'slug' => 'general', 'is_appeal' => 0, 'position' => 0, 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()],
+                ['id' => 1, 'name' => 'General', 'slug' => 'general', 'ticket_type' => 'standard', 'position' => 0, 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()],
             ],
             'linkrobins_support_tickets' => [
                 ['id' => 1, 'category_id' => 1, 'user_id' => 2, 'subject' => 'Mine', 'status' => 'open', 'last_reply_at' => Carbon::now(), 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()],

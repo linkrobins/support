@@ -48,7 +48,7 @@ class UnreadTest extends TestCase
                 ['group_id' => 100, 'permission' => 'lr-support.handle_tickets'],
             ],
             'linkrobins_support_categories' => [
-                ['id' => 1, 'name' => 'General', 'slug' => 'general', 'is_appeal' => 0, 'position' => 0, 'created_at' => $earlier, 'updated_at' => $earlier],
+                ['id' => 1, 'name' => 'General', 'slug' => 'general', 'ticket_type' => 'standard', 'position' => 0, 'created_at' => $earlier, 'updated_at' => $earlier],
             ],
             'linkrobins_support_tickets' => [
                 // 1: owner opened it, staff answered publicly.

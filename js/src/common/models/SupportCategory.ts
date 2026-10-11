@@ -19,7 +19,7 @@ export default class SupportCategory extends Model {
   ticketCount = Model.attribute<number>('ticketCount');
 
   getTicketTypeId(): string {
-    return this.ticketType() || (this.isAppeal() ? 'appeal' : 'standard');
+    return this.ticketType() || 'standard';
   }
 
   // The staff member new tickets here are assigned to, and the only person

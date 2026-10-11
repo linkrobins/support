@@ -46,7 +46,7 @@ class SearchTicketsTest extends TestCase
                 ['group_id' => 100, 'permission' => 'lr-support.handle_tickets'],
             ],
             'linkrobins_support_categories' => [
-                ['id' => 1, 'name' => 'General', 'slug' => 'general', 'is_appeal' => 0, 'position' => 0, 'created_at' => $now, 'updated_at' => $now],
+                ['id' => 1, 'name' => 'General', 'slug' => 'general', 'ticket_type' => 'standard', 'position' => 0, 'created_at' => $now, 'updated_at' => $now],
             ],
             'linkrobins_support_tickets' => [
                 ['id' => 1, 'category_id' => 1, 'user_id' => 2, 'subject' => 'Avatar Upload fails', 'status' => 'open', 'last_reply_at' => $now, 'created_at' => $now, 'updated_at' => $now],

@@ -29,7 +29,7 @@ class CreateTicketTest extends TestCase
                 $this->normalUser(), // id 2
             ],
             'linkrobins_support_categories' => [
-                ['id' => 1, 'name' => 'General', 'slug' => 'general', 'is_appeal' => 0, 'position' => 0, 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()],
+                ['id' => 1, 'name' => 'General', 'slug' => 'general', 'ticket_type' => 'standard', 'position' => 0, 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()],
             ],
         ]);
     }

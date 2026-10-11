@@ -53,7 +53,7 @@ class PriorityTest extends TestCase
                 ['group_id' => 100, 'permission' => 'lr-support.handle_tickets'],
             ],
             'linkrobins_support_categories' => [
-                ['id' => 1, 'name' => 'General', 'slug' => 'general', 'is_appeal' => 0, 'position' => 0, 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()],
+                ['id' => 1, 'name' => 'General', 'slug' => 'general', 'ticket_type' => 'standard', 'position' => 0, 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()],
             ],
             // Newest activity first by default: 1, 2, 3.
             'linkrobins_support_tickets' => [$t(1, 1), $t(2, 2), $t(3, 3)],

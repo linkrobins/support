@@ -58,8 +58,8 @@ class ConfirmSolvedTest extends TestCase
                 ['group_id' => 100, 'permission' => 'lr-support.handle_tickets'],
             ],
             'linkrobins_support_categories' => [
-                ['id' => 1, 'name' => 'General', 'slug' => 'general', 'is_appeal' => 0, 'position' => 0, 'created_at' => $now, 'updated_at' => $now],
-                ['id' => 2, 'name' => 'Appeals', 'slug' => 'appeals', 'is_appeal' => 1, 'position' => 1, 'created_at' => $now, 'updated_at' => $now],
+                ['id' => 1, 'name' => 'General', 'slug' => 'general', 'ticket_type' => 'standard', 'position' => 0, 'created_at' => $now, 'updated_at' => $now],
+                ['id' => 2, 'name' => 'Appeals', 'slug' => 'appeals', 'ticket_type' => 'appeal', 'position' => 1, 'created_at' => $now, 'updated_at' => $now],
             ],
             'linkrobins_support_tickets' => [
                 $t(1, 1, 'resolved'),

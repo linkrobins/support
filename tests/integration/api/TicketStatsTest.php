@@ -41,7 +41,7 @@ class TicketStatsTest extends TestCase
             'group_user' => [['user_id' => 3, 'group_id' => 100]],
             'group_permission' => [['group_id' => 100, 'permission' => 'lr-support.handle_tickets']],
             'linkrobins_support_categories' => [
-                ['id' => 1, 'name' => 'General', 'slug' => 'general', 'is_appeal' => 0, 'position' => 0, 'created_at' => $base, 'updated_at' => $base],
+                ['id' => 1, 'name' => 'General', 'slug' => 'general', 'ticket_type' => 'standard', 'position' => 0, 'created_at' => $base, 'updated_at' => $base],
             ],
             'linkrobins_support_tickets' => [
                 // Answered in 2h, resolved at 10h, then confirmed solved by the owner.

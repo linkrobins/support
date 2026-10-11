@@ -6,6 +6,7 @@ use Carbon\Carbon;
 use Flarum\Locale\TranslatorInterface;
 use Flarum\Settings\SettingsRepositoryInterface;
 use Flarum\User\User;
+use LinkRobins\Support\TicketType\TicketTypeManager;
 
 /**
  * Centralizes ticket-creation rate limits so the rules live in one place
@@ -178,12 +179,34 @@ class RateLimiter
     // so that soft-deleting a ticket can't refund the user's quota: otherwise
     // "file → get it soft-deleted → refile" would defeat the volume throttle.
 
+    /**
+     * @return list<string>
+     */
+    protected function appealTicketTypeIds(): array
+    {
+        try {
+            /** @var TicketTypeManager $manager */
+            $manager = resolve(TicketTypeManager::class);
+            $types = [];
+            foreach ($manager->all() as $id => $driver) {
+                if ($driver->isAppeal()) {
+                    $types[] = $id;
+                }
+            }
+            return ! empty($types) ? $types : ['appeal'];
+        } catch (\Throwable) {
+            return ['appeal'];
+        }
+    }
+
     protected function countOpenAppealsForUser(User $actor): int
     {
+        $appealTypes = $this->appealTicketTypeIds();
+
         return SupportTicket::query()
             ->where('user_id', $actor->id)
-            ->whereHas('category', function ($q) {
-                $q->where('is_appeal', true);
+            ->whereHas('category', function ($q) use ($appealTypes) {
+                $q->whereIn('ticket_type', $appealTypes);
             })
             ->whereIn('status', [
                 SupportTicket::STATUS_OPEN,
@@ -195,11 +218,13 @@ class RateLimiter
 
     protected function countAppealsForUserSince(User $actor, Carbon $since): int
     {
+        $appealTypes = $this->appealTicketTypeIds();
+
         return SupportTicket::query()
             ->withTrashed()
             ->where('user_id', $actor->id)
-            ->whereHas('category', function ($q) {
-                $q->where('is_appeal', true);
+            ->whereHas('category', function ($q) use ($appealTypes) {
+                $q->whereIn('ticket_type', $appealTypes);
             })
             ->where('created_at', '>=', $since)
             ->count();
@@ -207,11 +232,13 @@ class RateLimiter
 
     protected function countGeneralTicketsForUserSince(User $actor, Carbon $since): int
     {
+        $appealTypes = $this->appealTicketTypeIds();
+
         return SupportTicket::query()
             ->withTrashed()
             ->where('user_id', $actor->id)
-            ->whereHas('category', function ($q) {
-                $q->where('is_appeal', false);
+            ->whereHas('category', function ($q) use ($appealTypes) {
+                $q->whereNotIn('ticket_type', $appealTypes);
             })
             ->where('created_at', '>=', $since)
             ->count();

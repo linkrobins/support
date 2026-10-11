@@ -80,9 +80,9 @@ class CategoryDefaultAssigneeTest extends TestCase
                 ['group_id' => 100, 'permission' => 'lr-support.handle_tickets'],
             ],
             'linkrobins_support_categories' => [
-                ['id' => 1, 'name' => 'Unrouted', 'slug' => 'unrouted', 'is_appeal' => 0, 'position' => 0, 'default_assignee_id' => null, 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()],
-                ['id' => 2, 'name' => 'Routed', 'slug' => 'routed', 'is_appeal' => 0, 'position' => 1, 'default_assignee_id' => 4, 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()],
-                ['id' => 3, 'name' => 'Stale', 'slug' => 'stale', 'is_appeal' => 0, 'position' => 2, 'default_assignee_id' => 5, 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()],
+                ['id' => 1, 'name' => 'Unrouted', 'slug' => 'unrouted', 'ticket_type' => 'standard', 'position' => 0, 'default_assignee_id' => null, 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()],
+                ['id' => 2, 'name' => 'Routed', 'slug' => 'routed', 'ticket_type' => 'standard', 'position' => 1, 'default_assignee_id' => 4, 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()],
+                ['id' => 3, 'name' => 'Stale', 'slug' => 'stale', 'ticket_type' => 'standard', 'position' => 2, 'default_assignee_id' => 5, 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()],
             ],
         ]);
     }

@@ -10,8 +10,8 @@ forum-wide moderation actions (suspensions, bans) honest.
   ticket is visible only to that user and to staff. Other users never
   see it, even if they know the URL.
 - **Categories.** Admin-configurable, each with name, slug, color, icon,
-  position, and an `is_appeal` flag.
-- **Appeal flow.** Categories marked as appeals follow stricter rate
+  position, and a `ticket_type` driver (e.g. `standard`, `appeal`, or custom extensions).
+- **Appeal flow.** Categories using the appeal driver follow stricter rate
   limits and are filable by suspended users so they can plead their
   case. General categories are blocked for suspended users so a ban
   isn't trivially worked around.
@@ -183,7 +183,7 @@ Staff additionally see:
 Seven tables:
 
 - `linkrobins_support_categories` -- name, slug, description, color,
-  icon, position, is_appeal, ticket_type, default_assignee_id,
+  icon, position, ticket_type, default_assignee_id,
   allowed_group_ids.
 - `linkrobins_support_tickets` -- category_id, user_id,
   assigned_staff_id, subject, status, decision, priority,

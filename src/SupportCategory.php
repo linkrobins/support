@@ -8,7 +8,6 @@ use Flarum\User\User;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use LinkRobins\Support\Access\SupportAbilities;
-use LinkRobins\Support\TicketType\AppealTicketType;
 use LinkRobins\Support\TicketType\StandardTicketType;
 use LinkRobins\Support\TicketType\TicketTypeInterface;
 use LinkRobins\Support\TicketType\TicketTypeManager;
@@ -21,7 +20,6 @@ use LinkRobins\Support\TicketType\TicketTypeManager;
  * @property string|null $color
  * @property string|null $icon
  * @property int $position
- * @property bool $is_appeal
  * @property string|null $ticket_type
  * @property int|null $default_assignee_id
  * @property array<int>|null $allowed_group_ids
@@ -43,7 +41,6 @@ class SupportCategory extends AbstractModel
         'color',
         'icon',
         'position',
-        'is_appeal',
         'ticket_type',
         'default_assignee_id',
         'allowed_group_ids',
@@ -51,42 +48,16 @@ class SupportCategory extends AbstractModel
 
     protected $casts = [
         'position'  => 'integer',
-        'is_appeal' => 'boolean',
         'allowed_group_ids' => 'array',
     ];
 
-    public static function boot()
-    {
-        parent::boot();
-
-        static::saving(function (self $category) {
-            if ($category->ticket_type) {
-                // Keep legacy is_appeal column in sync with driver definition
-                try {
-                    /** @var TicketTypeManager $manager */
-                    $manager = resolve(TicketTypeManager::class);
-                    $type = $manager->get($category->ticket_type);
-                    $category->is_appeal = $type->isAppeal();
-                } catch (\Throwable) {
-                    // Ignore resolution errors during early boots or migrations
-                }
-            }
-        });
-    }
-
     /**
      * Resolve the ticket type driver for this category.
-     * Falls back to Appeal if is_appeal is true, or Standard otherwise.
+     * Defaults to Standard if not specified.
      */
     public function ticketType(): TicketTypeInterface
     {
-        $typeId = $this->ticket_type;
-
-        if (! $typeId) {
-            $typeId = $this->is_appeal
-                ? AppealTicketType::ID
-                : StandardTicketType::ID;
-        }
+        $typeId = $this->ticket_type ?: StandardTicketType::ID;
 
         try {
             /** @var TicketTypeManager $manager */
@@ -95,6 +66,14 @@ class SupportCategory extends AbstractModel
         } catch (\Throwable) {
             return new StandardTicketType();
         }
+    }
+
+    /**
+     * Check if this category's ticket type driver represents an appeal.
+     */
+    public function isAppeal(): bool
+    {
+        return $this->ticketType()->isAppeal();
     }
 
     public function tickets(): HasMany

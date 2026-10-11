@@ -6,10 +6,7 @@ use Flarum\Search\Database\DatabaseSearchState;
 use Flarum\Search\Filter\FilterInterface;
 use Flarum\Search\SearchState;
 use Flarum\Search\ValidateFilterTrait;
-use Illuminate\Database\Eloquent\Builder;
 use LinkRobins\Support\SupportCategory;
-use LinkRobins\Support\TicketType\AppealTicketType;
-use LinkRobins\Support\TicketType\StandardTicketType;
 
 /**
  * Filter support tickets by ticket type driver (e.g. 'standard', 'appeal', or custom).
@@ -36,17 +33,7 @@ class TicketTypeFilter implements FilterInterface
         }
 
         $categoryIds = SupportCategory::query()
-            ->where(function (Builder $sub) use ($types) {
-                $sub->whereIn('ticket_type', $types);
-
-                if (in_array(AppealTicketType::ID, $types, true)) {
-                    $sub->orWhere(fn (Builder $q) => $q->whereNull('ticket_type')->where('is_appeal', true));
-                }
-
-                if (in_array(StandardTicketType::ID, $types, true)) {
-                    $sub->orWhere(fn (Builder $q) => $q->whereNull('ticket_type')->where('is_appeal', false));
-                }
-            })
+            ->whereIn('ticket_type', $types)
             ->pluck('id')
             ->all();
 

@@ -26,7 +26,6 @@ export default class CategoryEditorModal extends FormModal {
   color = '#07adcc';
   icon = 'fas fa-folder';
   position = 0;
-  isAppeal = false;
   ticketType = 'standard';
   allowedGroupIds: string[] = [];
   // '' means nobody -- no auto-assign, all staff notified.
@@ -48,9 +47,7 @@ export default class CategoryEditorModal extends FormModal {
     this.color = (category && category.color()) || '#07adcc';
     this.icon = (category && category.icon()) || 'fas fa-folder';
     this.position = category && category.position() !== undefined ? category.position() : 0;
-    this.ticketType =
-      (category && category.ticketType && category.ticketType()) || (category && category.isAppeal && category.isAppeal() ? 'appeal' : 'standard');
-    this.isAppeal = !!(category && category.isAppeal());
+    this.ticketType = (category && category.ticketType && category.ticketType()) || 'standard';
     const allowed = category && category.attribute('allowedGroupIds');
     this.allowedGroupIds = Array.isArray(allowed) ? allowed.map(String) : [];
     const assignee = category && category.defaultAssignee && category.defaultAssignee();
@@ -216,8 +213,6 @@ export default class CategoryEditorModal extends FormModal {
           options: this._ticketTypeOptions(),
           onchange: (value: string) => {
             this.ticketType = value;
-            const chosen = this._allTicketTypes().find((t: any) => t.id === value);
-            this.isAppeal = chosen ? !!chosen.isAppeal : value === 'appeal';
           },
         }),
         m('div', { className: 'helpText' }, tx('linkrobins-support.admin.category_editor.field_ticket_type_help')),
@@ -418,7 +413,6 @@ export default class CategoryEditorModal extends FormModal {
       color: this.color,
       icon: this.icon,
       position: this.position,
-      isAppeal: this.isAppeal,
       ticketType: this.ticketType,
       allowedGroupIds: this.allowedGroupIds.length ? this.allowedGroupIds.map(Number) : null,
     };

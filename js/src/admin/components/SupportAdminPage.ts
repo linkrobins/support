@@ -203,9 +203,7 @@ export default class SupportAdminPage extends ExtensionPage {
   }
 
   _typeLabel(category: any) {
-    const typeId = category.getTicketTypeId
-      ? category.getTicketTypeId()
-      : (category.ticketType && category.ticketType()) || (category.isAppeal && category.isAppeal() ? 'appeal' : 'standard');
+    const typeId = category.getTicketTypeId ? category.getTicketTypeId() : (category.ticketType && category.ticketType()) || 'standard';
     const types = (app.forum && app.forum.attribute('supportTicketTypes')) || [];
     const matched = types.find((t: any) => t.id === typeId);
     if (matched && matched.name) {

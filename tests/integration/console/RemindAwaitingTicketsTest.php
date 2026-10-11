@@ -39,7 +39,7 @@ class RemindAwaitingTicketsTest extends ConsoleTestCase
         $this->prepareDatabase([
             'users' => [$this->normalUser()],
             'linkrobins_support_categories' => [
-                ['id' => 1, 'name' => 'General', 'slug' => 'general', 'is_appeal' => 0, 'position' => 0, 'created_at' => $old, 'updated_at' => $old],
+                ['id' => 1, 'name' => 'General', 'slug' => 'general', 'ticket_type' => 'standard', 'position' => 0, 'created_at' => $old, 'updated_at' => $old],
             ],
             'linkrobins_support_tickets' => [
                 $t(1, 'awaiting_user', $old, $old),            // quiet 5 days: remind
