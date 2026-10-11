@@ -141,6 +141,10 @@ class SupportCategory extends AbstractModel
      */
     public function canCreate(User $actor): bool
     {
+        if ($actor->isGuest()) {
+            return false;
+        }
+
         if (! $this->ticketType()->canCreate($actor, $this)) {
             return false;
         }

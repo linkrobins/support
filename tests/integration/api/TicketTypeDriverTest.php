@@ -557,6 +557,18 @@ class TicketTypeDriverTest extends TestCase
             $this->database()->table('linkrobins_support_tickets')->where('id', $ticketId)->value('status')
         );
     }
+
+    #[Test]
+    public function guests_cannot_create_tickets_in_any_category(): void
+    {
+        $response = $this->send(
+            $this->request('GET', '/api/linkrobins-support-categories/1')
+        );
+
+        $this->assertEquals(200, $response->getStatusCode());
+        $body = json_decode((string) $response->getBody(), true);
+        $this->assertFalse($body['data']['attributes']['canCreate']);
+    }
 }
 
 class CustomTestTicketType extends AbstractTicketType
