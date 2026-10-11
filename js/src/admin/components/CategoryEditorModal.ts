@@ -49,8 +49,7 @@ export default class CategoryEditorModal extends FormModal {
     this.icon = (category && category.icon()) || 'fas fa-folder';
     this.position = category && category.position() !== undefined ? category.position() : 0;
     this.ticketType =
-      (category && category.ticketType && category.ticketType()) ||
-      (category && category.isAppeal && category.isAppeal() ? 'appeal' : 'standard');
+      (category && category.ticketType && category.ticketType()) || (category && category.isAppeal && category.isAppeal() ? 'appeal' : 'standard');
     this.isAppeal = !!(category && category.isAppeal());
     const allowed = category && category.attribute('allowedGroupIds');
     this.allowedGroupIds = Array.isArray(allowed) ? allowed.map(String) : [];

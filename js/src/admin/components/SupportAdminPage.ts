@@ -214,9 +214,7 @@ export default class SupportAdminPage extends ExtensionPage {
     return m(
       'span',
       { className: 'badge' },
-      typeId === 'appeal'
-        ? tx('linkrobins-support.admin.categories.appeal_badge')
-        : tx('linkrobins-support.admin.categories.general_badge')
+      typeId === 'appeal' ? tx('linkrobins-support.admin.categories.appeal_badge') : tx('linkrobins-support.admin.categories.general_badge')
     );
   }
 

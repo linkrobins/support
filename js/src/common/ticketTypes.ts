@@ -49,4 +49,3 @@ ticketTypes.register({
 });
 
 export default ticketTypes;
-
