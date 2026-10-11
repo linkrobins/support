@@ -10,6 +10,8 @@ import { canCreateSupportTicket, canHandleSupportTickets } from '../utils/permis
 import { statusChip, priorityChip, FILTER_OPTIONS, filterLabel, emptyLabel } from '../utils/status';
 import { loadTickets } from '../utils/api';
 import { onLive } from '../utils/live';
+import ItemList from 'flarum/common/utils/ItemList';
+import { ticketTypes } from '../../common/ticketTypes';
 
 const PAGE_SIZE = 25;
 
@@ -282,6 +284,21 @@ export default class SupportIndexPage extends Page {
     );
   }
 
+  badgeItems(ticket: any): ItemList<any> {
+    const items = new ItemList<any>();
+    const cat = ticket.category && ticket.category();
+    if (cat) {
+      const typeId = cat.getTicketTypeId
+        ? cat.getTicketTypeId()
+        : (cat.ticketType && cat.ticketType()) || (cat.isAppeal && cat.isAppeal() ? 'appeal' : 'standard');
+      const driver = ticketTypes.get(typeId);
+      if (driver && driver.badgeItems) {
+        driver.badgeItems(items, ticket);
+      }
+    }
+    return items;
+  }
+
   _renderRow(ticket: any) {
     const user = ticket.user && ticket.user();
     const cat = ticket.category && ticket.category();
@@ -325,6 +342,7 @@ export default class SupportIndexPage extends Page {
         ]),
         m('div', { className: 'LinkRobinsSupport-row-side' }, [
           canHandleSupportTickets() ? priorityChip(ticket.priority && ticket.priority()) : null,
+          this.badgeItems(ticket).toArray(),
           statusChip(ticket.status()),
           this._renderAssignee(ticket),
         ]),

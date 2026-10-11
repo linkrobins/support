@@ -10,6 +10,9 @@ export interface TicketTypeClientDriver {
   metaItems?(items: ItemList<any>, ticket: any): void;
   actionItems?(items: ItemList<any>, ticket: any): void;
   decisionItems?(items: ItemList<any>, ticket: any): void;
+  badgeItems?(items: ItemList<any>, ticket: any): void;
+  categoryFields?(items: ItemList<any>, modal: any): void;
+  categorySubmitData?(data: Record<string, any>, modal: any): void;
 }
 
 export class TicketTypeRegistry {
@@ -44,3 +47,6 @@ ticketTypes.register({
   id: 'appeal',
   name: () => app.translator.trans('linkrobins-support.admin.ticket_types.appeal'),
 });
+
+export default ticketTypes;
+
