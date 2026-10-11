@@ -305,8 +305,9 @@ Supported filters (use `filter[name]=value` shape; Flarum 2 rejects
 unrecognized top-level params):
 
 - On tickets: `filter[q]=...` (search), `filter[mine]=1`,
-  `filter[status]=open`, `filter[categoryId]=N`, `filter[assigned]=me`
-  or `filter[assigned]=none`
+  `filter[status]=open`, `filter[categoryId]=N`,
+  `filter[ticketType]=standard|appeal|<custom>`,
+  `filter[assigned]=me` or `filter[assigned]=none`
 - On replies: `filter[ticketId]=N`
 - On history: `filter[ticketId]=N`
 
@@ -420,6 +421,11 @@ class VerificationTicketType extends AbstractTicketType
             $ticket->user->groups()->syncWithoutDetaching([/* verified group ID */]);
         }
     }
+
+    public function onStatusChanged(SupportTicket $ticket, string $newStatus, ?string $oldStatus, ?User $actor): void
+    {
+        // Status transition workflows (e.g. sync with Jira, CRM, or external webhook)
+    }
 }
 ```
 
@@ -468,6 +474,27 @@ app.initializers.add('vendor-example-support', () => {
       // Add custom panels or cards above the ticket replies
       contentItems(items, ticket) {
         items.add('id-badge', m('div.VerificationBadge', 'ID Verification Pending'));
+      },
+
+      // Display custom badges or chips in the ticket list/queue row
+      badgeItems(items, ticket) {
+        items.add('id-chip', m('span.LinkRobinsSupport-chip', 'Verified ID'));
+      },
+
+      // Add custom category settings to the admin CategoryEditorModal
+      categoryFields(items, modal) {
+        items.add('target-group', m('.Form-group', [
+          m('label', 'Target User Group'),
+          m('input.FormControl', {
+            value: modal.targetGroup,
+            oninput: (e: any) => { modal.targetGroup = e.target.value; },
+          }),
+        ]));
+      },
+
+      // Append custom category settings to the save payload
+      categorySubmitData(data, modal) {
+        data.targetGroup = modal.targetGroup;
       },
     });
   }
