@@ -106,6 +106,8 @@ class SupportCategory extends AbstractModel
      * The staff member new tickets in this category are handed to. Null means
      * no auto-assign: tickets arrive unassigned and every staff member is
      * notified about them.
+     *
+     * @return BelongsTo<User, $this>
      */
     public function defaultAssignee(): BelongsTo
     {
@@ -131,7 +133,7 @@ class SupportCategory extends AbstractModel
 
         $user = $this->defaultAssignee;
 
-        return $user && SupportAbilities::isStaff($user) ? $user : null;
+        return ($user instanceof User && SupportAbilities::isStaff($user)) ? $user : null;
     }
 
     /**
@@ -160,9 +162,7 @@ class SupportCategory extends AbstractModel
 
             if (! empty($allowed)) {
                 $userGroupIds = array_map('intval', $actor->groups->pluck('id')->all());
-                if (! $actor->isGuest()) {
-                    $userGroupIds[] = Group::MEMBER_ID;
-                }
+                $userGroupIds[] = Group::MEMBER_ID;
                 $allowedInts = array_map('intval', $allowed);
                 if (empty(array_intersect($userGroupIds, $allowedInts))) {
                     return false;

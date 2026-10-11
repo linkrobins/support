@@ -329,7 +329,7 @@ class TicketTypeDriverTest extends TestCase
 
         $this->assertEquals(403, $createResponse->getStatusCode());
         $this->assertStringContainsString(
-            'Your account is not permitted to create tickets in this category.',
+            'category_not_permitted',
             (string) $createResponse->getBody()
         );
     }
@@ -364,7 +364,7 @@ class TicketTypeDriverTest extends TestCase
 
         $this->assertEquals(403, $forbiddenResponse->getStatusCode());
         $this->assertStringContainsString(
-            'Your account is not permitted to create tickets in this category.',
+            'category_not_permitted',
             (string) $forbiddenResponse->getBody()
         );
 
@@ -449,9 +449,9 @@ class TicketTypeDriverTest extends TestCase
 
         // Filter by custom_type
         $customResponse = $this->send(
-            $this->request('GET', '/api/linkrobins-support-tickets?filter[ticketType]=custom_type', [
+            $this->request('GET', '/api/linkrobins-support-tickets', [
                 'authenticatedAs' => 2,
-            ])
+            ])->withQueryParams(['filter' => ['ticketType' => 'custom_type']])
         );
         $this->assertEquals(200, $customResponse->getStatusCode());
         $customBody = json_decode((string) $customResponse->getBody(), true);
@@ -462,9 +462,9 @@ class TicketTypeDriverTest extends TestCase
 
         // Filter by appeal
         $appealResponse = $this->send(
-            $this->request('GET', '/api/linkrobins-support-tickets?filter[ticketType]=appeal', [
+            $this->request('GET', '/api/linkrobins-support-tickets', [
                 'authenticatedAs' => 2,
-            ])
+            ])->withQueryParams(['filter' => ['ticketType' => 'appeal']])
         );
         $this->assertEquals(200, $appealResponse->getStatusCode());
         $appealBody = json_decode((string) $appealResponse->getBody(), true);
@@ -475,9 +475,9 @@ class TicketTypeDriverTest extends TestCase
 
         // Filter by standard
         $standardResponse = $this->send(
-            $this->request('GET', '/api/linkrobins-support-tickets?filter[ticketType]=standard', [
+            $this->request('GET', '/api/linkrobins-support-tickets', [
                 'authenticatedAs' => 2,
-            ])
+            ])->withQueryParams(['filter' => ['ticketType' => 'standard']])
         );
         $this->assertEquals(200, $standardResponse->getStatusCode());
         $standardBody = json_decode((string) $standardResponse->getBody(), true);
