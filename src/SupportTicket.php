@@ -207,7 +207,7 @@ class SupportTicket extends AbstractModel
 
     public function isAppeal(): bool
     {
-        return $this->category && $this->category->is_appeal;
+        return $this->category && $this->category->ticketType()->isAppeal();
     }
 
     public function isOpen(): bool
