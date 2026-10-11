@@ -14,6 +14,8 @@ use Flarum\Testing\integration\RetrievesAuthorizedUsers;
 use Flarum\Testing\integration\TestCase;
 use Flarum\User\User;
 use LinkRobins\Support\Extend\TicketType as TicketTypeExtend;
+use LinkRobins\Support\RateLimiter;
+use LinkRobins\Support\SupportCategory;
 use LinkRobins\Support\SupportTicket;
 use LinkRobins\Support\TicketType\AbstractTicketType;
 use PHPUnit\Framework\Attributes\Test;
@@ -278,6 +280,53 @@ class TicketTypeDriverTest extends TestCase
         $this->assertEquals(200, $patchResponse->getStatusCode());
         $this->assertEquals('accepted', CustomTestTicketType::$decidedTo);
     }
+
+    #[Test]
+    public function custom_ticket_type_can_create_controls_category_attribute_and_rejection(): void
+    {
+        CustomTestTicketType::resetState();
+        CustomTestTicketType::$allowCreate = false;
+
+        $showResponse = $this->send(
+            $this->request('GET', '/api/linkrobins-support-categories/3', [
+                'authenticatedAs' => 2,
+            ])
+        );
+
+        $this->assertEquals(200, $showResponse->getStatusCode());
+        $showData = json_decode((string) $showResponse->getBody(), true);
+        $this->assertFalse($showData['data']['attributes']['canCreate']);
+
+        $createResponse = $this->send(
+            $this->request('POST', '/api/linkrobins-support-tickets', [
+                'authenticatedAs' => 2,
+                'json' => $this->ticketBody(['subject' => 'Disallowed', 'firstPost' => 'Should fail.'], categoryId: 3),
+            ])
+        );
+
+        $this->assertEquals(403, $createResponse->getStatusCode());
+        $this->assertStringContainsString(
+            'Your account is not permitted to create tickets in this category.',
+            (string) $createResponse->getBody()
+        );
+    }
+
+    #[Test]
+    public function custom_ticket_type_can_define_custom_rate_limit(): void
+    {
+        CustomTestTicketType::resetState();
+        CustomTestTicketType::$rateLimitExceeded = true;
+
+        $response = $this->send(
+            $this->request('POST', '/api/linkrobins-support-tickets', [
+                'authenticatedAs' => 2,
+                'json' => $this->ticketBody(['subject' => 'Rate limit', 'firstPost' => 'Custom limiter.'], categoryId: 3),
+            ])
+        );
+
+        $this->assertEquals(403, $response->getStatusCode());
+        $this->assertStringContainsString('Custom rate limit exceeded', (string) $response->getBody());
+    }
 }
 
 class CustomTestTicketType extends AbstractTicketType
@@ -286,12 +335,16 @@ class CustomTestTicketType extends AbstractTicketType
     public static bool $onCreatingCalled = false;
     public static bool $onCreatedCalled = false;
     public static ?string $decidedTo = null;
+    public static bool $allowCreate = true;
+    public static bool $rateLimitExceeded = false;
 
     public static function resetState(): void
     {
         self::$onCreatingCalled = false;
         self::$onCreatedCalled = false;
         self::$decidedTo = null;
+        self::$allowCreate = true;
+        self::$rateLimitExceeded = false;
     }
 
     public function id(): string
@@ -302,6 +355,20 @@ class CustomTestTicketType extends AbstractTicketType
     public function name(): string
     {
         return 'Custom Ticket Type';
+    }
+
+    public function canCreate(User $actor, SupportCategory $category): bool
+    {
+        return self::$allowCreate;
+    }
+
+    public function checkRateLimit(User $actor, SupportCategory $category, RateLimiter $limiter): ?array
+    {
+        if (self::$rateLimitExceeded) {
+            return $limiter->fail('custom_limit', [], 'Custom rate limit exceeded');
+        }
+
+        return null;
     }
 
     public function initialDecision(SupportTicket $ticket): ?string
