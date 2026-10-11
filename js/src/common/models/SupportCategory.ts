@@ -16,6 +16,7 @@ export default class SupportCategory extends Model {
   ticketType = Model.attribute<string | null>('ticketType');
   allowedGroupIds = Model.attribute<number[] | null>('allowedGroupIds');
   canCreate = Model.attribute<boolean>('canCreate');
+  allowedDecisions = Model.attribute<string[] | null>('allowedDecisions');
   ticketCount = Model.attribute<number>('ticketCount');
 
   getTicketTypeId(): string {

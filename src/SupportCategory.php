@@ -57,15 +57,13 @@ class SupportCategory extends AbstractModel
      */
     public function ticketType(): TicketTypeInterface
     {
-        $typeId = $this->ticket_type ?: StandardTicketType::ID;
+        /** @var TicketTypeManager $manager */
+        $manager = resolve(TicketTypeManager::class);
 
-        try {
-            /** @var TicketTypeManager $manager */
-            $manager = resolve(TicketTypeManager::class);
-            return $manager->get($typeId);
-        } catch (\Throwable) {
-            return new StandardTicketType();
-        }
+        // An unregistered id (say its extension was disabled) falls back to
+        // standard inside the manager. A driver that fails to build is a bug
+        // and must surface, not quietly turn appeals into standard tickets.
+        return $manager->get($this->ticket_type ?: StandardTicketType::ID);
     }
 
     /**
@@ -135,17 +133,11 @@ class SupportCategory extends AbstractModel
                 return true;
             }
 
-            $allowed = is_array($this->allowed_group_ids)
-                ? $this->allowed_group_ids
-                : json_decode($this->allowed_group_ids, true);
-
-            if (! empty($allowed)) {
-                $userGroupIds = array_map('intval', $actor->groups->pluck('id')->all());
-                $userGroupIds[] = Group::MEMBER_ID;
-                $allowedInts = array_map('intval', $allowed);
-                if (empty(array_intersect($userGroupIds, $allowedInts))) {
-                    return false;
-                }
+            $userGroupIds = array_map('intval', $actor->groups->pluck('id')->all());
+            $userGroupIds[] = Group::MEMBER_ID;
+            $allowedInts = array_map('intval', $this->allowed_group_ids);
+            if (empty(array_intersect($userGroupIds, $allowedInts))) {
+                return false;
             }
         }
 

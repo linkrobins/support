@@ -2,7 +2,10 @@ import SupportCategory from './common/models/SupportCategory';
 import SupportSavedReply from './common/models/SupportSavedReply';
 import SupportAdminPage from './admin/components/SupportAdminPage';
 import { tx } from './admin/utils';
-export { ticketTypes, TicketTypeRegistry, TicketTypeClientDriver } from './common/ticketTypes';
+import { ticketTypes, TicketTypeRegistry } from './common/ticketTypes';
+import type { TicketTypeClientDriver } from './common/ticketTypes';
+export { ticketTypes, TicketTypeRegistry };
+export type { TicketTypeClientDriver };
 
 app.initializers.add('linkrobins-support', () => {
   (app as any).support = { ticketTypes };

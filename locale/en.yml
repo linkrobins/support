@@ -371,6 +371,7 @@ linkrobins-support:
   # used backend-side, so they live outside the forum/admin namespaces.
   api:
     category_not_permitted: 'Your account is not permitted to create tickets in this category.'
+    unknown_ticket_type: 'That ticket type is not available. Pick one from the list.'
     assign_staff_only: 'Tickets can only be assigned to support staff.'
     default_assignee_staff_only: 'A category can only be assigned to support staff.'
     category_required: 'A category is required.'

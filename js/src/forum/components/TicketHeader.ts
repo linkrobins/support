@@ -36,7 +36,7 @@ export default class TicketHeader extends Component {
         ? m('div', { className: 'LinkRobinsSupport-decision' }, [
             tr('show.decision', 'Decision:'),
             ' ',
-            isStaff && !isDeleted
+            isStaff && !isDeleted && this.decisionItems(ticket).toArray().length
               ? this.decisionControl(ticket)
               : m('span', { className: 'LinkRobinsSupport-decision-' + ticket.decision() }, decisionLabel(ticket.decision())),
           ])
@@ -148,7 +148,14 @@ export default class TicketHeader extends Component {
     const current = ticket.decision();
     const items = new ItemList();
 
-    DECISIONS.forEach((d) => {
+    // Offer only what the server accepts for this category's ticket type,
+    // or a pick would be silently dropped. Older payloads without the
+    // attribute fall back to the built-in list.
+    const category = ticket && ticket.category && ticket.category();
+    const allowed = category && category.allowedDecisions ? category.allowedDecisions() : null;
+    const decisions: string[] = Array.isArray(allowed) ? allowed : DECISIONS;
+
+    decisions.forEach((d) => {
       items.add(
         d,
         m(
@@ -163,7 +170,6 @@ export default class TicketHeader extends Component {
       );
     });
 
-    const category = ticket && ticket.category && ticket.category();
     if (category) {
       const typeId = category.getTicketTypeId ? category.getTicketTypeId() : 'standard';
       const driver = ticketTypes.get(typeId);

@@ -26,7 +26,10 @@ import {
 import { tr } from './forum/utils/translate';
 import { installRealtime } from './forum/utils/live';
 import { basePath, BASE_PATH, showNavInSidebar, showNavInAccountMenu, readForumAttribute, showError } from './forum/utils/helpers';
-export { ticketTypes, TicketTypeRegistry, TicketTypeClientDriver } from './common/ticketTypes';
+import { ticketTypes, TicketTypeRegistry } from './common/ticketTypes';
+import type { TicketTypeClientDriver } from './common/ticketTypes';
+export { ticketTypes, TicketTypeRegistry };
+export type { TicketTypeClientDriver };
 
 app.initializers.add('linkrobins-support', () => {
   (app as any).support = { ticketTypes };

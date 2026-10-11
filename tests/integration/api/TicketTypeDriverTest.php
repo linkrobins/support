@@ -577,6 +577,68 @@ class TicketTypeDriverTest extends TestCase
 
         $this->assertSame($first, $second);
     }
+
+    /**
+     * @param array<string, mixed> $attributes
+     */
+    private function patchCategory(int $id, array $attributes): \Psr\Http\Message\ResponseInterface
+    {
+        return $this->send(
+            $this->request('PATCH', '/api/linkrobins-support-categories/'.$id, [
+                'authenticatedAs' => 1,
+                'json' => ['data' => ['attributes' => $attributes]],
+            ])
+        );
+    }
+
+    #[Test]
+    public function unregistered_ticket_type_is_rejected(): void
+    {
+        $response = $this->patchCategory(1, ['ticketType' => 'apeal']);
+
+        $this->assertEquals(400, $response->getStatusCode(), (string) $response->getBody());
+        $this->assertEquals('standard', $this->database()->table('linkrobins_support_categories')->where('id', 1)->value('ticket_type'));
+    }
+
+    #[Test]
+    public function registered_custom_ticket_type_can_be_assigned(): void
+    {
+        $response = $this->patchCategory(1, ['ticketType' => CustomTestTicketType::ID]);
+
+        $this->assertEquals(200, $response->getStatusCode(), (string) $response->getBody());
+        $this->assertEquals(CustomTestTicketType::ID, $this->database()->table('linkrobins_support_categories')->where('id', 1)->value('ticket_type'));
+    }
+
+    #[Test]
+    public function legacy_is_appeal_write_maps_to_ticket_type(): void
+    {
+        $response = $this->patchCategory(1, ['isAppeal' => true]);
+        $this->assertEquals(200, $response->getStatusCode(), (string) $response->getBody());
+        $this->assertEquals('appeal', $this->database()->table('linkrobins_support_categories')->where('id', 1)->value('ticket_type'));
+
+        $response = $this->patchCategory(1, ['isAppeal' => false]);
+        $this->assertEquals(200, $response->getStatusCode(), (string) $response->getBody());
+        $this->assertEquals('standard', $this->database()->table('linkrobins_support_categories')->where('id', 1)->value('ticket_type'));
+    }
+
+    #[Test]
+    public function explicit_ticket_type_wins_over_legacy_is_appeal(): void
+    {
+        $response = $this->patchCategory(1, ['isAppeal' => true, 'ticketType' => CustomTestTicketType::ID]);
+
+        $this->assertEquals(200, $response->getStatusCode(), (string) $response->getBody());
+        $this->assertEquals(CustomTestTicketType::ID, $this->database()->table('linkrobins_support_categories')->where('id', 1)->value('ticket_type'));
+    }
+
+    #[Test]
+    public function category_exposes_the_decisions_its_ticket_type_accepts(): void
+    {
+        $standard = json_decode((string) $this->send($this->request('GET', '/api/linkrobins-support-categories/1', ['authenticatedAs' => 3]))->getBody(), true);
+        $appeal = json_decode((string) $this->send($this->request('GET', '/api/linkrobins-support-categories/2', ['authenticatedAs' => 3]))->getBody(), true);
+
+        $this->assertSame([], $standard['data']['attributes']['allowedDecisions']);
+        $this->assertSame(SupportTicket::ALL_DECISIONS, $appeal['data']['attributes']['allowedDecisions']);
+    }
 }
 
 class CustomTestTicketType extends AbstractTicketType
