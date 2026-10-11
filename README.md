@@ -183,7 +183,8 @@ Staff additionally see:
 Seven tables:
 
 - `linkrobins_support_categories` -- name, slug, description, color,
-  icon, position, is_appeal.
+  icon, position, is_appeal, ticket_type, default_assignee_id,
+  allowed_group_ids.
 - `linkrobins_support_tickets` -- category_id, user_id,
   assigned_staff_id, subject, status, decision, priority,
   last_reply_at, status_changed_at, reminded_at, deleted_at.
@@ -207,6 +208,13 @@ trait. The rendered HTML is computed at serialize time via
 `formatContent()`, NOT cached in a `content_html` column -- this means
 formatter extensions like mentions and emoji apply to older replies the
 moment they're installed.
+
+## Category Access Control
+
+Admins can configure **Allowed User Groups** on individual categories in the Admin Panel:
+- **No groups selected (default/empty)**: Open to all registered users eligible under the category's ticket type driver (e.g. Standard allows active users; Ban Appeal allows suspended users who are not appeal-banned).
+- **Specific groups selected**: Only users belonging to at least one of the selected groups (or Administrators) can create tickets in the category. Categories the actor is not eligible for are automatically filtered out of the ticket creation picker.
+- **Full backward compatibility**: All existing categories default to unrestricted. Users who already have appeal tickets can continue viewing, tracking, and replying to their tickets without disruption.
 
 ## File attachments (fof/upload integration)
 
