@@ -81,6 +81,28 @@ class TicketTypeDriverTest extends TestCase
                     'created_at' => Carbon::now(),
                     'updated_at' => Carbon::now(),
                 ],
+                [
+                    'id' => 4,
+                    'name' => 'Restricted Group',
+                    'slug' => 'restricted-group',
+                    'is_appeal' => 0,
+                    'ticket_type' => 'standard',
+                    'allowed_group_ids' => json_encode([100]),
+                    'position' => 3,
+                    'created_at' => Carbon::now(),
+                    'updated_at' => Carbon::now(),
+                ],
+                [
+                    'id' => 5,
+                    'name' => 'Members Only',
+                    'slug' => 'members-only',
+                    'is_appeal' => 0,
+                    'ticket_type' => 'standard',
+                    'allowed_group_ids' => json_encode([3]),
+                    'position' => 4,
+                    'created_at' => Carbon::now(),
+                    'updated_at' => Carbon::now(),
+                ],
             ],
         ]);
     }
@@ -326,6 +348,72 @@ class TicketTypeDriverTest extends TestCase
 
         $this->assertEquals(403, $response->getStatusCode());
         $this->assertStringContainsString('Custom rate limit exceeded', (string) $response->getBody());
+    }
+
+    #[Test]
+    public function category_with_allowed_group_ids_restricts_creation_to_group_members(): void
+    {
+        // User 2 (not in group 100) should be rejected with 403
+        $forbiddenResponse = $this->send(
+            $this->request('POST', '/api/linkrobins-support-tickets', [
+                'authenticatedAs' => 2,
+                'json' => $this->ticketBody(['subject' => 'Restricted Group', 'firstPost' => 'Should fail.'], categoryId: 4),
+            ])
+        );
+
+        $this->assertEquals(403, $forbiddenResponse->getStatusCode());
+        $this->assertStringContainsString(
+            'Your account is not permitted to create tickets in this category.',
+            (string) $forbiddenResponse->getBody()
+        );
+
+        // User 3 (in group 100) should succeed
+        $allowedResponse = $this->send(
+            $this->request('POST', '/api/linkrobins-support-tickets', [
+                'authenticatedAs' => 3,
+                'json' => $this->ticketBody(['subject' => 'Staff in Group', 'firstPost' => 'Should succeed.'], categoryId: 4),
+            ])
+        );
+
+        $this->assertEquals(201, $allowedResponse->getStatusCode());
+
+        // Admin (User 1) bypasses group restriction
+        $adminResponse = $this->send(
+            $this->request('POST', '/api/linkrobins-support-tickets', [
+                'authenticatedAs' => 1,
+                'json' => $this->ticketBody(['subject' => 'Admin bypass', 'firstPost' => 'Admin always allowed.'], categoryId: 4),
+            ])
+        );
+
+        $this->assertEquals(201, $adminResponse->getStatusCode());
+    }
+
+    #[Test]
+    public function category_with_null_allowed_group_ids_allows_all_eligible_users(): void
+    {
+        // Category 1 has allowed_group_ids = null (default), normal user 2 can create
+        $response = $this->send(
+            $this->request('POST', '/api/linkrobins-support-tickets', [
+                'authenticatedAs' => 2,
+                'json' => $this->ticketBody(['subject' => 'No restrictions', 'firstPost' => 'Standard category.'], categoryId: 1),
+            ])
+        );
+
+        $this->assertEquals(201, $response->getStatusCode());
+    }
+
+    #[Test]
+    public function category_with_member_group_allows_authenticated_users(): void
+    {
+        // Category 5 allows group 3 (Members). Normal authenticated user 2 should pass.
+        $response = $this->send(
+            $this->request('POST', '/api/linkrobins-support-tickets', [
+                'authenticatedAs' => 2,
+                'json' => $this->ticketBody(['subject' => 'Member group', 'firstPost' => 'Member ticket.'], categoryId: 5),
+            ])
+        );
+
+        $this->assertEquals(201, $response->getStatusCode());
     }
 }
 
