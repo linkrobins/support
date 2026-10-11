@@ -415,6 +415,148 @@ class TicketTypeDriverTest extends TestCase
 
         $this->assertEquals(201, $response->getStatusCode());
     }
+
+    #[Test]
+    public function ticket_search_supports_filter_ticket_type(): void
+    {
+        $ticketStandardId = $this->database()->table('linkrobins_support_tickets')->insertGetId([
+            'category_id' => 1,
+            'user_id' => 2,
+            'subject' => 'Standard Ticket',
+            'status' => SupportTicket::STATUS_OPEN,
+            'created_at' => Carbon::now(),
+            'updated_at' => Carbon::now(),
+        ]);
+
+        $ticketAppealId = $this->database()->table('linkrobins_support_tickets')->insertGetId([
+            'category_id' => 2,
+            'user_id' => 2,
+            'subject' => 'Appeal Ticket',
+            'status' => SupportTicket::STATUS_OPEN,
+            'created_at' => Carbon::now(),
+            'updated_at' => Carbon::now(),
+        ]);
+
+        $ticketCustomId = $this->database()->table('linkrobins_support_tickets')->insertGetId([
+            'category_id' => 3,
+            'user_id' => 2,
+            'subject' => 'Custom Ticket',
+            'status' => SupportTicket::STATUS_OPEN,
+            'created_at' => Carbon::now(),
+            'updated_at' => Carbon::now(),
+        ]);
+
+        // Filter by custom_type
+        $customResponse = $this->send(
+            $this->request('GET', '/api/linkrobins-support-tickets?filter[ticketType]=custom_type', [
+                'authenticatedAs' => 2,
+            ])
+        );
+        $this->assertEquals(200, $customResponse->getStatusCode());
+        $customBody = json_decode((string) $customResponse->getBody(), true);
+        $customIds = array_column($customBody['data'], 'id');
+        $this->assertContains((string) $ticketCustomId, $customIds);
+        $this->assertNotContains((string) $ticketStandardId, $customIds);
+        $this->assertNotContains((string) $ticketAppealId, $customIds);
+
+        // Filter by appeal
+        $appealResponse = $this->send(
+            $this->request('GET', '/api/linkrobins-support-tickets?filter[ticketType]=appeal', [
+                'authenticatedAs' => 2,
+            ])
+        );
+        $this->assertEquals(200, $appealResponse->getStatusCode());
+        $appealBody = json_decode((string) $appealResponse->getBody(), true);
+        $appealIds = array_column($appealBody['data'], 'id');
+        $this->assertContains((string) $ticketAppealId, $appealIds);
+        $this->assertNotContains((string) $ticketStandardId, $appealIds);
+        $this->assertNotContains((string) $ticketCustomId, $appealIds);
+
+        // Filter by standard
+        $standardResponse = $this->send(
+            $this->request('GET', '/api/linkrobins-support-tickets?filter[ticketType]=standard', [
+                'authenticatedAs' => 2,
+            ])
+        );
+        $this->assertEquals(200, $standardResponse->getStatusCode());
+        $standardBody = json_decode((string) $standardResponse->getBody(), true);
+        $standardIds = array_column($standardBody['data'], 'id');
+        $this->assertContains((string) $ticketStandardId, $standardIds);
+        $this->assertNotContains((string) $ticketAppealId, $standardIds);
+        $this->assertNotContains((string) $ticketCustomId, $standardIds);
+    }
+
+    #[Test]
+    public function on_status_changed_hook_is_called_when_ticket_status_changes(): void
+    {
+        CustomTestTicketType::resetState();
+
+        $ticketId = $this->database()->table('linkrobins_support_tickets')->insertGetId([
+            'category_id' => 3,
+            'user_id' => 2,
+            'subject' => 'Status Hook Ticket',
+            'status' => SupportTicket::STATUS_OPEN,
+            'created_at' => Carbon::now(),
+            'updated_at' => Carbon::now(),
+        ]);
+
+        $response = $this->send(
+            $this->request('PATCH', "/api/linkrobins-support-tickets/$ticketId", [
+                'authenticatedAs' => 3,
+                'json' => [
+                    'data' => [
+                        'type' => 'linkrobins-support-tickets',
+                        'id' => (string) $ticketId,
+                        'attributes' => [
+                            'status' => SupportTicket::STATUS_IN_PROGRESS,
+                        ],
+                    ],
+                ],
+            ])
+        );
+
+        $this->assertEquals(200, $response->getStatusCode());
+        $this->assertEquals(SupportTicket::STATUS_IN_PROGRESS, CustomTestTicketType::$statusChangedTo);
+        $this->assertEquals(SupportTicket::STATUS_OPEN, CustomTestTicketType::$statusChangedFrom);
+    }
+
+    #[Test]
+    public function driver_exception_in_on_status_changed_hook_does_not_break_request(): void
+    {
+        CustomTestTicketType::resetState();
+        CustomTestTicketType::$throwOnStatusChange = true;
+
+        $ticketId = $this->database()->table('linkrobins_support_tickets')->insertGetId([
+            'category_id' => 3,
+            'user_id' => 2,
+            'subject' => 'Failing Hook Ticket',
+            'status' => SupportTicket::STATUS_OPEN,
+            'created_at' => Carbon::now(),
+            'updated_at' => Carbon::now(),
+        ]);
+
+        $response = $this->send(
+            $this->request('PATCH', "/api/linkrobins-support-tickets/$ticketId", [
+                'authenticatedAs' => 3,
+                'json' => [
+                    'data' => [
+                        'type' => 'linkrobins-support-tickets',
+                        'id' => (string) $ticketId,
+                        'attributes' => [
+                            'status' => SupportTicket::STATUS_IN_PROGRESS,
+                        ],
+                    ],
+                ],
+            ])
+        );
+
+        // Status change succeeds despite third-party hook throwing an exception
+        $this->assertEquals(200, $response->getStatusCode());
+        $this->assertEquals(
+            SupportTicket::STATUS_IN_PROGRESS,
+            $this->database()->table('linkrobins_support_tickets')->where('id', $ticketId)->value('status')
+        );
+    }
 }
 
 class CustomTestTicketType extends AbstractTicketType
@@ -425,6 +567,9 @@ class CustomTestTicketType extends AbstractTicketType
     public static ?string $decidedTo = null;
     public static bool $allowCreate = true;
     public static bool $rateLimitExceeded = false;
+    public static ?string $statusChangedTo = null;
+    public static ?string $statusChangedFrom = null;
+    public static bool $throwOnStatusChange = false;
 
     public static function resetState(): void
     {
@@ -433,6 +578,9 @@ class CustomTestTicketType extends AbstractTicketType
         self::$decidedTo = null;
         self::$allowCreate = true;
         self::$rateLimitExceeded = false;
+        self::$statusChangedTo = null;
+        self::$statusChangedFrom = null;
+        self::$throwOnStatusChange = false;
     }
 
     public function id(): string
@@ -491,5 +639,15 @@ class CustomTestTicketType extends AbstractTicketType
     public function onDecided(SupportTicket $ticket, string $newDecision, ?string $oldDecision, ?User $actor): void
     {
         self::$decidedTo = $newDecision;
+    }
+
+    public function onStatusChanged(SupportTicket $ticket, string $newStatus, ?string $oldStatus, ?User $actor): void
+    {
+        if (self::$throwOnStatusChange) {
+            throw new \RuntimeException('Simulated third-party driver hook failure');
+        }
+
+        self::$statusChangedTo = $newStatus;
+        self::$statusChangedFrom = $oldStatus;
     }
 }
