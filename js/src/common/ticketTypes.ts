@@ -4,6 +4,7 @@ export interface TicketTypeClientDriver {
   id: string;
   fields?(items: ItemList<any>, context: any): void;
   submitData?(data: Record<string, any>, context: any): void;
+  validate?(data: Record<string, any>, context: any): string | boolean | void;
   contentItems?(items: ItemList<any>, ticket: any): void;
   metaItems?(items: ItemList<any>, ticket: any): void;
   actionItems?(items: ItemList<any>, ticket: any): void;

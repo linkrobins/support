@@ -493,12 +493,24 @@ export default class SupportComposePage extends Page {
       return;
     }
 
+    const data = this.submitData(content);
+
+    if (category) {
+      const typeId = category.getTicketTypeId ? category.getTicketTypeId() : 'standard';
+      const driver = ticketTypes.get(typeId);
+      if (driver && driver.validate) {
+        const error = driver.validate(data, this);
+        if (error) {
+          showError(typeof error === 'string' ? error : tr('compose.validation_failed', 'Validation failed. Please check your input.'));
+          return;
+        }
+      }
+    }
+
     this.saving = true;
     this.error = null;
     if (body) body.loading = true;
     m.redraw();
-
-    const data = this.submitData(content);
 
     createTicket(data)
       .then((ticket: any) => {
