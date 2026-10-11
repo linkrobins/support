@@ -30,6 +30,9 @@ use LinkRobins\Support\SupportTicket;
 return [
     (new Extend\Frontend('forum'))
         ->js(__DIR__ . '/js/dist/forum.js')
+        // The pages' lazily loaded chunks. Without this they are never
+        // published and every support route 404s back to the home page.
+        ->jsDirectory(__DIR__ . '/js/dist/forum')
         ->css(__DIR__ . '/less/forum.less')
         ->route('/support',                       'linkrobins-support.index')
         ->route('/support/new',                   'linkrobins-support.compose')
