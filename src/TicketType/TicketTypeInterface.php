@@ -66,4 +66,9 @@ interface TicketTypeInterface
      * @param array<string, mixed> $data Raw request data from client
      */
     public function onCreated(SupportTicket $ticket, array $data, User $actor): void;
+
+    /**
+     * Hook when a ticket decision is updated by staff (e.g. accepted, rejected).
+     */
+    public function onDecided(SupportTicket $ticket, string $newDecision, ?string $oldDecision, ?User $actor): void;
 }

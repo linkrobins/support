@@ -217,7 +217,14 @@ class SupportServiceProvider extends AbstractServiceProvider
         }
 
         if (array_key_exists('decision', $changes) && $ticket->getOriginal('decision') !== $changes['decision']) {
-            $events[] = new TicketDecided($ticket, $actor, $ticket->getOriginal('decision'), $changes['decision']);
+            $oldDecision = $ticket->getOriginal('decision');
+            $newDecision = (string) $changes['decision'];
+            $events[] = new TicketDecided($ticket, $actor, $oldDecision, $newDecision);
+
+            $category = $ticket->category ?: SupportCategory::query()->find((int) $ticket->category_id);
+            if ($category) {
+                static::afterCommit(fn () => $category->ticketType()->onDecided($ticket, $newDecision, $oldDecision, $actor));
+            }
         }
 
         if (array_key_exists('assigned_staff_id', $changes)) {

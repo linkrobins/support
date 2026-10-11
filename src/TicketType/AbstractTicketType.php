@@ -52,4 +52,8 @@ abstract class AbstractTicketType implements TicketTypeInterface
     public function onCreated(SupportTicket $ticket, array $data, User $actor): void
     {
     }
+
+    public function onDecided(SupportTicket $ticket, string $newDecision, ?string $oldDecision, ?User $actor): void
+    {
+    }
 }
