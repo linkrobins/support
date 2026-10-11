@@ -341,6 +341,7 @@ Create a driver extending `LinkRobins\Support\TicketType\AbstractTicketType`:
 namespace Vendor\Example\TicketType;
 
 use Flarum\User\User;
+use LinkRobins\Support\RateLimiter;
 use LinkRobins\Support\SupportCategory;
 use LinkRobins\Support\SupportTicket;
 use LinkRobins\Support\TicketType\AbstractTicketType;
@@ -366,8 +367,14 @@ class VerificationTicketType extends AbstractTicketType
 
     public function canCreate(User $actor, SupportCategory $category): bool
     {
-        // Custom eligibility check (e.g. require email confirmation)
+        // Custom eligibility check (e.g. require email confirmation or user group)
         return $actor->is_email_confirmed;
+    }
+
+    public function checkRateLimit(User $actor, SupportCategory $category, RateLimiter $limiter): ?array
+    {
+        // Optional custom rate limiting (return null to use default general quotas)
+        return null;
     }
 
     public function initialDecision(SupportTicket $ticket): ?string
