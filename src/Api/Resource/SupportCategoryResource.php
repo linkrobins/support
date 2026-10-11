@@ -156,9 +156,22 @@ class SupportCategoryResource extends AbstractDatabaseResource
                     $cat->ticket_type = is_string($value) && trim($value) !== '' ? trim($value) : null;
                 }),
 
+            Schema\Arr::make('allowedGroupIds')
+                ->property('allowed_group_ids')
+                ->writable()
+                ->nullable()
+                ->set(function (SupportCategory $cat, $value) {
+                    if (is_array($value)) {
+                        $ids = array_values(array_filter(array_map('intval', $value), fn ($id) => $id > 0));
+                        $cat->allowed_group_ids = empty($ids) ? null : $ids;
+                    } else {
+                        $cat->allowed_group_ids = null;
+                    }
+                }),
+
             Schema\Boolean::make('canCreate')
                 ->get(function (SupportCategory $cat, FlarumContext $context) {
-                    return $cat->ticketType()->canCreate($context->getActor(), $cat);
+                    return $cat->canCreate($context->getActor());
                 }),
 
             Schema\Integer::make('ticketCount')

@@ -494,8 +494,8 @@ class SupportTicketResource extends AbstractDatabaseResource
             throw new ForbiddenException($this->rateLimiter->describe($rate));
         }
 
-        // Eligibility check via category ticket type.
-        if (! $category->ticketType()->canCreate($actor, $category)) {
+        // Eligibility check via category.
+        if (! $category->canCreate($actor)) {
             throw new ForbiddenException(
                 $this->translator->trans('linkrobins-support.api.category_not_permitted')
             );

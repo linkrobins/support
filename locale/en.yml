@@ -51,6 +51,8 @@ linkrobins-support:
       field_default_assignee_loading: 'Loading staff...'
       field_default_assignee_unavailable: '{name} (no longer support staff)'
       field_default_assignee_error: "Couldn't load the list of staff. The current setting is unchanged."
+      field_allowed_groups: 'Allowed user groups'
+      field_allowed_groups_help: 'Leave empty to allow all registered users permitted by the ticket type. Select specific groups to restrict who can create tickets in this category.'
       submit_create: 'Create category'
       submit_update: 'Save changes'
       error_load: "Couldn't load this category."

@@ -26,6 +26,7 @@ export default class CategoryEditorModal extends FormModal {
   position = 0;
   isAppeal = false;
   ticketType = 'standard';
+  allowedGroupIds: string[] = [];
   // '' means nobody -- no auto-assign, all staff notified.
   defaultAssigneeId = '';
   staff: any[] = [];
@@ -49,6 +50,8 @@ export default class CategoryEditorModal extends FormModal {
       (category && category.ticketType && category.ticketType()) ||
       (category && category.isAppeal && category.isAppeal() ? 'appeal' : 'standard');
     this.isAppeal = !!(category && category.isAppeal());
+    const allowed = category && category.attribute('allowedGroupIds');
+    this.allowedGroupIds = Array.isArray(allowed) ? allowed.map(String) : [];
     const assignee = category && category.defaultAssignee && category.defaultAssignee();
     this.defaultAssigneeId = assignee ? String(assignee.id()) : '';
     this.saving = false;
@@ -207,6 +210,39 @@ export default class CategoryEditorModal extends FormModal {
           : m('div', { className: 'helpText' }, tx('linkrobins-support.admin.category_editor.field_default_assignee_help')),
       ]),
 
+      m('div', { className: 'Form-group' }, [
+        m('label', null, tx('linkrobins-support.admin.category_editor.field_allowed_groups')),
+        m('div', { className: 'helpText' }, tx('linkrobins-support.admin.category_editor.field_allowed_groups_help')),
+        m(
+          'div',
+          { className: 'LinkRobinsSupport-groupCheckboxes' },
+          ((app.store && app.store.all('groups')) || [])
+            .filter((g: any) => g.id() !== '2') // Exclude Guest group
+            .map((group: any) => {
+              const id = String(group.id());
+              const checked = this.allowedGroupIds.includes(id);
+              return m('label.checkbox', [
+                m('input', {
+                  type: 'checkbox',
+                  checked,
+                  disabled: this.saving,
+                  onchange: (e: any) => {
+                    if (e.target.checked) {
+                      if (!this.allowedGroupIds.includes(id)) {
+                        this.allowedGroupIds.push(id);
+                      }
+                    } else {
+                      this.allowedGroupIds = this.allowedGroupIds.filter((gid) => gid !== id);
+                    }
+                  },
+                }),
+                ' ',
+                group.namePlural() || group.nameSingular() || id,
+              ]);
+            })
+        ),
+      ]),
+
       m('div', { className: 'Form-group Form-controls' }, [
         m(
           Button,
@@ -333,6 +369,7 @@ export default class CategoryEditorModal extends FormModal {
       position: this.position,
       isAppeal: this.isAppeal,
       ticketType: this.ticketType,
+      allowedGroupIds: this.allowedGroupIds.length ? this.allowedGroupIds.map(Number) : null,
     };
     if (this.slug && this.slug.trim()) {
       attrs.slug = this.slug.trim();

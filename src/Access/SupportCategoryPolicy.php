@@ -15,7 +15,7 @@ class SupportCategoryPolicy extends AbstractPolicy
 
     public function createTicket(User $actor, SupportCategory $category): bool
     {
-        return $category->ticketType()->canCreate($actor, $category);
+        return $category->canCreate($actor);
     }
 
     // No per-model edit()/delete() abilities: every category-mutating

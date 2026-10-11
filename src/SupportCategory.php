@@ -3,6 +3,7 @@
 namespace LinkRobins\Support;
 
 use Flarum\Database\AbstractModel;
+use Flarum\Group\Group;
 use Flarum\User\User;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -23,6 +24,7 @@ use LinkRobins\Support\TicketType\TicketTypeManager;
  * @property bool $is_appeal
  * @property string|null $ticket_type
  * @property int|null $default_assignee_id
+ * @property array<int>|null $allowed_group_ids
  * @property \Carbon\Carbon|null $created_at
  * @property \Carbon\Carbon|null $updated_at
  * @property-read User|null $defaultAssignee
@@ -44,11 +46,13 @@ class SupportCategory extends AbstractModel
         'is_appeal',
         'ticket_type',
         'default_assignee_id',
+        'allowed_group_ids',
     ];
 
     protected $casts = [
         'position'  => 'integer',
         'is_appeal' => 'boolean',
+        'allowed_group_ids' => 'array',
     ];
 
     public static function boot()
@@ -128,5 +132,40 @@ class SupportCategory extends AbstractModel
         $user = $this->defaultAssignee;
 
         return $user && SupportAbilities::isStaff($user) ? $user : null;
+    }
+
+    /**
+     * Determine if a user may create a ticket in this category.
+     * Combines the ticket type driver's eligibility check with
+     * any admin-configured allowed user groups.
+     */
+    public function canCreate(User $actor): bool
+    {
+        if (! $this->ticketType()->canCreate($actor, $this)) {
+            return false;
+        }
+
+        if (! empty($this->allowed_group_ids)) {
+            if ($actor->isAdmin()) {
+                return true;
+            }
+
+            $allowed = is_array($this->allowed_group_ids)
+                ? $this->allowed_group_ids
+                : json_decode($this->allowed_group_ids, true);
+
+            if (! empty($allowed)) {
+                $userGroupIds = array_map('intval', $actor->groups->pluck('id')->all());
+                if (! $actor->isGuest()) {
+                    $userGroupIds[] = Group::MEMBER_ID;
+                }
+                $allowedInts = array_map('intval', $allowed);
+                if (empty(array_intersect($userGroupIds, $allowedInts))) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 }
