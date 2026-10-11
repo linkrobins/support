@@ -51,6 +51,12 @@ class SupportTicket extends AbstractModel
     public ?int $eventActorId = null;
 
     /**
+     * The User model instance of who is making the change, if available.
+     * Reused during model event hooks to avoid querying the users table.
+     */
+    public ?User $eventActor = null;
+
+    /**
      * Set when the forum, not a person, is moving the status: a reply's
      * status rules or the auto-close command. Not a column. The timeline
      * words those changes as automatic.

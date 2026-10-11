@@ -332,6 +332,7 @@ class SupportReplyResource extends AbstractDatabaseResource
         }
 
         $model->ticket_id = $ticket->id;
+        $model->setRelation('ticket', $ticket);
 
         // Belt-and-suspenders: if is_internal_note=true was set above but
         // the actor isn't staff, force it false. The setter already does

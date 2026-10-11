@@ -469,6 +469,7 @@ class SupportTicketResource extends AbstractDatabaseResource
         // user, regardless of what JSON it sends.
         if (! $actor->isGuest()) {
             $model->user_id = $actor->id;
+            $model->setRelation('user', $actor);
         }
 
         // Resolve the requested category. JSON:API gives it to us via the
@@ -478,9 +479,10 @@ class SupportTicketResource extends AbstractDatabaseResource
         $categoryRel = data_get($body, 'data.relationships.category.data.id');
         $category = null;
         if (is_numeric($categoryRel)) {
-            $category = SupportCategory::query()->find((int) $categoryRel);
+            $category = SupportCategory::query()->with('defaultAssignee.groups')->find((int) $categoryRel);
             if ($category) {
                 $model->category_id = $category->id;
+                $model->setRelation('category', $category);
             }
         }
         if (! $category) {
@@ -513,6 +515,7 @@ class SupportTicketResource extends AbstractDatabaseResource
         // steer the radius.
         if ($assignee = $category->effectiveDefaultAssignee()) {
             $model->assigned_staff_id = $assignee->id;
+            $model->setRelation('assignedStaff', $assignee);
         }
 
         // Initial status and decision from the ticket type driver.
@@ -555,7 +558,9 @@ class SupportTicketResource extends AbstractDatabaseResource
             // committed count.
             User::query()->whereKey($actor->id)->lockForUpdate()->first();
 
-            $category = SupportCategory::query()->find((int) $model->category_id);
+            $category = $model->relationLoaded('category') && $model->category
+                ? $model->category
+                : SupportCategory::query()->find((int) $model->category_id);
             if ($category) {
                 $rate = $this->rateLimiter->check($actor, $category);
                 if (! $rate['ok']) {
@@ -639,6 +644,7 @@ class SupportTicketResource extends AbstractDatabaseResource
 
         // Credit status and assignment changes in the ticket timeline to the
         // person making this request (see SupportEvent::recordChanges).
+        $model->eventActor = $actor->isGuest() ? null : $actor;
         $model->eventActorId = $actor->isGuest() ? null : (int) $actor->id;
 
         $this->before[(int) $model->id] = [

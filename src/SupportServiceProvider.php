@@ -94,6 +94,7 @@ class SupportServiceProvider extends AbstractServiceProvider
 
                 // The reply's author is who moved the status or claimed the
                 // ticket, as far as the ticket timeline is concerned.
+                $ticket->eventActor = $reply->relationLoaded('user') ? $reply->user : null;
                 $ticket->eventActorId = $reply->user_id ? (int) $reply->user_id : null;
                 // Any status move here comes from the rules above, not a
                 // choice the author made, so the timeline says it happened
@@ -168,7 +169,16 @@ class SupportServiceProvider extends AbstractServiceProvider
             }
 
             try {
-                $actor = $ticket->eventActorId ? User::query()->find($ticket->eventActorId) : null;
+                $actor = $ticket->eventActor;
+                if (! $actor && $ticket->eventActorId) {
+                    if ($ticket->relationLoaded('user') && $ticket->user && (int) $ticket->user->id === (int) $ticket->eventActorId) {
+                        $actor = $ticket->user;
+                    } elseif ($ticket->relationLoaded('assignedStaff') && $ticket->assignedStaff && (int) $ticket->assignedStaff->id === (int) $ticket->eventActorId) {
+                        $actor = $ticket->assignedStaff;
+                    } else {
+                        $actor = User::query()->find($ticket->eventActorId);
+                    }
+                }
 
                 foreach (static::lifecycleEvents($ticket, $actor, $log) as $event) {
                     static::afterCommit(fn () => $events->dispatch($event));
@@ -255,7 +265,15 @@ class SupportServiceProvider extends AbstractServiceProvider
             if ($from !== $to) {
                 // The actor is usually one of the two (claiming, or handing
                 // over); reuse it rather than look them up again.
-                $user = fn (?int $id) => $id === null ? null : ($actor && (int) $actor->id === $id ? $actor : User::query()->find($id));
+                $user = fn (?int $id) => $id === null ? null : (
+                    $actor && (int) $actor->id === $id
+                        ? $actor
+                        : ($ticket->relationLoaded('user') && $ticket->user && (int) $ticket->user->id === $id
+                            ? $ticket->user
+                            : ($ticket->relationLoaded('assignedStaff') && $ticket->assignedStaff && (int) $ticket->assignedStaff->id === $id
+                                ? $ticket->assignedStaff
+                                : User::query()->find($id)))
+                );
                 $events[] = new TicketAssigned($ticket, $actor, $user($to), $user($from));
             }
         }
