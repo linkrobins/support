@@ -12,6 +12,11 @@ class TicketTypeManager
      */
     protected array $drivers = [];
 
+    /**
+     * @var array<string, TicketTypeInterface>
+     */
+    protected array $resolved = [];
+
     public function __construct(
         protected Container $container
     ) {
@@ -26,6 +31,7 @@ class TicketTypeManager
     public function register(string $id, string|TicketTypeInterface $driver): void
     {
         $this->drivers[$id] = $driver;
+        unset($this->resolved[$id]);
     }
 
     /**
@@ -33,15 +39,19 @@ class TicketTypeManager
      */
     public function get(string $id): TicketTypeInterface
     {
+        if (isset($this->resolved[$id])) {
+            return $this->resolved[$id];
+        }
+
         if (! isset($this->drivers[$id])) {
             // Fallback to standard if unknown
             if (isset($this->drivers[StandardTicketType::ID])) {
-                return $this->resolve($this->drivers[StandardTicketType::ID]);
+                return $this->resolved[StandardTicketType::ID] ??= $this->resolve($this->drivers[StandardTicketType::ID]);
             }
-            return $this->container->make(StandardTicketType::class);
+            return $this->resolved[StandardTicketType::ID] ??= $this->resolve(StandardTicketType::class);
         }
 
-        return $this->resolve($this->drivers[$id]);
+        return $this->resolved[$id] = $this->resolve($this->drivers[$id]);
     }
 
     /**
@@ -61,7 +71,7 @@ class TicketTypeManager
     {
         $resolved = [];
         foreach ($this->drivers as $id => $driver) {
-            $resolved[$id] = $this->resolve($driver);
+            $resolved[$id] = $this->get($id);
         }
         return $resolved;
     }

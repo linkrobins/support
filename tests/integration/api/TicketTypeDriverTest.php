@@ -18,6 +18,7 @@ use LinkRobins\Support\RateLimiter;
 use LinkRobins\Support\SupportCategory;
 use LinkRobins\Support\SupportTicket;
 use LinkRobins\Support\TicketType\AbstractTicketType;
+use LinkRobins\Support\TicketType\TicketTypeManager;
 use PHPUnit\Framework\Attributes\Test;
 use Tobyz\JsonApiServer\Exception\BadRequestException;
 
@@ -568,6 +569,18 @@ class TicketTypeDriverTest extends TestCase
         $this->assertEquals(200, $response->getStatusCode());
         $body = json_decode((string) $response->getBody(), true);
         $this->assertFalse($body['data']['attributes']['canCreate']);
+    }
+
+    #[Test]
+    public function ticket_type_manager_memoizes_driver_instances(): void
+    {
+        /** @var TicketTypeManager $manager */
+        $manager = $this->app()->getContainer()->make(TicketTypeManager::class);
+
+        $first = $manager->get(CustomTestTicketType::ID);
+        $second = $manager->get(CustomTestTicketType::ID);
+
+        $this->assertSame($first, $second);
     }
 }
 
