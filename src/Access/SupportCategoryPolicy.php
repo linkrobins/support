@@ -13,6 +13,11 @@ class SupportCategoryPolicy extends AbstractPolicy
         return true;
     }
 
+    public function createTicket(User $actor, SupportCategory $category): bool
+    {
+        return $category->ticketType()->canCreate($actor, $category);
+    }
+
     // No per-model edit()/delete() abilities: every category-mutating
     // endpoint (Create/Update/Delete in SupportCategoryResource) gates on
     // the global `manageCategories` ability, so model-scoped checks here

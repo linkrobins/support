@@ -50,10 +50,8 @@ export default class SupportComposePage extends Page {
     loadCategories()
       .then((cats: any[]) => {
         let list = cats || [];
-        // Banned users only see appeal categories.
-        if (isUserSuspended()) {
-          list = list.filter((c: any) => c.isAppeal() === true);
-        }
+        // Only show categories the current user is eligible to create tickets in
+        list = list.filter((c: any) => !c.canCreate || c.canCreate() !== false);
         this.categories = list;
         // Only auto-select when there's a single category, so the picker (with
         // descriptions) is shown whenever there's a real choice to make.
@@ -312,10 +310,18 @@ export default class SupportComposePage extends Page {
       m(
         'h1',
         { className: 'LinkRobinsSupport-title' },
-        isUserSuspended() ? tr('compose.title_appeal', 'File an appeal') : tr('compose.title', 'New support ticket')
+        this._isAppealOnly() ? tr('compose.title_appeal', 'File an appeal') : tr('compose.title', 'New support ticket')
       ),
       this._renderChosenCategory(),
     ]);
+  }
+
+  _isAppealOnly(): boolean {
+    const chosen = this._chosenCategory();
+    if (chosen) {
+      return !!(chosen.isAppeal && chosen.isAppeal());
+    }
+    return this.categories.length > 0 && this.categories.every((c: any) => !!(c.isAppeal && c.isAppeal()));
   }
 
   // Open the docked composer to write the ticket. A single native "Submit
@@ -348,7 +354,7 @@ export default class SupportComposePage extends Page {
 
   // Step 1: clickable category cards (icon + name + description).
   _renderPicker() {
-    const appeal = isUserSuspended();
+    const appeal = this._isAppealOnly();
     return m('div', { className: 'LinkRobinsSupport-container' }, [
       m('header', { className: 'LinkRobinsSupport-header LinkRobinsSupport-header--picker' }, [
         m(

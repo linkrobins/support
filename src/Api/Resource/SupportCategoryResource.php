@@ -156,6 +156,11 @@ class SupportCategoryResource extends AbstractDatabaseResource
                     $cat->ticket_type = is_string($value) && trim($value) !== '' ? trim($value) : null;
                 }),
 
+            Schema\Boolean::make('canCreate')
+                ->get(function (SupportCategory $cat, FlarumContext $context) {
+                    return $cat->ticketType()->canCreate($context->getActor(), $cat);
+                }),
+
             Schema\Integer::make('ticketCount')
                 ->get(fn (SupportCategory $cat) => (int) ($cat->tickets_count ?? $cat->tickets()->count())),
 
