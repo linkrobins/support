@@ -170,7 +170,7 @@ class SupportServiceProvider extends AbstractServiceProvider
             try {
                 $actor = $ticket->eventActorId ? User::query()->find($ticket->eventActorId) : null;
 
-                foreach (static::lifecycleEvents($ticket, $actor) as $event) {
+                foreach (static::lifecycleEvents($ticket, $actor, $log) as $event) {
                     static::afterCommit(fn () => $events->dispatch($event));
                 }
 
@@ -203,7 +203,7 @@ class SupportServiceProvider extends AbstractServiceProvider
      *
      * @return list<object>
      */
-    protected static function lifecycleEvents(SupportTicket $ticket, ?User $actor): array
+    protected static function lifecycleEvents(SupportTicket $ticket, ?User $actor, LoggerInterface $log): array
     {
         if ($ticket->savingOpeningMessage) {
             return [];
@@ -213,7 +213,20 @@ class SupportServiceProvider extends AbstractServiceProvider
         $events = [];
 
         if (array_key_exists('status', $changes) && $ticket->getOriginal('status') !== $changes['status']) {
-            $events[] = new TicketStatusChanged($ticket, $actor, $ticket->getOriginal('status'), (string) $changes['status']);
+            $oldStatus = $ticket->getOriginal('status');
+            $newStatus = (string) $changes['status'];
+            $events[] = new TicketStatusChanged($ticket, $actor, $oldStatus, $newStatus);
+
+            $category = $ticket->category ?: SupportCategory::query()->find((int) $ticket->category_id);
+            if ($category) {
+                static::afterCommit(function () use ($category, $ticket, $newStatus, $oldStatus, $actor, $log) {
+                    try {
+                        $category->ticketType()->onStatusChanged($ticket, $newStatus, $oldStatus, $actor);
+                    } catch (\Throwable $e) {
+                        $log->error('[linkrobins/support] ticket type onStatusChanged failed', ['exception' => $e]);
+                    }
+                });
+            }
         }
 
         if (array_key_exists('decision', $changes) && $ticket->getOriginal('decision') !== $changes['decision']) {
@@ -223,7 +236,13 @@ class SupportServiceProvider extends AbstractServiceProvider
 
             $category = $ticket->category ?: SupportCategory::query()->find((int) $ticket->category_id);
             if ($category) {
-                static::afterCommit(fn () => $category->ticketType()->onDecided($ticket, $newDecision, $oldDecision, $actor));
+                static::afterCommit(function () use ($category, $ticket, $newDecision, $oldDecision, $actor, $log) {
+                    try {
+                        $category->ticketType()->onDecided($ticket, $newDecision, $oldDecision, $actor);
+                    } catch (\Throwable $e) {
+                        $log->error('[linkrobins/support] ticket type onDecided failed', ['exception' => $e]);
+                    }
+                });
             }
         }
 

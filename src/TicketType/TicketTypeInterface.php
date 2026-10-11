@@ -79,4 +79,9 @@ interface TicketTypeInterface
      * Hook when a ticket decision is updated by staff (e.g. accepted, rejected).
      */
     public function onDecided(SupportTicket $ticket, string $newDecision, ?string $oldDecision, ?User $actor): void;
+
+    /**
+     * Hook when a ticket status changes (e.g. open -> in_progress, resolved -> closed).
+     */
+    public function onStatusChanged(SupportTicket $ticket, string $newStatus, ?string $oldStatus, ?User $actor): void;
 }
