@@ -252,7 +252,7 @@ linkrobins-support:
       update_assignment: 'Could not update assignment.'
       update_priority: 'Could not update the priority.'
       update_status: 'Could not update status.'
-      update_decision: 'Could not update the appeal decision.'
+      update_decision: 'Could not update the decision.'
       save_edit: 'Could not save the edit.'
       delete_reply: 'Could not delete the reply.'
       restore_reply: 'Could not restore the reply.'
@@ -297,7 +297,7 @@ linkrobins-support:
       rejected: 'Rejected'
     staff:
       change_status: 'Change status'
-      change_decision: 'Change appeal decision'
+      change_decision: 'Change decision'
     reply:
       deleted_notice: 'This reply was deleted.'
       mod_actions: 'Moderation actions'
@@ -368,6 +368,7 @@ linkrobins-support:
   # Server-resolved messages (API error details + rate-limit reasons). Only
   # used backend-side, so they live outside the forum/admin namespaces.
   api:
+    category_not_permitted: 'Your account is not permitted to create tickets in this category.'
     assign_staff_only: 'Tickets can only be assigned to support staff.'
     default_assignee_staff_only: 'A category can only be assigned to support staff.'
     category_required: 'A category is required.'

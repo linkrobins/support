@@ -588,7 +588,7 @@ export default class SupportShowPage extends Page {
       .catch((err: any) => {
         this.updating = false;
         console.error('[linkrobins/support] decision update failed:', err);
-        showError(tr('errors.update_decision', 'Could not update the appeal decision.'));
+        showError(tr('errors.update_decision', 'Could not update the decision.'));
         m.redraw();
       });
   }

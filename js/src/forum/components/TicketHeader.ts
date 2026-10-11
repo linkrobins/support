@@ -137,7 +137,7 @@ export default class TicketHeader extends Component {
         buttonClassName: 'Button Button--text LinkRobinsSupport-decisionToggle LinkRobinsSupport-decision-' + current,
         label: decisionLabel(current),
         caretIcon: 'fas fa-caret-down',
-        accessibleToggleLabel: trText('staff.change_decision', 'Change appeal decision'),
+        accessibleToggleLabel: trText('staff.change_decision', 'Change decision'),
       },
       items.toArray()
     );
