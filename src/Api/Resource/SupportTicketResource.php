@@ -523,6 +523,10 @@ class SupportTicketResource extends AbstractDatabaseResource
         // correctly on the activity-sorted list.
         $model->last_reply_at = Carbon::now();
 
+        $rawBody = (array) $context->request->getParsedBody();
+        $data = (array) ($rawBody['data'] ?? []);
+        $category->ticketType()->onCreating($model, $data, $actor);
+
         return $model;
     }
 
@@ -568,6 +572,12 @@ class SupportTicketResource extends AbstractDatabaseResource
             // fix. Creating it here, in the same transaction, means a failed
             // body rolls the whole thing back -- no body-less tickets.
             $this->createFirstReply($ticket, $context);
+
+            $rawBody = (array) $context->request->getParsedBody();
+            $data = (array) ($rawBody['data'] ?? []);
+            if ($category) {
+                $category->ticketType()->onCreated($ticket, $data, $actor);
+            }
 
             return $ticket;
         });

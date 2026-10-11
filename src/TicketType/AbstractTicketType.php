@@ -44,4 +44,12 @@ abstract class AbstractTicketType implements TicketTypeInterface
     {
         return false;
     }
+
+    public function onCreating(SupportTicket $ticket, array $data, User $actor): void
+    {
+    }
+
+    public function onCreated(SupportTicket $ticket, array $data, User $actor): void
+    {
+    }
 }

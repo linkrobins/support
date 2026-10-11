@@ -52,4 +52,18 @@ interface TicketTypeInterface
      * Whether this ticket type behaves as a ban appeal (subject to appeal rate limits).
      */
     public function isAppeal(): bool;
+
+    /**
+     * Hook before ticket is persisted. Validate custom attributes or attach metadata.
+     *
+     * @param array<string, mixed> $data Raw request data from client
+     */
+    public function onCreating(SupportTicket $ticket, array $data, User $actor): void;
+
+    /**
+     * Hook after ticket and first post are saved to database.
+     *
+     * @param array<string, mixed> $data Raw request data from client
+     */
+    public function onCreated(SupportTicket $ticket, array $data, User $actor): void;
 }
