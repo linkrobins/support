@@ -3,6 +3,7 @@
 namespace LinkRobins\Support\TicketType;
 
 use Flarum\User\User;
+use LinkRobins\Support\RateLimiter;
 use LinkRobins\Support\SupportCategory;
 use LinkRobins\Support\SupportTicket;
 
@@ -52,6 +53,13 @@ interface TicketTypeInterface
      * Whether this ticket type behaves as a ban appeal (subject to appeal rate limits).
      */
     public function isAppeal(): bool;
+
+    /**
+     * Check rate limits for ticket creation. Return null to use default rate limiting.
+     *
+     * @return array{ok: bool, reason?: string, message?: string, meta?: array}|null
+     */
+    public function checkRateLimit(User $actor, SupportCategory $category, RateLimiter $limiter): ?array;
 
     /**
      * Hook before ticket is persisted. Validate custom attributes or attach metadata.

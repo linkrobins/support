@@ -3,6 +3,7 @@
 namespace LinkRobins\Support\TicketType;
 
 use Flarum\User\User;
+use LinkRobins\Support\RateLimiter;
 use LinkRobins\Support\SupportCategory;
 use LinkRobins\Support\SupportTicket;
 use LinkRobins\Support\UserState;
@@ -43,6 +44,11 @@ abstract class AbstractTicketType implements TicketTypeInterface
     public function isAppeal(): bool
     {
         return false;
+    }
+
+    public function checkRateLimit(User $actor, SupportCategory $category, RateLimiter $limiter): ?array
+    {
+        return null;
     }
 
     public function onCreating(SupportTicket $ticket, array $data, User $actor): void

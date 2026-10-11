@@ -43,6 +43,11 @@ class RateLimiter
      */
     public function check(User $actor, SupportCategory $category): array
     {
+        $custom = $category->ticketType()->checkRateLimit($actor, $category, $this);
+        if ($custom !== null) {
+            return $custom;
+        }
+
         if ($category->ticketType()->isAppeal()) {
             return $this->checkAppeal($actor, $category);
         }
@@ -111,14 +116,18 @@ class RateLimiter
         return $this->ok();
     }
 
-    protected function ok(): array
+    public function ok(): array
     {
         return ['ok' => true, 'reason' => self::REASON_OK, 'meta' => []];
     }
 
-    protected function fail(string $reason, array $meta): array
+    public function fail(string $reason, array $meta = [], ?string $message = null): array
     {
-        return ['ok' => false, 'reason' => $reason, 'meta' => $meta];
+        $payload = ['ok' => false, 'reason' => $reason, 'meta' => $meta];
+        if ($message !== null) {
+            $payload['message'] = $message;
+        }
+        return $payload;
     }
 
     /**
@@ -130,6 +139,9 @@ class RateLimiter
     {
         if (! empty($result['ok'])) {
             return '';
+        }
+        if (! empty($result['message']) && is_string($result['message'])) {
+            return $result['message'];
         }
         $meta = $result['meta'] ?? [];
         switch ($result['reason'] ?? '') {
