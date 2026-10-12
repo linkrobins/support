@@ -10,10 +10,6 @@ import SupportReply from './common/models/SupportReply';
 import SupportEvent from './common/models/SupportEvent';
 import SupportSavedReply from './common/models/SupportSavedReply';
 
-import SupportIndexPage from './forum/components/SupportIndexPage';
-import SupportComposePage from './forum/components/SupportComposePage';
-import SupportShowPage from './forum/components/SupportShowPage';
-import SupportStatsModal from './forum/components/SupportStatsModal';
 import {
   NewSupportReplyNotification,
   NewSupportTicketNotification,
@@ -42,10 +38,14 @@ app.initializers.add('linkrobins-support', () => {
   app.store.models['linkrobins-support-events'] = SupportEvent;
   app.store.models['linkrobins-support-saved-replies'] = SupportSavedReply;
 
-  app.routes['linkrobins-support.index'] = { path: BASE_PATH, component: SupportIndexPage };
-  app.routes['linkrobins-support.compose'] = { path: BASE_PATH + '/new', component: SupportComposePage };
-  app.routes['linkrobins-support.filtered'] = { path: BASE_PATH + '/status/:status', component: SupportIndexPage };
-  app.routes['linkrobins-support.show'] = { path: BASE_PATH + '/:id', component: SupportShowPage };
+  // The desk's pages load on demand, as their own chunks: a visitor reading a
+  // discussion never opens them, and parsing them on every page costs phones
+  // time. extend.php publishes the chunks with ->jsDirectory(); without it
+  // they 404 and every support route falls back to the home page.
+  app.routes['linkrobins-support.index'] = { path: BASE_PATH, component: () => import('./forum/components/SupportIndexPage') };
+  app.routes['linkrobins-support.compose'] = { path: BASE_PATH + '/new', component: () => import('./forum/components/SupportComposePage') };
+  app.routes['linkrobins-support.filtered'] = { path: BASE_PATH + '/status/:status', component: () => import('./forum/components/SupportIndexPage') };
+  app.routes['linkrobins-support.show'] = { path: BASE_PATH + '/:id', component: () => import('./forum/components/SupportShowPage') };
 
   if (app.notificationComponents) {
     app.notificationComponents['linkrobinsSupportNewReply'] = NewSupportReplyNotification;
@@ -151,7 +151,11 @@ app.initializers.add('linkrobins-support', () => {
     if (!app.session || !app.session.user || !readForumAttribute('canHandleSupportTickets')) return;
     items.add(
       'linkrobins-support-stats',
-      m(Button, { icon: 'fas fa-chart-bar', onclick: () => app.modal.show(SupportStatsModal) }, tr('stats.title', 'Support stats')),
+      m(
+        Button,
+        { icon: 'fas fa-chart-bar', onclick: () => app.modal.show(() => import('./forum/components/SupportStatsModal')) },
+        tr('stats.title', 'Support stats')
+      ),
       39
     );
   });
