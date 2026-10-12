@@ -281,8 +281,7 @@ export default class SupportComposePage extends Page {
 
     const cat = this._chosenCategory();
     if (cat) {
-      const typeId = cat.getTicketTypeId ? cat.getTicketTypeId() : 'standard';
-      const driver = ticketTypes.get(typeId);
+      const driver = ticketTypes.forCategory(cat);
       if (driver && driver.fields) {
         driver.fields(items, this);
       }
@@ -474,8 +473,7 @@ export default class SupportComposePage extends Page {
     };
 
     if (category) {
-      const typeId = category.getTicketTypeId ? category.getTicketTypeId() : 'standard';
-      const driver = ticketTypes.get(typeId);
+      const driver = ticketTypes.forCategory(category);
       if (driver && driver.submitData) {
         driver.submitData(data, this);
       }
@@ -502,8 +500,7 @@ export default class SupportComposePage extends Page {
     const data = this.submitData(content);
 
     if (category) {
-      const typeId = category.getTicketTypeId ? category.getTicketTypeId() : 'standard';
-      const driver = ticketTypes.get(typeId);
+      const driver = ticketTypes.forCategory(category);
       if (driver && driver.validate) {
         const error = driver.validate(data, this);
         if (error) {

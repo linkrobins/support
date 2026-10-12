@@ -55,7 +55,7 @@ class SupportTicketPolicy extends AbstractPolicy
         // other field they might include, so this authorization can't be used
         // to edit the ticket otherwise. Appeals stay staff-only.
         if ($this->isOwner($actor, $ticket) && ($ticket->isClosed() || $ticket->status === SupportTicket::STATUS_RESOLVED)) {
-            $category = $ticket->category;
+            $category = $ticket->currentCategory();
             if (! $category) {
                 return true;
             }

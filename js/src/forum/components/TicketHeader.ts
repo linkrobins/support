@@ -82,8 +82,7 @@ export default class TicketHeader extends Component {
         70
       );
 
-      const typeId = category.getTicketTypeId ? category.getTicketTypeId() : 'standard';
-      const driver = ticketTypes.get(typeId);
+      const driver = ticketTypes.forCategory(category);
       if (driver && driver.metaItems) {
         driver.metaItems(items, ticket);
       }
@@ -171,8 +170,7 @@ export default class TicketHeader extends Component {
     });
 
     if (category) {
-      const typeId = category.getTicketTypeId ? category.getTicketTypeId() : 'standard';
-      const driver = ticketTypes.get(typeId);
+      const driver = ticketTypes.forCategory(category);
       if (driver && driver.decisionItems) {
         driver.decisionItems(items, ticket);
       }
@@ -313,8 +311,7 @@ export default class TicketHeader extends Component {
 
     const category = ticket && ticket.category && ticket.category();
     if (category) {
-      const typeId = category.getTicketTypeId ? category.getTicketTypeId() : 'standard';
-      const driver = ticketTypes.get(typeId);
+      const driver = ticketTypes.forCategory(category);
       if (driver && driver.actionItems) {
         driver.actionItems(items, ticket);
       }

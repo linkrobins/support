@@ -639,6 +639,95 @@ class TicketTypeDriverTest extends TestCase
         $this->assertSame([], $standard['data']['attributes']['allowedDecisions']);
         $this->assertSame(SupportTicket::ALL_DECISIONS, $appeal['data']['attributes']['allowedDecisions']);
     }
+
+    private function insertTicket(int $categoryId, ?string $decision = null): int
+    {
+        return (int) $this->database()->table('linkrobins_support_tickets')->insertGetId([
+            'category_id' => $categoryId,
+            'user_id' => 2,
+            'subject' => 'Move me',
+            'status' => SupportTicket::STATUS_OPEN,
+            'decision' => $decision,
+            'created_at' => Carbon::now(),
+            'updated_at' => Carbon::now(),
+        ]);
+    }
+
+    /**
+     * @param array<string, mixed> $attributes
+     */
+    private function patchTicket(int $id, array $attributes, ?int $moveToCategory = null): \Psr\Http\Message\ResponseInterface
+    {
+        $data = ['type' => 'linkrobins-support-tickets', 'id' => (string) $id, 'attributes' => $attributes];
+        if ($moveToCategory !== null) {
+            $data['relationships'] = ['category' => ['data' => ['type' => 'linkrobins-support-categories', 'id' => (string) $moveToCategory]]];
+        }
+
+        return $this->send(
+            $this->request('PATCH', '/api/linkrobins-support-tickets/'.$id, [
+                'authenticatedAs' => 3,
+                'json' => ['data' => $data],
+            ])
+        );
+    }
+
+    #[Test]
+    public function a_decision_the_ticket_type_does_not_take_is_rejected(): void
+    {
+        $ticketId = $this->insertTicket(1);
+
+        $response = $this->patchTicket($ticketId, ['decision' => 'accepted']);
+
+        $this->assertEquals(400, $response->getStatusCode(), (string) $response->getBody());
+        $this->assertNull($this->database()->table('linkrobins_support_tickets')->where('id', $ticketId)->value('decision'));
+    }
+
+    #[Test]
+    public function a_decision_is_checked_against_the_category_the_ticket_moves_to(): void
+    {
+        // Standard -> appeal in one request: the appeal type takes the decision.
+        $ticketId = $this->insertTicket(1);
+        $response = $this->patchTicket($ticketId, ['decision' => 'accepted'], moveToCategory: 2);
+
+        $this->assertEquals(200, $response->getStatusCode(), (string) $response->getBody());
+        $row = $this->database()->table('linkrobins_support_tickets')->where('id', $ticketId)->first();
+        $this->assertEquals(2, (int) $row->category_id);
+        $this->assertEquals('accepted', $row->decision);
+
+        // Appeal -> standard in one request: the standard type takes none.
+        $ticketId = $this->insertTicket(2, 'pending');
+        $response = $this->patchTicket($ticketId, ['decision' => 'rejected'], moveToCategory: 1);
+
+        $this->assertEquals(400, $response->getStatusCode(), (string) $response->getBody());
+        $this->assertEquals('pending', $this->database()->table('linkrobins_support_tickets')->where('id', $ticketId)->value('decision'));
+    }
+
+    #[Test]
+    public function lifecycle_hooks_follow_the_category_the_ticket_moved_to(): void
+    {
+        CustomTestTicketType::resetState();
+
+        // Out of the custom type: its hook must not see the status change.
+        $ticketId = $this->insertTicket(3);
+        $response = $this->patchTicket($ticketId, ['status' => SupportTicket::STATUS_IN_PROGRESS], moveToCategory: 1);
+        $this->assertEquals(200, $response->getStatusCode(), (string) $response->getBody());
+        $this->assertNull(CustomTestTicketType::$statusChangedTo);
+
+        // Into the custom type: its hook must see it.
+        $ticketId = $this->insertTicket(1);
+        $response = $this->patchTicket($ticketId, ['status' => SupportTicket::STATUS_IN_PROGRESS], moveToCategory: 3);
+        $this->assertEquals(200, $response->getStatusCode(), (string) $response->getBody());
+        $this->assertEquals(SupportTicket::STATUS_IN_PROGRESS, CustomTestTicketType::$statusChangedTo);
+    }
+
+    #[Test]
+    public function ticket_type_manager_lists_appeal_like_types(): void
+    {
+        /** @var TicketTypeManager $manager */
+        $manager = $this->app()->getContainer()->make(TicketTypeManager::class);
+
+        $this->assertSame(['appeal'], $manager->appealIds());
+    }
 }
 
 class CustomTestTicketType extends AbstractTicketType

@@ -288,8 +288,7 @@ export default class SupportIndexPage extends Page {
     const items = new ItemList<any>();
     const cat = ticket.category && ticket.category();
     if (cat) {
-      const typeId = cat.getTicketTypeId ? cat.getTicketTypeId() : (cat.ticketType && cat.ticketType()) || 'standard';
-      const driver = ticketTypes.get(typeId);
+      const driver = ticketTypes.forCategory(cat);
       if (driver && driver.badgeItems) {
         driver.badgeItems(items, ticket);
       }

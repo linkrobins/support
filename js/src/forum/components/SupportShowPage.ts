@@ -301,8 +301,7 @@ export default class SupportShowPage extends Page {
     const items = new ItemList();
     const category = ticket && ticket.category && ticket.category();
     if (category) {
-      const typeId = category.getTicketTypeId ? category.getTicketTypeId() : 'standard';
-      const driver = ticketTypes.get(typeId);
+      const driver = ticketTypes.forCategory(category);
       if (driver && driver.contentItems) {
         driver.contentItems(items, ticket);
       }

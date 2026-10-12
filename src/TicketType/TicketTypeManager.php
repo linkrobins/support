@@ -17,6 +17,11 @@ class TicketTypeManager
      */
     protected array $resolved = [];
 
+    /**
+     * @var list<string>|null
+     */
+    protected ?array $appealIds = null;
+
     public function __construct(
         protected Container $container
     ) {
@@ -32,6 +37,7 @@ class TicketTypeManager
     {
         $this->drivers[$id] = $driver;
         unset($this->resolved[$id]);
+        $this->appealIds = null;
     }
 
     /**
@@ -74,6 +80,26 @@ class TicketTypeManager
             $resolved[$id] = $this->get($id);
         }
         return $resolved;
+    }
+
+    /**
+     * The ids of every registered type that behaves as an appeal, for the
+     * rate limiter's per-user appeal counts. Built once per request.
+     *
+     * @return list<string>
+     */
+    public function appealIds(): array
+    {
+        if ($this->appealIds === null) {
+            $this->appealIds = [];
+            foreach ($this->all() as $id => $driver) {
+                if ($driver->isAppeal()) {
+                    $this->appealIds[] = (string) $id;
+                }
+            }
+        }
+
+        return $this->appealIds;
     }
 
     protected function resolve(string|TicketTypeInterface $driver): TicketTypeInterface

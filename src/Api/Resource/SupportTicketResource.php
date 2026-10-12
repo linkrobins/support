@@ -210,8 +210,10 @@ class SupportTicketResource extends AbstractDatabaseResource
                 ->writableOnUpdate()
                 ->nullable()
                 ->set(function (SupportTicket $ticket, $value, FlarumContext $context) {
-                    $allowed = $ticket->category ? $ticket->category->ticketType()->allowedDecisions() : SupportTicket::ALL_DECISIONS;
-                    if ($value !== null && ! in_array($value, $allowed, true)) {
+                    // Which decisions the ticket type accepts is checked in
+                    // updating(), once a category move in the same request
+                    // has been applied.
+                    if ($value !== null && ! is_string($value)) {
                         return;
                     }
                     $actor = $context->getActor();
@@ -418,6 +420,9 @@ class SupportTicketResource extends AbstractDatabaseResource
                     } elseif (is_numeric($value)) {
                         $ticket->category_id = (int) $value;
                     }
+                    if ($ticket->isDirty('category_id')) {
+                        $ticket->unsetRelation('category');
+                    }
                 }),
         ];
     }
@@ -440,7 +445,7 @@ class SupportTicketResource extends AbstractDatabaseResource
         if ($ticket->status !== SupportTicket::STATUS_RESOLVED) {
             return false;
         }
-        $category = $ticket->category;
+        $category = $ticket->currentCategory();
 
         return $category ? $category->ticketType()->canConfirmSolved($ticket, $actor) : true;
     }
@@ -453,7 +458,7 @@ class SupportTicketResource extends AbstractDatabaseResource
         if ($ticket->status !== SupportTicket::STATUS_CLOSED) {
             return false;
         }
-        $category = $ticket->category;
+        $category = $ticket->currentCategory();
 
         return $category ? $category->ticketType()->canReopen($ticket, $actor) : true;
     }
@@ -640,6 +645,18 @@ class SupportTicketResource extends AbstractDatabaseResource
         $actor = $context->getActor();
         if (! $actor->isGuest() && ! SupportAbilities::isStaff($actor) && $model->isDirty('subject')) {
             $model->subject = $model->getOriginal('subject');
+        }
+
+        // A new decision must be one the ticket's type accepts. Checked here
+        // rather than in the setter so a category move in the same request
+        // counts, and rejected out loud so the staff member is not left
+        // looking at a pick that silently never saved.
+        if ($model->isDirty('decision') && $model->decision !== null) {
+            $category = $model->currentCategory();
+            $allowed = $category ? $category->ticketType()->allowedDecisions() : SupportTicket::ALL_DECISIONS;
+            if (! in_array($model->decision, $allowed, true)) {
+                throw new BadRequestException($this->translator->trans('linkrobins-support.api.decision_not_allowed'));
+            }
         }
 
         // Credit status and assignment changes in the ticket timeline to the

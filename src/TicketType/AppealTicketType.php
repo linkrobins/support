@@ -6,6 +6,7 @@ use Flarum\Locale\TranslatorInterface;
 use Flarum\User\User;
 use LinkRobins\Support\SupportCategory;
 use LinkRobins\Support\SupportTicket;
+use LinkRobins\Support\UserState;
 
 class AppealTicketType extends AbstractTicketType
 {
@@ -32,7 +33,7 @@ class AppealTicketType extends AbstractTicketType
     public function canCreate(User $actor, SupportCategory $category): bool
     {
         // Appeals can be created by suspended users as long as they are not appeal-banned
-        return ! (bool) $actor->getAttribute('support_appeal_banned');
+        return ! UserState::isAppealBanned($actor);
     }
 
     public function canReopen(SupportTicket $ticket, User $actor): bool

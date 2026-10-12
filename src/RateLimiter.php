@@ -6,6 +6,7 @@ use Carbon\Carbon;
 use Flarum\Locale\TranslatorInterface;
 use Flarum\Settings\SettingsRepositoryInterface;
 use Flarum\User\User;
+use LinkRobins\Support\TicketType\AppealTicketType;
 use LinkRobins\Support\TicketType\TicketTypeManager;
 
 /**
@@ -58,7 +59,7 @@ class RateLimiter
     protected function checkAppeal(User $actor, SupportCategory $category): array
     {
         // Permanent appeal-ban: hard stop, no window.
-        if ((bool) $actor->getAttribute('support_appeal_banned')) {
+        if (UserState::isAppealBanned($actor)) {
             return $this->fail(self::REASON_APPEAL_BANNED, []);
         }
 
@@ -184,19 +185,10 @@ class RateLimiter
      */
     protected function appealTicketTypeIds(): array
     {
-        try {
-            /** @var TicketTypeManager $manager */
-            $manager = resolve(TicketTypeManager::class);
-            $types = [];
-            foreach ($manager->all() as $id => $driver) {
-                if ($driver->isAppeal()) {
-                    $types[] = $id;
-                }
-            }
-            return ! empty($types) ? $types : ['appeal'];
-        } catch (\Throwable) {
-            return ['appeal'];
-        }
+        /** @var TicketTypeManager $manager */
+        $manager = resolve(TicketTypeManager::class);
+
+        return $manager->appealIds() ?: [AppealTicketType::ID];
     }
 
     protected function countOpenAppealsForUser(User $actor): int

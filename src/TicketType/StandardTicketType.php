@@ -3,11 +3,12 @@
 namespace LinkRobins\Support\TicketType;
 
 use Flarum\Locale\TranslatorInterface;
-use Flarum\User\User;
-use LinkRobins\Support\SupportCategory;
-use LinkRobins\Support\SupportTicket;
-use LinkRobins\Support\UserState;
 
+/**
+ * Ordinary support tickets. Every behaviour is AbstractTicketType's default:
+ * suspended users cannot file, owners may reopen and confirm solved, and
+ * there are no decisions.
+ */
 class StandardTicketType extends AbstractTicketType
 {
     public const ID = 'standard';
@@ -27,36 +28,5 @@ class StandardTicketType extends AbstractTicketType
         return $this->translator
             ? $this->translator->trans('linkrobins-support.admin.ticket_types.standard')
             : 'Standard Support';
-    }
-
-
-    public function canCreate(User $actor, SupportCategory $category): bool
-    {
-        return ! UserState::isSuspended($actor);
-    }
-
-    public function canReopen(SupportTicket $ticket, User $actor): bool
-    {
-        return true;
-    }
-
-    public function canConfirmSolved(SupportTicket $ticket, User $actor): bool
-    {
-        return true;
-    }
-
-    public function initialDecision(SupportTicket $ticket): ?string
-    {
-        return null;
-    }
-
-    public function allowedDecisions(): array
-    {
-        return [];
-    }
-
-    public function isAppeal(): bool
-    {
-        return false;
     }
 }

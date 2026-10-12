@@ -26,6 +26,16 @@ export class TicketTypeRegistry {
     return this.drivers.get(id);
   }
 
+  /**
+   * The driver for a category's ticket type, if one is registered on the
+   * client. Categories without a type are standard.
+   */
+  forCategory(category: any): TicketTypeClientDriver | undefined {
+    if (!category) return undefined;
+    const id = (category.ticketType && category.ticketType()) || 'standard';
+    return this.drivers.get(id);
+  }
+
   has(id: string): boolean {
     return this.drivers.has(id);
   }

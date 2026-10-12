@@ -227,7 +227,7 @@ class SupportServiceProvider extends AbstractServiceProvider
             $newStatus = (string) $changes['status'];
             $events[] = new TicketStatusChanged($ticket, $actor, $oldStatus, $newStatus);
 
-            $category = $ticket->category ?: SupportCategory::query()->find((int) $ticket->category_id);
+            $category = $ticket->currentCategory();
             if ($category) {
                 static::afterCommit(function () use ($category, $ticket, $newStatus, $oldStatus, $actor, $log) {
                     try {
@@ -244,7 +244,7 @@ class SupportServiceProvider extends AbstractServiceProvider
             $newDecision = (string) $changes['decision'];
             $events[] = new TicketDecided($ticket, $actor, $oldDecision, $newDecision);
 
-            $category = $ticket->category ?: SupportCategory::query()->find((int) $ticket->category_id);
+            $category = $ticket->currentCategory();
             if ($category) {
                 static::afterCommit(function () use ($category, $ticket, $newDecision, $oldDecision, $actor, $log) {
                     try {
