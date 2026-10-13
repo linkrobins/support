@@ -29,8 +29,9 @@ forum-wide moderation actions (suspensions, bans) honest.
 - **Ticket moderation.** Staff can soft-delete tickets via a `⋯`
   menu in the ticket title row. Soft-deleted tickets are hidden from
   the index for both the owner and staff but remain reachable via
-  direct URL for staff to restore. Permanent deletion is admin-only
-  and cascades to all replies.
+  direct URL for staff to restore. Permanent deletion is for admins
+  and groups with `lr-support.force_delete_tickets`, and cascades to
+  all replies.
 - **Rate limits.** Per-user, configurable. Defaults:
   - 3 appeals per 30 days
   - 1 concurrent open appeal at a time
@@ -127,13 +128,21 @@ Then enable the extension in admin → Extensions.
 
 ## Permissions
 
-The extension adds one permission:
+The extension adds three permissions. They sit in the Moderate section
+of admin → Permissions, and none is granted to any group on install, so
+until you grant them only admins handle tickets:
 
-- `lr-support.handle_tickets` (default: moderate group) -- grants
-  the ability to see all tickets, reply on any ticket, post internal
-  notes, change ticket status, set decisions, and claim tickets.
+- `lr-support.handle_tickets` ("Handle support tickets") -- makes a
+  group support staff: see all tickets, reply on any ticket, post
+  internal notes, change ticket status, set decisions, and claim
+  tickets. Grant it to your moderators or support team.
+- `lr-support.manage_appeal_bans` ("Manage support appeal-bans") --
+  toggle a user's permanent appeal-ban from their profile controls.
+- `lr-support.force_delete_tickets` ("Permanently delete support
+  tickets") -- permanently delete a ticket that is already
+  soft-deleted.
 
-Anyone in the admin group bypasses this check.
+Anyone in the admin group bypasses all three.
 
 Filing tickets requires being authenticated; the policy doesn't add
 a separate permission for it.
@@ -279,7 +288,7 @@ themselves, who is also the only non-staff party with the URL.
 | `/api/linkrobins-support-tickets` | POST | authenticated |
 | `/api/linkrobins-support-tickets/:id` | GET | per-policy |
 | `/api/linkrobins-support-tickets/:id` | PATCH | staff (handle_tickets) |
-| `/api/linkrobins-support-tickets/:id` | DELETE | admin, soft-deleted only |
+| `/api/linkrobins-support-tickets/:id` | DELETE | admin or force_delete_tickets, soft-deleted only |
 | `/api/linkrobins-support-replies` | GET | authenticated |
 | `/api/linkrobins-support-replies` | POST | authenticated |
 | `/api/linkrobins-support-replies/:id` | PATCH | staff (handle_tickets) |
