@@ -18,11 +18,6 @@ use LinkRobins\Support\SupportReply;
  * would reveal that a staff note on their ticket contains the word. Staff
  * match every reply.
  *
- * Plain LIKE rather than a fulltext index: support volumes are small, it
- * behaves the same on every database, and the ticket list is already scoped
- * to what the actor may see before this runs. Both sides are lowercased
- * because LIKE is case-sensitive on PostgreSQL.
- *
  * @extends AbstractFulltextFilter<DatabaseSearchState>
  */
 class TicketFulltextFilter extends AbstractFulltextFilter
@@ -37,35 +32,27 @@ class TicketFulltextFilter extends AbstractFulltextFilter
         /** @var DatabaseSearchState $state */
         $query = $state->getQuery();
         $isStaff = SupportAbilities::isStaff($state->getActor());
-        // Escape LIKE wildcards with '!' and say so with ESCAPE: SQLite has no
-        // default escape character, and a backslash means different things
-        // in MySQL and PostgreSQL string literals.
-        $like = '%'.str_replace(['!', '%', '_'], ['!!', '!%', '!_'], mb_strtolower($value)).'%';
+        $like = '%' . addcslashes($value, '%_\\') . '%';
+
+        // PostgreSQL LIKE is case-sensitive, so use ILIKE on pgsql.
+        $operator = $query->getConnection()->getDriverName() === 'pgsql' ? 'ilike' : 'like';
         $number = ltrim($value, '#');
 
-        // Raw SQL gets no automatic table prefix; the grammar adds it, so
-        // forums installed with a prefix still find the right columns.
-        $grammar = $query->getQuery()->getGrammar();
-        $subject = $grammar->wrap('linkrobins_support_tickets.subject');
-        $content = $grammar->wrap((new SupportReply())->getTable().'.content');
-
-        $query->where(function (Builder $q) use ($like, $isStaff, $number, $subject, $content) {
-            $q->whereRaw("LOWER($subject) LIKE ? ESCAPE '!'", [$like])
-                ->orWhereExists(function ($sub) use ($like, $isStaff, $content) {
-                    $replies = (new SupportReply())->getTable();
-                    $sub->selectRaw('1')
-                        ->from($replies)
-                        ->whereColumn($replies.'.ticket_id', 'linkrobins_support_tickets.id')
-                        ->whereRaw("LOWER($content) LIKE ? ESCAPE '!'", [$like]);
-
-                    if (! $isStaff) {
-                        $sub->where($replies.'.is_internal_note', false)
-                            ->whereNull($replies.'.deleted_at');
+        $query->where(function (Builder $q) use ($like, $operator, $isStaff, $number) {
+            $q->where('subject', $operator, $like)
+                ->orWhereHas('replies', function (Builder $sub) use ($like, $operator, $isStaff) {
+                    /** @var Builder<SupportReply> $sub */
+                    if ($isStaff) {
+                        $sub->withTrashed();
+                    } else {
+                        $sub->where('is_internal_note', false);
                     }
+
+                    $sub->where('content', $operator, $like);
                 });
 
             if (ctype_digit($number)) {
-                $q->orWhere('linkrobins_support_tickets.id', (int) $number);
+                $q->orWhereKey((int) $number);
             }
         });
     }

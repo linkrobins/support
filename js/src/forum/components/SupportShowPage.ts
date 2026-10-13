@@ -9,8 +9,9 @@ import ReplyItem from './ReplyItem';
 import TicketEventItem from './TicketEventItem';
 import SavedRepliesMenu from './SavedRepliesMenu';
 import ReplyComposer from './ReplyComposer';
+import Link from 'flarum/common/components/Link';
 import { tr } from '../utils/translate';
-import { basePath, BASE_PATH, safeNavigate, showError } from '../utils/helpers';
+import { showError } from '../utils/helpers';
 import { canHandleSupportTickets } from '../utils/permissions';
 import { loadTicket, loadReplies, loadEvents, markTicketRead, postReply, uploadFilesToBody } from '../utils/api';
 import { onLive } from '../utils/live';
@@ -57,6 +58,7 @@ export default class SupportShowPage extends Page {
     this.loading = true;
     this.error = null;
     this.ticket = null;
+    app.current.set('ticket', null);
     this.replies = [];
     this.events = [];
     this.replyText = '';
@@ -80,6 +82,7 @@ export default class SupportShowPage extends Page {
   onremove(vnode: any) {
     if (this._stopLive) this._stopLive();
     this._stopLive = null;
+    app.current.set('ticket', null);
     super.onremove(vnode);
   }
 
@@ -90,6 +93,7 @@ export default class SupportShowPage extends Page {
       this._ticketId = newId;
       this.loading = true;
       this.ticket = null;
+      app.current.set('ticket', null);
       this.replies = [];
       this.events = [];
       if (newId) this._load();
@@ -108,6 +112,7 @@ export default class SupportShowPage extends Page {
     ])
       .then((results: any[]) => {
         this.ticket = results[0];
+        app.current.set('ticket', this.ticket);
         this.replies = results[1] || [];
         this.events = results[2] || [];
         this._allLoaded = this._countsAllLoaded();
@@ -115,7 +120,10 @@ export default class SupportShowPage extends Page {
         markTicketRead(this.ticket);
         try {
           const t = this.ticket && this.ticket.subject();
-          if (t) app.setTitle(t);
+          if (t) {
+            app.setTitle(t);
+            app.history.push('linkrobins-support.show', t);
+          }
         } catch (e) {}
         m.redraw();
       })
@@ -180,13 +188,10 @@ export default class SupportShowPage extends Page {
             // Back link first: the header is a column, so this reads as a
             // breadcrumb above the title instead of a second column beside it.
             m(
-              'a',
+              Link,
               {
-                href: basePath() + BASE_PATH,
+                href: app.route('linkrobins-support.index'),
                 className: 'Button Button--text LinkRobinsSupport-backBtn',
-                onclick: (e: any) => {
-                  safeNavigate(basePath() + BASE_PATH, e);
-                },
               },
               [m('i', { className: 'fas fa-arrow-left' }), ' ', tr('action.back', 'Back')]
             ),

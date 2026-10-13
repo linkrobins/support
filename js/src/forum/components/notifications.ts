@@ -7,7 +7,6 @@ import Discussion from 'flarum/common/models/Discussion';
 import Link from 'flarum/common/components/Link';
 import listItems from 'flarum/common/helpers/listItems';
 import { tr } from '../utils/translate';
-import { basePath, BASE_PATH } from '../utils/helpers';
 
 const SUPPORT_NOTIFICATION_TYPES = [
   'linkrobinsSupportNewReply',
@@ -37,8 +36,7 @@ function statusLabel(status: string): string {
 /** Every support notification points at its ticket. */
 function ticketHref(notification: any): string {
   const subj = notification ? notification.subject() : null;
-  const bp = basePath();
-  return subj && subj.id ? bp + BASE_PATH + '/' + subj.id() : bp + BASE_PATH;
+  return subj && subj.id ? app.route('linkrobins-support.show', { id: subj.id() }) : app.route('linkrobins-support.index');
 }
 
 /** Ticket subject, used as every support notification's excerpt line. */
@@ -116,12 +114,7 @@ export class NewSupportReplyNotification extends Notification {
     return '';
   }
   href() {
-    const subj = this.attrs && this.attrs.notification ? this.attrs.notification.subject() : null;
-    const bp = basePath();
-    if (subj && subj.id) {
-      return bp + BASE_PATH + '/' + subj.id();
-    }
-    return bp + BASE_PATH;
+    return ticketHref(this.attrs && this.attrs.notification);
   }
   content() {
     const n = this.attrs && this.attrs.notification;
@@ -147,12 +140,7 @@ export class NewSupportTicketNotification extends Notification {
     return '';
   }
   href() {
-    const subj = this.attrs && this.attrs.notification ? this.attrs.notification.subject() : null;
-    const bp = basePath();
-    if (subj && subj.id) {
-      return bp + BASE_PATH + '/' + subj.id();
-    }
-    return bp + BASE_PATH;
+    return ticketHref(this.attrs && this.attrs.notification);
   }
   content() {
     const n = this.attrs && this.attrs.notification;
