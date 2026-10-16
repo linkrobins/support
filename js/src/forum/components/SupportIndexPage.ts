@@ -39,6 +39,8 @@ export default class SupportIndexPage extends Page {
     this.error = null;
     this.tickets = [];
     this.filter = this._filterFromAttrs(this.attrs);
+    const qParam = m.route.param('q');
+    this.query = typeof qParam === 'string' ? qParam.trim() : '';
     try {
       app.setTitle(tr('nav', 'Support'));
     } catch (e) {}
@@ -68,8 +70,11 @@ export default class SupportIndexPage extends Page {
 
   onbeforeupdate(vnode: any) {
     const nextFilter = this._filterFromAttrs(vnode.attrs);
-    if (nextFilter !== this._lastLoadedFilter) {
+    const qParam = m.route.param('q');
+    const nextQuery = typeof qParam === 'string' ? qParam.trim() : '';
+    if (nextFilter !== this._lastLoadedFilter || nextQuery !== this.query) {
       this.filter = nextFilter;
+      this.query = nextQuery;
       this._lastLoadedFilter = nextFilter;
       Promise.resolve().then(() => this._load());
     }
@@ -139,7 +144,11 @@ export default class SupportIndexPage extends Page {
 
   _params(offset: number, limit: number) {
     const filter: any = {};
-    if (canHandleSupportTickets() && this.filter !== 'mine') {
+    const hasQuery = !!this.query.trim();
+
+    if (!canHandleSupportTickets()) {
+      filter.mine = '1';
+    } else if (!hasQuery && this.filter !== 'mine') {
       if (this.filter === 'assigned_to_me' || this.filter === 'unassigned') {
         // Work queues: what is still to be done, so closed tickets drop out.
         filter.assigned = this.filter === 'assigned_to_me' ? 'me' : 'none';
@@ -147,10 +156,11 @@ export default class SupportIndexPage extends Page {
       } else if (this.filter && this.filter !== 'all') {
         filter.status = this.filter;
       }
-    } else {
+    } else if (!hasQuery && this.filter === 'mine') {
       filter.mine = '1';
     }
-    if (this.query.trim()) {
+
+    if (hasQuery) {
       filter.q = this.query.trim();
     }
     const params: any = { page: { offset, limit } };
