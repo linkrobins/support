@@ -22,7 +22,16 @@ class StatusFilter implements FilterInterface
 
     public function filter(SearchState $state, string|array $value, bool $negate): void
     {
-        $values = $this->asStringArray($value);
+        $aliases = [
+            'in-progress'       => SupportTicket::STATUS_IN_PROGRESS,
+            'awaiting-response' => SupportTicket::STATUS_AWAITING_USER,
+            'awaiting_response' => SupportTicket::STATUS_AWAITING_USER,
+            'awaiting-user'     => SupportTicket::STATUS_AWAITING_USER,
+        ];
+        $values = array_map(
+            fn ($v) => $aliases[strtolower($v)] ?? strtolower($v),
+            $this->asStringArray($value)
+        );
         $valid  = array_values(array_intersect($values, SupportTicket::ALL_STATUSES));
         if (empty($valid)) {
             return;

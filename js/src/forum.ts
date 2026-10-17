@@ -24,11 +24,15 @@ import { installRealtime } from './forum/utils/live';
 import { basePath, BASE_PATH, showNavInSidebar, showNavInAccountMenu, readForumAttribute, showError } from './forum/utils/helpers';
 import { ticketTypes, TicketTypeRegistry } from './common/ticketTypes';
 import type { TicketTypeClientDriver } from './common/ticketTypes';
+import { registerTicketGambits } from './forum/query/ticketGambits';
+import addSupportSearch from './forum/addSupportSearch';
 export { ticketTypes, TicketTypeRegistry };
 export type { TicketTypeClientDriver };
 
 app.initializers.add('linkrobins-support', () => {
   (app as any).support = { ticketTypes };
+  registerTicketGambits();
+  addSupportSearch();
 
   // Register the store models so app.store.find()/createRecord() return typed,
   // cached, relationship-aware records for our resources.
@@ -43,6 +47,7 @@ app.initializers.add('linkrobins-support', () => {
   // time. extend.php publishes the chunks with ->jsDirectory(); without it
   // they 404 and every support route falls back to the home page.
   app.routes['linkrobins-support.index'] = { path: BASE_PATH, component: () => import('./forum/components/SupportIndexPage') };
+  app.routes['linkrobins-support.search'] = { path: BASE_PATH + '/search', component: () => import('./forum/components/SupportSearchPage') };
   app.routes['linkrobins-support.compose'] = { path: BASE_PATH + '/new', component: () => import('./forum/components/SupportComposePage') };
   app.routes['linkrobins-support.filtered'] = { path: BASE_PATH + '/status/:status', component: () => import('./forum/components/SupportIndexPage') };
   app.routes['linkrobins-support.show'] = { path: BASE_PATH + '/:id', component: () => import('./forum/components/SupportShowPage') };

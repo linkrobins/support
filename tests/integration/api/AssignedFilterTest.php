@@ -103,4 +103,22 @@ class AssignedFilterTest extends TestCase
         $this->assertEquals([3], $this->idsFor(2, ['assigned' => 'none']));
         $this->assertEquals([], $this->idsFor(2, ['assigned' => 'me']));
     }
+
+    #[Test]
+    public function unassigned_synonym_lists_tickets_nobody_has_claimed(): void
+    {
+        $this->assertEquals([3], $this->idsFor(3, ['assigned' => 'unassigned']));
+    }
+
+    #[Test]
+    public function assigned_lists_tickets_that_have_an_assignee(): void
+    {
+        $this->assertEquals([1, 2, 4], $this->idsFor(3, ['assigned' => 'assigned']));
+    }
+
+    #[Test]
+    public function negated_assigned_lists_unassigned_tickets(): void
+    {
+        $this->assertEquals([3], $this->idsFor(3, ['-assigned' => 'assigned']));
+    }
 }
