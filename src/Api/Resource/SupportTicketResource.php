@@ -104,6 +104,7 @@ class SupportTicketResource extends AbstractDatabaseResource
             Endpoint\Index::make()
                 ->authenticated()
                 ->defaultInclude(['user', 'category', 'assignedStaff'])
+                ->defaultSort('-lastReplyAt')
                 ->paginate(25, 100),
             Endpoint\Create::make()
                 ->authenticated()

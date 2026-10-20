@@ -8,11 +8,13 @@ use LinkRobins\Support\Access;
 use LinkRobins\Support\Api\Resource\SupportEventResource;
 use LinkRobins\Support\Console\CloseResolvedTicketsCommand;
 use LinkRobins\Support\Console\HourlySchedule;
+use LinkRobins\Support\Console\RemindAwaitingTicketsCommand;
 use LinkRobins\Support\Event\ReplyPosted;
 use LinkRobins\Support\Event\TicketChanged;
 use LinkRobins\Support\Api\Resource\SupportCategoryResource;
 use LinkRobins\Support\Api\Resource\SupportReplyResource;
 use LinkRobins\Support\Api\Resource\SupportTicketResource;
+use LinkRobins\Support\Notification\AwaitingReplyReminderBlueprint;
 use LinkRobins\Support\Notification\NewSupportReplyBlueprint;
 use LinkRobins\Support\Notification\NewSupportTicketBlueprint;
 use LinkRobins\Support\Notification\TicketAssignedBlueprint;
@@ -20,6 +22,7 @@ use LinkRobins\Support\Notification\TicketStatusChangedBlueprint;
 use LinkRobins\Support\Search\Filter as Filters;
 use LinkRobins\Support\Search\EventSearcher;
 use LinkRobins\Support\Search\ReplySearcher;
+use LinkRobins\Support\Search\TicketFulltextFilter;
 use LinkRobins\Support\Search\TicketSearcher;
 use LinkRobins\Support\Extend as SupportExtend;
 use LinkRobins\Support\SupportCategory;
@@ -39,8 +42,8 @@ return [
         ->jsDirectory(__DIR__ . '/js/dist/forum')
         ->css(__DIR__ . '/less/forum.less')
         ->route('/support',                       'linkrobins-support.index')
+        ->route('/support/search',                'linkrobins-support.search')
         ->route('/support/new',                   'linkrobins-support.compose')
-        ->route('/support/status/{status}',       'linkrobins-support.filtered')
         ->route('/support/{id}',                  'linkrobins-support.show'),
 
     (new Extend\Frontend('admin'))
@@ -70,18 +73,24 @@ return [
     (new Extend\ServiceProvider())
         ->register(SupportServiceProvider::class),
 
+    (new Extend\User())
+        ->registerPreference('linkrobinsSupportStaffDefaultView', 'strval', 'is:open'),
+
     (new SupportExtend\TicketType())
         ->add(StandardTicketType::ID, StandardTicketType::class)
         ->add(AppealTicketType::ID, AppealTicketType::class),
 
     (new Extend\SearchDriver(DatabaseSearchDriver::class))
         ->addSearcher(SupportTicket::class, TicketSearcher::class)
-        ->setFulltext(TicketSearcher::class, \LinkRobins\Support\Search\TicketFulltextFilter::class)
+        ->setFulltext(TicketSearcher::class, TicketFulltextFilter::class)
         ->addFilter(TicketSearcher::class, Filters\StatusFilter::class)
+        ->addFilter(TicketSearcher::class, Filters\CategoryFilter::class)
         ->addFilter(TicketSearcher::class, Filters\CategoryIdFilter::class)
         ->addFilter(TicketSearcher::class, Filters\MineFilter::class)
         ->addFilter(TicketSearcher::class, Filters\AssignedFilter::class)
+        ->addFilter(TicketSearcher::class, Filters\PriorityFilter::class)
         ->addFilter(TicketSearcher::class, Filters\TicketTypeFilter::class)
+        ->addFilter(TicketSearcher::class, Filters\AuthorFilter::class)
         ->addSearcher(SupportReply::class, ReplySearcher::class)
         ->addFilter(ReplySearcher::class, Filters\TicketIdFilter::class)
         ->addSearcher(SupportEvent::class, EventSearcher::class)
@@ -106,14 +115,14 @@ return [
         ->type(TicketAssignedBlueprint::class, ['alert', 'email'])
         // One nudge per wait, so both on by default: a member who does not
         // check the forum still hears that staff are waiting on them.
-        ->type(\LinkRobins\Support\Notification\AwaitingReplyReminderBlueprint::class, ['alert', 'email']),
+        ->type(AwaitingReplyReminderBlueprint::class, ['alert', 'email']),
 
     // Close tickets left Resolved and quiet for the configured number of days.
     // Needs `php flarum schedule:run` in cron, like every scheduled task.
     (new Extend\Console())
         ->command(CloseResolvedTicketsCommand::class)
         ->schedule(CloseResolvedTicketsCommand::class, HourlySchedule::class)
-        ->command(\LinkRobins\Support\Console\RemindAwaitingTicketsCommand::class)
+        ->command(RemindAwaitingTicketsCommand::class)
         ->schedule(\LinkRobins\Support\Console\RemindAwaitingTicketsCommand::class, HourlySchedule::class),
 
     // Live updates when flarum/realtime is installed: ticket changes and new

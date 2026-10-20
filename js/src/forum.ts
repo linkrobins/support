@@ -3,6 +3,8 @@ import IndexSidebar from 'flarum/forum/components/IndexSidebar';
 import UserControls from 'flarum/forum/utils/UserControls';
 import LinkButton from 'flarum/common/components/LinkButton';
 import Button from 'flarum/common/components/Button';
+import Select from 'flarum/common/components/Select';
+import FieldSet from 'flarum/common/components/FieldSet';
 
 import SupportCategory from './common/models/SupportCategory';
 import SupportTicket from './common/models/SupportTicket';
@@ -19,16 +21,21 @@ import {
   installSupportNotificationGrouping,
 } from './forum/components/notifications';
 
-import { tr } from './forum/utils/translate';
+import { tr, trText } from './forum/utils/translate';
 import { installRealtime } from './forum/utils/live';
-import { basePath, BASE_PATH, showNavInSidebar, showNavInAccountMenu, readForumAttribute, showError } from './forum/utils/helpers';
+import { showNavInSidebar, showNavInAccountMenu, readForumAttribute, showError } from './forum/utils/helpers';
+import { canHandleSupportTickets } from './forum/utils/permissions';
 import { ticketTypes, TicketTypeRegistry } from './common/ticketTypes';
 import type { TicketTypeClientDriver } from './common/ticketTypes';
+import { registerTicketGambits } from './forum/query/ticketGambits';
+import addSupportSearch from './forum/addSupportSearch';
 export { ticketTypes, TicketTypeRegistry };
 export type { TicketTypeClientDriver };
 
 app.initializers.add('linkrobins-support', () => {
   (app as any).support = { ticketTypes };
+  registerTicketGambits();
+  addSupportSearch();
 
   // Register the store models so app.store.find()/createRecord() return typed,
   // cached, relationship-aware records for our resources.
@@ -42,10 +49,10 @@ app.initializers.add('linkrobins-support', () => {
   // discussion never opens them, and parsing them on every page costs phones
   // time. extend.php publishes the chunks with ->jsDirectory(); without it
   // they 404 and every support route falls back to the home page.
-  app.routes['linkrobins-support.index'] = { path: BASE_PATH, component: () => import('./forum/components/SupportIndexPage') };
-  app.routes['linkrobins-support.compose'] = { path: BASE_PATH + '/new', component: () => import('./forum/components/SupportComposePage') };
-  app.routes['linkrobins-support.filtered'] = { path: BASE_PATH + '/status/:status', component: () => import('./forum/components/SupportIndexPage') };
-  app.routes['linkrobins-support.show'] = { path: BASE_PATH + '/:id', component: () => import('./forum/components/SupportShowPage') };
+  app.routes['linkrobins-support.index'] = { path: '/support', component: () => import('./forum/components/SupportIndexPage') };
+  app.routes['linkrobins-support.search'] = { path: '/support/search', component: () => import('./forum/components/SupportSearchPage') };
+  app.routes['linkrobins-support.compose'] = { path: '/support/new', component: () => import('./forum/components/SupportComposePage') };
+  app.routes['linkrobins-support.show'] = { path: '/support/:id', component: () => import('./forum/components/SupportShowPage') };
 
   if (app.notificationComponents) {
     app.notificationComponents['linkrobinsSupportNewReply'] = NewSupportReplyNotification;
@@ -94,6 +101,56 @@ app.initializers.add('linkrobins-support', () => {
     });
   });
 
+  // Staff default landing view preference in the user account SettingsPage.
+  // Deferred extend using string path to avoid pulling the SettingsPage chunk eagerly.
+  extend('flarum/forum/components/SettingsPage' as any, 'settingsItems', function (this: any, items: any) {
+    if (!canHandleSupportTickets()) return;
+
+    const current = this.user?.preferences()?.linkrobinsSupportStaffDefaultView || 'is:open';
+
+    const options: Record<string, string> = {
+      'is:open': trText('status.open', 'Open'),
+      'assigned:me -is:closed': trText('index.filter_assigned_to_me', 'Assigned to me'),
+      'is:unassigned -is:closed': trText('index.filter_unassigned', 'Unassigned'),
+      'is:mine': trText('index.my_tickets', 'My tickets'),
+    };
+
+    items.add(
+      'linkrobinsSupport',
+      m(
+        FieldSet,
+        {
+          className: 'Settings-linkrobinsSupport FieldSet--min FieldSet--col',
+          label: tr('settings.heading', 'Support Desk'),
+        },
+        m('div', { className: 'Form-group' }, [
+          m('label', null, tr('settings.staff_default_view_label', 'Default support desk view')),
+          m(Select, {
+            options,
+            value: current,
+            onchange: (val: string) => {
+              this.staffDefaultViewLoading = true;
+              this.user.savePreferences({ linkrobinsSupportStaffDefaultView: val }).then(() => {
+                this.staffDefaultViewLoading = false;
+                m.redraw();
+              });
+            },
+            disabled: this.staffDefaultViewLoading,
+          }),
+          m(
+            'p',
+            { className: 'helpText' },
+            tr(
+              'settings.staff_default_view_help',
+              'Choose which queue or view opens by default when you navigate to the support desk without an active filter.'
+            )
+          ),
+        ])
+      ),
+      50
+    );
+  });
+
   // Appeal-ban toggle in the user's moderation-controls dropdown (the same menu
   // as Suspend). Shown only to users with the manage_appeal_bans permission.
   // UserControls is a plain object (not a component class), so we extend the
@@ -124,7 +181,7 @@ app.initializers.add('linkrobins-support', () => {
     );
   });
 
-  const supportLink = () => m(LinkButton, { href: basePath() + BASE_PATH, icon: 'fas fa-life-ring' }, tr('nav', 'Support'));
+  const supportLink = () => m(LinkButton, { href: app.route('linkrobins-support.index'), icon: 'fas fa-life-ring' }, tr('nav', 'Support'));
 
   // Support link in the forum's sidebar nav. Priority -11 slots it directly
   // below flarum/tags' "Tags" link (-10) and above its separator (-12) and tag

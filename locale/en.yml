@@ -144,6 +144,9 @@ linkrobins-support:
       assigned: '{name} assigned a ticket to you'
       assigned_generic: 'A ticket was assigned to you'
     settings:
+      heading: 'Support Desk'
+      staff_default_view_label: 'Default support desk view'
+      staff_default_view_help: 'Choose which queue or view opens by default when you navigate to the support desk without an active filter.'
       notify_new_reply_label: 'Someone replies to my support ticket'
       notify_new_ticket_label: 'A new support ticket is opened (staff)'
       notify_status_changed_label: "A support ticket's status changes"
@@ -179,6 +182,15 @@ linkrobins-support:
       assigned_to: 'Assigned to {name}'
       untitled: 'Untitled'
       deleted_badge: 'Deleted'
+      tickets: 'Tickets'
+      search_tickets_title: 'Search tickets'
+      search_all_tickets: 'View all tickets matching "{query}"'
+      search_results_title: 'Search results for "{query}"'
+      back_to_desk: 'Back to support'
+      back_to_desk_tooltip: 'Return to support tickets'
+      tickets_found: '{count} ticket found'
+      tickets_found_plural: '{count} tickets found'
+      reset_search: 'Clear search'
     assign:
       title: 'Assign ticket'
       load_failed: 'Could not load the support team.'
@@ -367,6 +379,49 @@ linkrobins-support:
     awaiting_reminder_body: 'Our support team is waiting for your reply on this ticket. Answer when you can and we will pick it straight back up.'
     assigned_subject: 'Assigned to you: {subject}'
     assigned_body: '{name} assigned this support ticket to you.'
+  lib:
+    gambits:
+      tickets:
+        author:
+          key: author
+          hint: username
+        type:
+          key: type
+          hint: standard or appeal
+          types:
+            standard: 'Standard support tickets'
+            appeal: 'Ban appeal tickets'
+        assigned:
+          key: assigned
+          hint: me or none
+          options:
+            me: 'Assigned to me'
+            none: 'Unassigned tickets'
+        unassigned:
+          key: unassigned
+          hint: 'Unassigned tickets'
+        mine:
+          key: mine
+          hint: 'Tickets filed by me'
+        priority:
+          key: priority
+          hint: urgent, normal, or low
+          levels:
+            urgent: 'Urgent priority'
+            normal: 'Normal priority'
+            low: 'Low priority'
+        category:
+          key: category
+          hint: slug
+        status:
+          key: status
+          hint: open, in-progress, awaiting-response, resolved, or closed
+          statuses:
+            open: 'Open tickets'
+            in_progress: 'In progress'
+            awaiting_response: 'Awaiting response'
+            resolved: 'Resolved'
+            closed: 'Closed'
   # Server-resolved messages (API error details + rate-limit reasons). Only
   # used backend-side, so they live outside the forum/admin namespaces.
   api:

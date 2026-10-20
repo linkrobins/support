@@ -6,6 +6,7 @@ use Flarum\Database\AbstractModel;
 use Flarum\Formatter\Formattable;
 use Flarum\Formatter\HasFormattedContent;
 use Flarum\User\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -23,6 +24,10 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property-read SupportTicket|null $ticket
  * @property-read User|null $user
  * @property-read User|null $editedBy
+ *
+ * @method static Builder<SupportReply> withTrashed(bool $withTrashed = true)
+ * @method static Builder<SupportReply> onlyTrashed()
+ * @method static Builder<SupportReply> withoutTrashed()
  */
 class SupportReply extends AbstractModel implements Formattable
 {

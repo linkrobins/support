@@ -43,8 +43,10 @@ class AssignedFilter implements FilterInterface
             $negate
                 ? $query->where(fn ($q) => $q->where($column, '!=', (int) $actor->id)->orWhereNull($column))
                 : $query->where($column, (int) $actor->id);
-        } elseif ($value === 'none') {
+        } elseif ($value === 'none' || $value === 'unassigned') {
             $negate ? $query->whereNotNull($column) : $query->whereNull($column);
+        } elseif ($value === 'assigned') {
+            $negate ? $query->whereNull($column) : $query->whereNotNull($column);
         }
     }
 }

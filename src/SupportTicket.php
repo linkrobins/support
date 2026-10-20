@@ -31,6 +31,10 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property-read User|null $user
  * @property-read User|null $assignedStaff
  * @property-read \Illuminate\Database\Eloquent\Collection<int, SupportReply> $replies
+ *
+ * @method static Builder<SupportTicket> withTrashed(bool $withTrashed = true)
+ * @method static Builder<SupportTicket> onlyTrashed()
+ * @method static Builder<SupportTicket> withoutTrashed()
  */
 class SupportTicket extends AbstractModel
 {
@@ -184,6 +188,9 @@ class SupportTicket extends AbstractModel
         return $this->belongsTo(User::class, 'assigned_staff_id');
     }
 
+    /**
+     * @return HasMany<SupportReply, $this>
+     */
     public function replies(): HasMany
     {
         return $this->hasMany(SupportReply::class, 'ticket_id');
