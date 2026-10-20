@@ -25,7 +25,7 @@ function load(): Promise<any> {
         loading = null;
       });
   }
-  return loading;
+  return loading as Promise<any>;
 }
 
 /**

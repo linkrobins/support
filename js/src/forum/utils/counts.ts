@@ -19,7 +19,7 @@ export function refreshCounts(): void {
   clearTimeout(timer);
   timer = setTimeout(() => {
     app
-      .request<{ data: SupportCounts }>({ method: 'GET', url: app.forum.attribute('apiUrl') + '/linkrobins-support-counts' })
+      .request({ method: 'GET', url: app.forum.attribute('apiUrl') + '/linkrobins-support-counts' })
       .then((res: any) => {
         counts = (res && res.data) || {};
         m.redraw();

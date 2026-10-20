@@ -17,7 +17,7 @@ function optionKey(id: string | number | null): string {
  * Tags "New Tag" modal (a real <form>, Form-wrapped fields, a Form-controls
  * submit/delete row).
  */
-export default class CategoryEditorModal extends FormModal {
+export default class CategoryEditorModal extends FormModal<any> {
   category: any = null;
   editId: any = null;
   name = '';

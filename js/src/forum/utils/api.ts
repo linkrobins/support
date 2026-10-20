@@ -66,9 +66,7 @@ export interface StaffMember {
  * core's user list needs searchUsers, which support staff often lack.
  */
 export function loadStaff(): Promise<StaffMember[]> {
-  return app
-    .request<{ data: StaffMember[] }>({ method: 'GET', url: apiUrl() + '/linkrobins-support-staff' })
-    .then((res: any) => (res && res.data) || []);
+  return app.request({ method: 'GET', url: apiUrl() + '/linkrobins-support-staff' }).then((res: any) => (res && res.data) || []);
 }
 
 /**

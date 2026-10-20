@@ -156,7 +156,7 @@ export class NewSupportTicketNotification extends Notification {
   }
   content() {
     const n = this.attrs && this.attrs.notification;
-    const data = n && n.content && n.content();
+    const data: any = n && n.content && n.content();
     const isAppeal = !!(data && data.isAppeal);
     const from = n && n.fromUser && n.fromUser();
     const who = from && from.displayName ? from.displayName() : tr('notifications.someone', 'A user');
@@ -183,11 +183,11 @@ export class TicketStatusChangedNotification extends Notification {
   }
   content() {
     const n = this.attrs && this.attrs.notification;
-    const data = (n && n.content && n.content()) || {};
+    const data: any = (n && n.content && n.content()) || {};
     const status = statusLabel(data.status || '');
     const from = n && n.fromUser && n.fromUser();
     const me = app.session && app.session.user;
-    const subj = n && n.subject();
+    const subj: any = n && n.subject();
 
     // A member reopening their own ticket reads as an event by that person;
     // everything else is something that happened to the reader's ticket.

@@ -30,7 +30,7 @@ class SupportViewsDropdown extends SelectDropdown<any> {
   }
 }
 
-export default class SupportIndexSidebar extends IndexSidebar {
+export default class SupportIndexSidebar extends IndexSidebar<any> {
   _stopLive: (() => void) | null = null;
 
   oncreate(vnode: any) {

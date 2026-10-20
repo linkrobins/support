@@ -22,7 +22,7 @@ import { ticketTypes } from '../../common/ticketTypes';
 // its (paginated) replies, and all mutation logic. Rendering is delegated to
 // the presentational TicketHeader / ReplyItem / ReplyComposer
 // components, which receive data + callbacks.
-export default class SupportShowPage extends Page {
+export default class SupportShowPage extends Page<any> {
   loading = true;
   loadingMore = false;
   error: any = null;
@@ -84,7 +84,7 @@ export default class SupportShowPage extends Page {
   }
 
   onupdate(vnode: any) {
-    if (super.onupdate) super.onupdate(vnode);
+    if (super.onupdate as any) super.onupdate(vnode);
     const newId = (this.attrs && this.attrs.id) || null;
     if (newId !== this._ticketId) {
       this._ticketId = newId;
