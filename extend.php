@@ -39,6 +39,7 @@ return [
         ->jsDirectory(__DIR__ . '/js/dist/forum')
         ->css(__DIR__ . '/less/forum.less')
         ->route('/support',                       'linkrobins-support.index')
+        ->route('/support/search',                'linkrobins-support.search')
         ->route('/support/new',                   'linkrobins-support.compose')
         ->route('/support/status/{status}',       'linkrobins-support.filtered')
         ->route('/support/{id}',                  'linkrobins-support.show'),

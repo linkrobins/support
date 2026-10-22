@@ -69,6 +69,7 @@ app.initializers.add('linkrobins-support', () => {
   // time. extend.php publishes the chunks with ->jsDirectory(); without it
   // they 404 and every support route falls back to the home page.
   app.routes['linkrobins-support.index'] = { path: BASE_PATH, component: () => import('./forum/components/SupportIndexPage') };
+  app.routes['linkrobins-support.search'] = { path: BASE_PATH + '/search', component: () => import('./forum/components/SupportSearchPage') };
   app.routes['linkrobins-support.compose'] = { path: BASE_PATH + '/new', component: () => import('./forum/components/SupportComposePage') };
   app.routes['linkrobins-support.filtered'] = { path: BASE_PATH + '/status/:status', component: () => import('./forum/components/SupportIndexPage') };
   app.routes['linkrobins-support.show'] = { path: BASE_PATH + '/:id', component: () => import('./forum/components/SupportShowPage') };

@@ -109,8 +109,19 @@ export default class SupportTicketsSearchSource implements GlobalSearchSource {
     return false;
   }
 
-  fullPage(_query: string): Mithril.Vnode | null {
-    return null;
+  fullPage(query: string): Mithril.Vnode {
+    const trimmed = query.trim();
+    return m(
+      'li',
+      m(
+        LinkButton,
+        {
+          icon: 'fas fa-search',
+          href: app.route('linkrobins-support.search', trimmed ? { q: trimmed } : {}),
+        },
+        tr('index.search_all_tickets', 'View all tickets matching "{query}"', { query: trimmed })
+      )
+    );
   }
 
   gotoItem(id: string): string | null {

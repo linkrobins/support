@@ -1,17 +1,15 @@
 import Page from 'flarum/common/components/Page';
 import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
-import Avatar from 'flarum/common/components/Avatar';
 import Button from 'flarum/common/components/Button';
 import PageStructure from 'flarum/forum/components/PageStructure';
 import SupportIndexSidebar from './SupportIndexSidebar';
+import SupportTicketRow from './SupportTicketRow';
 import { tr, trText } from '../utils/translate';
-import { basePath, BASE_PATH, formatDate, safeNavigate, showError } from '../utils/helpers';
+import { showError } from '../utils/helpers';
 import { canCreateSupportTicket, canHandleSupportTickets } from '../utils/permissions';
-import { statusChip, priorityChip, FILTER_OPTIONS, filterLabel, emptyLabel } from '../utils/status';
+import { FILTER_OPTIONS, filterLabel, emptyLabel } from '../utils/status';
 import { loadTickets } from '../utils/api';
 import { onLive } from '../utils/live';
-import ItemList from 'flarum/common/utils/ItemList';
-import { ticketTypes } from '../../common/ticketTypes';
 
 const PAGE_SIZE = 25;
 
@@ -240,7 +238,7 @@ export default class SupportIndexPage extends Page {
       m(
         'div',
         { className: 'LinkRobinsSupport-list' },
-        this.tickets.map((t: any) => this._renderRow(t))
+        this.tickets.map((t: any) => m(SupportTicketRow, { ticket: t, key: 'ticket-' + t.id() }))
       ),
       // Exactly how core's discussion list does it: its container class (so
       // core's styling applies), a plain button with core's own "Load More"
@@ -259,91 +257,5 @@ export default class SupportIndexPage extends Page {
           )
         : null,
     ];
-  }
-
-  /**
-   * Who has the ticket, for staff scanning the queue, as a chip under the
-   * status: their avatar and name, or "Unassigned". It sits apart from the
-   * meta line so it is never mistaken for the person who opened the ticket.
-   * Members see only their own tickets and do not need routing detail.
-   */
-  _renderAssignee(ticket: any) {
-    if (!canHandleSupportTickets()) return null;
-    const assignee = ticket.assignedStaff && ticket.assignedStaff();
-    if (!assignee) {
-      return m('span', { className: 'LinkRobinsSupport-chip LinkRobinsSupport-chip--assignee is-unassigned' }, [
-        m('i', { className: 'fas fa-user-slash', 'aria-hidden': 'true' }),
-        tr('index.unassigned', 'Unassigned'),
-      ]);
-    }
-    const name = assignee.displayName() || assignee.username();
-    return m(
-      'span',
-      { className: 'LinkRobinsSupport-chip LinkRobinsSupport-chip--assignee', title: trText('index.assigned_to', 'Assigned to {name}', { name }) },
-      [m(Avatar, { user: assignee }), name]
-    );
-  }
-
-  badgeItems(ticket: any): ItemList<any> {
-    const items = new ItemList<any>();
-    const cat = ticket.category && ticket.category();
-    if (cat) {
-      const driver = ticketTypes.forCategory(cat);
-      if (driver && driver.badgeItems) {
-        driver.badgeItems(items, ticket);
-      }
-    }
-    return items;
-  }
-
-  _renderRow(ticket: any) {
-    const user = ticket.user && ticket.user();
-    const cat = ticket.category && ticket.category();
-    const href = basePath() + BASE_PATH + '/' + encodeURIComponent(ticket.id());
-    const isDeleted = !!(ticket.isDeleted && ticket.isDeleted());
-    const isUnread = !!(ticket.isUnread && ticket.isUnread());
-
-    return m(
-      'a',
-      {
-        href,
-        className: 'LinkRobinsSupport-row' + (isDeleted ? ' LinkRobinsSupport-row--deleted' : '') + (isUnread ? ' is-unread' : ''),
-        onclick: (e: any) => {
-          safeNavigate(href, e);
-        },
-        key: 'ticket-' + ticket.id(),
-      },
-      [
-        m('div', { className: 'LinkRobinsSupport-row-main' }, [
-          m('div', { className: 'LinkRobinsSupport-row-subject' }, [
-            isUnread
-              ? m('span', {
-                  className: 'LinkRobinsSupport-unreadDot',
-                  title: trText('index.unread', 'New replies'),
-                  'aria-label': trText('index.unread', 'New replies'),
-                })
-              : null,
-            ticket.subject() || tr('index.untitled', 'Untitled'),
-            isDeleted ? m('span', { className: 'LinkRobinsSupport-row-deletedBadge' }, tr('index.deleted_badge', 'Deleted')) : null,
-          ]),
-          m('div', { className: 'LinkRobinsSupport-row-meta' }, [
-            cat
-              ? m('span', { className: 'LinkRobinsSupport-row-cat' }, [
-                  m('span', { className: 'LinkRobinsSupport-chip-dot', style: { background: cat.color() || 'var(--muted-color)' } }),
-                  cat.name(),
-                ])
-              : null,
-            user ? m('span', { className: 'LinkRobinsSupport-row-user' }, user.displayName() || user.username()) : null,
-            m('span', { className: 'LinkRobinsSupport-row-date' }, formatDate(ticket.lastReplyAt() || ticket.createdAt())),
-          ]),
-        ]),
-        m('div', { className: 'LinkRobinsSupport-row-side' }, [
-          canHandleSupportTickets() ? priorityChip(ticket.priority && ticket.priority()) : null,
-          this.badgeItems(ticket).toArray(),
-          statusChip(ticket.status()),
-          this._renderAssignee(ticket),
-        ]),
-      ]
-    );
   }
 }
