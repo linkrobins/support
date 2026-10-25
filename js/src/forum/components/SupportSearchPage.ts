@@ -178,7 +178,7 @@ export default class SupportSearchPage extends Page {
           ? tr('index.search_results_title', 'Search results for "{query}"', { query: this.query })
           : tr('index.search_tickets_title', 'Search tickets'),
       ]),
-      !this.loading && !this.error && this.query
+      !this.loading && !this.error && this.query && count > 0
         ? m('div', { className: 'LinkRobinsSupport-searchMeta' }, [
             count === 1
               ? tr('index.tickets_found', '{count} ticket found', { count: String(count) })
