@@ -91,6 +91,7 @@ export default class SupportSearchPage extends Page {
 
   _load() {
     this.loading = true;
+    this.error = null;
     m.redraw();
 
     const seq = ++this._loadSeq;
