@@ -833,21 +833,26 @@ export default class SupportShowPage extends Page<any> {
           },
         ];
         if (canPostInternal) {
+          // One row for the staff controls, on every screen size: on a phone
+          // core gives each header item its own bordered row, so two items
+          // would stack.
           rows.push({
-            name: 'internal',
-            content: m('label', { className: 'LinkRobinsSupport-internalToggle' }, [
-              m('input', {
-                type: 'checkbox',
-                checked: !!body._supportInternal,
-                onchange: (e: any) => {
-                  body._supportInternal = !!e.target.checked;
-                },
-              }),
-              ' ',
-              tr('reply.internal_note', 'Internal note'),
+            name: 'staffTools',
+            content: m('div', { className: 'LinkRobinsSupport-composerTools' }, [
+              m('label', { className: 'LinkRobinsSupport-internalToggle' }, [
+                m('input', {
+                  type: 'checkbox',
+                  checked: !!body._supportInternal,
+                  onchange: (e: any) => {
+                    body._supportInternal = !!e.target.checked;
+                  },
+                }),
+                ' ',
+                tr('reply.internal_note', 'Internal note'),
+              ]),
+              m(SavedRepliesMenu),
             ]),
           });
-          rows.push({ name: 'savedReplies', content: m(SavedRepliesMenu) });
         }
         return rows;
       },

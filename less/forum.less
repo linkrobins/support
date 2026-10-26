@@ -84,16 +84,22 @@
         margin-right: 0;
     }
 
-    // The staff controls share one line under the title instead of stacking.
-    // Phones keep core's stacked rows, where every header item is its own bordered row.
-    @media @tablet-up {
-        .ComposerBody-header > li.item-internal,
-        .ComposerBody-header > li.item-savedReplies {
-            display: inline-flex;
-            align-items: center;
-            vertical-align: middle;
-            margin-right: 16px;
-        }
+}
+
+// Internal note and Saved replies, side by side in one header row.
+.LinkRobinsSupport-composerTools {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px 16px;
+
+    .LinkRobinsSupport-internalToggle {
+        margin-right: 0;
+    }
+
+    .LinkRobinsSupport-savedRepliesToggle {
+        padding-top: 4px;
+        padding-bottom: 4px;
     }
 }
 
