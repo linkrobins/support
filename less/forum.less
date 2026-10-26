@@ -83,10 +83,19 @@
         display: block;
         margin-right: 0;
     }
+
+    // The staff controls share one line under the title instead of stacking.
+    .ComposerBody-header > li.item-internal,
+    .ComposerBody-header > li.item-savedReplies {
+        display: inline-flex;
+        align-items: center;
+        vertical-align: middle;
+        margin-right: 16px;
+    }
 }
 
 .ComposerBody-header .LinkRobinsSupport-internalToggle {
-    margin: 4px 0 0;
+    margin: 0;
 }
 
 // "Write a reply" prompt button at the foot of a ticket.
