@@ -85,12 +85,15 @@
     }
 
     // The staff controls share one line under the title instead of stacking.
-    .ComposerBody-header > li.item-internal,
-    .ComposerBody-header > li.item-savedReplies {
-        display: inline-flex;
-        align-items: center;
-        vertical-align: middle;
-        margin-right: 16px;
+    // Phones keep core's stacked rows, where every header item is its own bordered row.
+    @media @tablet-up {
+        .ComposerBody-header > li.item-internal,
+        .ComposerBody-header > li.item-savedReplies {
+            display: inline-flex;
+            align-items: center;
+            vertical-align: middle;
+            margin-right: 16px;
+        }
     }
 }
 
