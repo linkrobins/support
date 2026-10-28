@@ -1,7 +1,5 @@
 import Component from 'flarum/common/Component';
 import Button from 'flarum/common/components/Button';
-import LogInModal from 'flarum/forum/components/LogInModal';
-import SignUpModal from 'flarum/forum/components/SignUpModal';
 import { tr, trText } from '../utils/translate';
 
 /**
@@ -15,8 +13,18 @@ export default class SupportGuestPrompt extends Component<{ message?: string }> 
     return m('div', { className: 'LinkRobinsSupport-empty LinkRobinsSupport-guest' }, [
       m('p', { className: 'LinkRobinsSupport-guestText' }, this.attrs.message || tr('guest.message', 'Sign in to see your tickets.')),
       m('div', { className: 'LinkRobinsSupport-guestActions' }, [
-        m(Button, { className: 'Button Button--primary', onclick: () => app.modal.show(LogInModal) }, trText('guest.log_in', 'Log In')),
-        canSignUp ? m(Button, { className: 'Button', onclick: () => app.modal.show(SignUpModal) }, trText('guest.sign_up', 'Sign Up')) : null,
+        m(
+          Button,
+          { className: 'Button Button--primary', onclick: () => app.modal.show(() => import('flarum/forum/components/LogInModal')) },
+          trText('guest.log_in', 'Log In')
+        ),
+        canSignUp
+          ? m(
+              Button,
+              { className: 'Button', onclick: () => app.modal.show(() => import('flarum/forum/components/SignUpModal')) },
+              trText('guest.sign_up', 'Sign Up')
+            )
+          : null,
       ]),
     ]);
   }
