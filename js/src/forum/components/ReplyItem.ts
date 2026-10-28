@@ -1,8 +1,9 @@
+import app from 'flarum/forum/app';
 import Component from 'flarum/common/Component';
 import Button from 'flarum/common/components/Button';
 import Dropdown from 'flarum/common/components/Dropdown';
 import ItemList from 'flarum/common/utils/ItemList';
-import { tr, trText } from '../utils/translate';
+import extractText from 'flarum/common/utils/extractText';
 import { formatDate, userLink } from '../utils/helpers';
 
 // Presentational single-reply renderer: header (author/date/edited/deleted +
@@ -39,21 +40,23 @@ export default class ReplyItem extends Component {
               'span',
               {
                 className: 'LinkRobinsSupport-reply-edited',
-                title: editedBy
-                  ? trText('reply.edited_by', 'Edited by {name} on {date}', {
-                      date: formatDate(editedAt),
-                      name: editedBy.displayName() || editedBy.username(),
-                    })
-                  : trText('reply.edited_at', 'Edited on {date}', { date: formatDate(editedAt) }),
+                title: extractText(
+                  editedBy
+                    ? app.translator.trans('linkrobins-support.forum.reply.edited_by', {
+                        date: formatDate(editedAt),
+                        name: editedBy.displayName() || editedBy.username(),
+                      })
+                    : app.translator.trans('linkrobins-support.forum.reply.edited_at', { date: formatDate(editedAt) })
+                ),
               },
-              tr('reply.edited_marker', '(edited)')
+              app.translator.trans('linkrobins-support.forum.reply.edited_marker')
             )
           : null,
         isDeleted
           ? m('span', { className: 'LinkRobinsSupport-reply-deletedBadge' }, [
               m('i', { className: 'fas fa-trash' }),
               ' ',
-              tr('show.deleted_badge', 'Deleted'),
+              app.translator.trans('linkrobins-support.forum.show.deleted_badge'),
             ])
           : null,
         canEdit || canDelete ? this.actions(reply, isDeleted, editing, busy) : null,
@@ -65,7 +68,7 @@ export default class ReplyItem extends Component {
           ? m(
               'div',
               { className: 'LinkRobinsSupport-reply-body LinkRobinsSupport-reply-body--deleted' },
-              tr('reply.deleted_notice', 'This reply was deleted.')
+              app.translator.trans('linkrobins-support.forum.reply.deleted_notice')
             )
           : m('div', {
               className: 'LinkRobinsSupport-reply-body',
@@ -101,7 +104,7 @@ export default class ReplyItem extends Component {
           menuClassName: 'Dropdown-menu--right',
           buttonClassName: 'Button Button--icon Button--flat LinkRobinsSupport-reply-actionsToggle',
           icon: 'fas fa-ellipsis-h',
-          accessibleToggleLabel: tr('reply.mod_actions', 'Moderation actions'),
+          accessibleToggleLabel: extractText(app.translator.trans('linkrobins-support.forum.reply.mod_actions')),
         },
         items.toArray()
       )
@@ -123,7 +126,11 @@ export default class ReplyItem extends Component {
       if (canEdit) {
         items.add(
           'edit',
-          m(Button, { icon: 'fas fa-pencil-alt', disabled: busy, onclick: () => onBeginEdit(reply) }, tr('action.edit', 'Edit')),
+          m(
+            Button,
+            { icon: 'fas fa-pencil-alt', disabled: busy, onclick: () => onBeginEdit(reply) },
+            app.translator.trans('linkrobins-support.forum.action.edit')
+          ),
           100
         );
       }
@@ -138,13 +145,21 @@ export default class ReplyItem extends Component {
               disabled: busy,
               onclick: () => onSoftDelete(reply),
             },
-            tr('action.delete', 'Delete')
+            app.translator.trans('linkrobins-support.forum.action.delete')
           ),
           -10
         );
       }
     } else if (canDelete) {
-      items.add('restore', m(Button, { icon: 'fas fa-undo', disabled: busy, onclick: () => onRestore(reply) }, tr('action.restore', 'Restore')), -10);
+      items.add(
+        'restore',
+        m(
+          Button,
+          { icon: 'fas fa-undo', disabled: busy, onclick: () => onRestore(reply) },
+          app.translator.trans('linkrobins-support.forum.action.restore')
+        ),
+        -10
+      );
       items.add(
         'forceDelete',
         m(
@@ -155,7 +170,7 @@ export default class ReplyItem extends Component {
             disabled: busy,
             onclick: () => onForceDelete(reply),
           },
-          tr('action.delete_forever', 'Delete forever')
+          app.translator.trans('linkrobins-support.forum.action.delete_forever')
         ),
         -100
       );
@@ -197,7 +212,7 @@ export default class ReplyItem extends Component {
             disabled: state.busy,
             onclick: () => onCancelEdit(reply),
           },
-          tr('action.cancel', 'Cancel')
+          app.translator.trans('linkrobins-support.forum.action.cancel')
         ),
         m(
           'button',
@@ -207,7 +222,9 @@ export default class ReplyItem extends Component {
             disabled: !canSave,
             onclick: () => onSaveEditInline(reply),
           },
-          state.busy ? tr('action.saving', 'Saving…') : tr('action.save_changes', 'Save changes')
+          state.busy
+            ? app.translator.trans('linkrobins-support.forum.action.saving')
+            : app.translator.trans('linkrobins-support.forum.action.save_changes')
         ),
       ]),
     ]);

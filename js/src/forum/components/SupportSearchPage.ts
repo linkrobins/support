@@ -1,12 +1,13 @@
+import app from 'flarum/forum/app';
 import Page from 'flarum/common/components/Page';
 import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
 import Button from 'flarum/common/components/Button';
 import Link from 'flarum/common/components/Link';
 import PageStructure from 'flarum/forum/components/PageStructure';
+import extractText from 'flarum/common/utils/extractText';
 import SupportIndexSidebar from './SupportIndexSidebar';
 import SupportGuestPrompt from './SupportGuestPrompt';
 import SupportTicketRow from './SupportTicketRow';
-import { tr, trText } from '../utils/translate';
 import { showError, pushSupportHistory, isGuest } from '../utils/helpers';
 import { canHandleSupportTickets } from '../utils/permissions';
 import { loadTickets } from '../utils/api';
@@ -35,8 +36,8 @@ export default class SupportSearchPage extends Page {
     app.current.set('query', this.query);
 
     const title = this.query
-      ? trText('index.search_results_title', 'Search results for "{query}"', { query: this.query })
-      : trText('index.search_tickets_title', 'Search tickets');
+      ? extractText(app.translator.trans('linkrobins-support.forum.index.search_results_title', { query: this.query }))
+      : extractText(app.translator.trans('linkrobins-support.forum.index.search_tickets_title'));
     try {
       app.setTitle(title);
     } catch (e) {}
@@ -51,8 +52,8 @@ export default class SupportSearchPage extends Page {
       this._lastLoadedQuery = nextQuery;
       app.current.set('query', nextQuery);
       const title = this.query
-        ? trText('index.search_results_title', 'Search results for "{query}"', { query: this.query })
-        : trText('index.search_tickets_title', 'Search tickets');
+        ? extractText(app.translator.trans('linkrobins-support.forum.index.search_results_title', { query: this.query }))
+        : extractText(app.translator.trans('linkrobins-support.forum.index.search_tickets_title'));
       try {
         app.setTitle(title);
       } catch (e) {}
@@ -134,7 +135,7 @@ export default class SupportSearchPage extends Page {
       .catch((err: any) => {
         this.loadingMore = false;
         console.error('[linkrobins/support] load more search tickets failed:', err);
-        showError(tr('errors.load_more_tickets', 'Could not load more tickets.'));
+        showError(app.translator.trans('linkrobins-support.forum.errors.load_more_tickets'));
         m.redraw();
       });
   }
@@ -142,7 +143,11 @@ export default class SupportSearchPage extends Page {
   view() {
     const content = isGuest()
       ? m('div', { className: 'LinkRobinsSupport-container' }, [
-          m('header', { className: 'LinkRobinsSupport-header' }, m('h1', { className: 'LinkRobinsSupport-title' }, tr('nav', 'Support'))),
+          m(
+            'header',
+            { className: 'LinkRobinsSupport-header' },
+            m('h1', { className: 'LinkRobinsSupport-title' }, app.translator.trans('linkrobins-support.forum.nav'))
+          ),
           m(SupportGuestPrompt),
         ])
       : m('div', { className: 'LinkRobinsSupport-container' }, [this._renderHeader(), this._renderList()]);
@@ -177,22 +182,22 @@ export default class SupportSearchPage extends Page {
         {
           href: app.route('linkrobins-support.index'),
           className: 'Button Button--link LinkRobinsSupport-backButton',
-          title: trText('index.back_to_desk', 'Back to support'),
+          title: extractText(app.translator.trans('linkrobins-support.forum.index.back_to_desk')),
         },
-        [m('i', { className: 'fas fa-arrow-left', 'aria-hidden': 'true' }), ' ', tr('index.back_to_desk', 'Back to support')]
+        [m('i', { className: 'fas fa-arrow-left', 'aria-hidden': 'true' }), ' ', app.translator.trans('linkrobins-support.forum.index.back_to_desk')]
       ),
       m('h1', { className: 'LinkRobinsSupport-title' }, [
         m('i', { className: 'fas fa-search' }),
         ' ',
         this.query
-          ? tr('index.search_results_title', 'Search results for "{query}"', { query: this.query })
-          : tr('index.search_tickets_title', 'Search tickets'),
+          ? app.translator.trans('linkrobins-support.forum.index.search_results_title', { query: this.query })
+          : app.translator.trans('linkrobins-support.forum.index.search_tickets_title'),
       ]),
       !this.loading && !this.error && this.query && count > 0
         ? m('div', { className: 'LinkRobinsSupport-searchMeta' }, [
             count === 1
-              ? tr('index.tickets_found', '{count} ticket found', { count: String(count) })
-              : tr('index.tickets_found_plural', '{count} tickets found', {
+              ? app.translator.trans('linkrobins-support.forum.index.tickets_found', { count: String(count) })
+              : app.translator.trans('linkrobins-support.forum.index.tickets_found_plural', {
                   count: `${count}${this.hasMore ? '+' : ''}`,
                 }),
           ])
@@ -205,11 +210,11 @@ export default class SupportSearchPage extends Page {
       return m(LoadingIndicator);
     }
     if (this.error) {
-      return m('div', { className: 'LinkRobinsSupport-empty' }, tr('errors.load_tickets', 'Could not load tickets.'));
+      return m('div', { className: 'LinkRobinsSupport-empty' }, app.translator.trans('linkrobins-support.forum.errors.load_tickets'));
     }
     if (!this.tickets.length) {
       return m('div', { className: 'LinkRobinsSupport-empty' }, [
-        m('p', tr('index.no_results', 'No tickets match your search.')),
+        m('p', app.translator.trans('linkrobins-support.forum.index.no_results')),
         m(
           Button,
           {
@@ -221,7 +226,7 @@ export default class SupportSearchPage extends Page {
               m.route.set(app.route('linkrobins-support.index'));
             },
           },
-          tr('index.reset_search', 'Clear search')
+          app.translator.trans('linkrobins-support.forum.index.reset_search')
         ),
       ]);
     }
