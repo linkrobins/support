@@ -3,9 +3,10 @@ import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
 import Button from 'flarum/common/components/Button';
 import PageStructure from 'flarum/forum/components/PageStructure';
 import SupportIndexSidebar from './SupportIndexSidebar';
+import SupportGuestPrompt from './SupportGuestPrompt';
 import SupportTicketRow from './SupportTicketRow';
 import { tr, trText } from '../utils/translate';
-import { showError } from '../utils/helpers';
+import { showError, pushSupportHistory, isGuest } from '../utils/helpers';
 import { canCreateSupportTicket, canHandleSupportTickets } from '../utils/permissions';
 import { FILTER_OPTIONS, filterLabel, emptyLabel } from '../utils/status';
 import { loadTickets } from '../utils/api';
@@ -40,6 +41,7 @@ export default class SupportIndexPage extends Page {
     try {
       app.setTitle(tr('nav', 'Support'));
     } catch (e) {}
+    this._pushHistory(this.attrs);
     this._lastLoadedFilter = this.filter;
     this._load();
   }
@@ -69,9 +71,15 @@ export default class SupportIndexPage extends Page {
     if (nextFilter !== this._lastLoadedFilter) {
       this.filter = nextFilter;
       this._lastLoadedFilter = nextFilter;
+      // The status switcher changes the route without remounting the page.
+      this._pushHistory(vnode.attrs);
       Promise.resolve().then(() => this._load());
     }
     return true;
+  }
+
+  _pushHistory(attrs: any) {
+    pushSupportHistory((attrs && attrs.routeName) || 'linkrobins-support.index', trText('nav', 'Support'));
   }
 
   _filterFromAttrs(attrs: any): string {
@@ -85,6 +93,12 @@ export default class SupportIndexPage extends Page {
   }
 
   _load(quiet = false, freshSearch = false) {
+    // A guest has no tickets, and the list endpoint answers them 403.
+    if (isGuest()) {
+      this.loading = false;
+      return;
+    }
+
     // A quiet reload keeps the current list on screen instead of a spinner.
     if (!quiet) {
       this.loading = true;
@@ -159,7 +173,16 @@ export default class SupportIndexPage extends Page {
   }
 
   view() {
-    const content = m('div', { className: 'LinkRobinsSupport-container' }, [this._renderHeader(), this._renderList()]);
+    const content = isGuest()
+      ? m('div', { className: 'LinkRobinsSupport-container' }, [
+          m(
+            'header',
+            { className: 'LinkRobinsSupport-header' },
+            m('h1', { className: 'LinkRobinsSupport-title' }, [m('i', { className: 'fas fa-life-ring' }), ' ', tr('nav', 'Support')])
+          ),
+          m(SupportGuestPrompt),
+        ])
+      : m('div', { className: 'LinkRobinsSupport-container' }, [this._renderHeader(), this._renderList()]);
 
     return m(
       PageStructure,

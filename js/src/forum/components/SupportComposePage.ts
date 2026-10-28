@@ -3,8 +3,9 @@ import ItemList from 'flarum/common/utils/ItemList';
 import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
 import PageStructure from 'flarum/forum/components/PageStructure';
 import SupportIndexSidebar from './SupportIndexSidebar';
-import { tr } from '../utils/translate';
-import { BASE_PATH, showError } from '../utils/helpers';
+import SupportGuestPrompt from './SupportGuestPrompt';
+import { tr, trText } from '../utils/translate';
+import { BASE_PATH, showError, pushSupportHistory, isGuest } from '../utils/helpers';
 import { isUserSuspended, supportAppealBanned } from '../utils/permissions';
 import { loadCategories, createTicket, uploadFilesToBody } from '../utils/api';
 import { supportComposerSupported, supportComposerOpenFor, openSupportComposer, supportComposerPreview } from '../utils/composer';
@@ -37,9 +38,10 @@ export default class SupportComposePage extends Page {
     try {
       app.setTitle(tr('index.new_ticket', 'New ticket'));
     } catch (e) {}
+    pushSupportHistory('linkrobins-support.compose', trText('index.new_ticket', 'New ticket'));
 
-    if (!app.session || !app.session.user) {
-      m.route.set('/');
+    if (isGuest()) {
+      this.loading = false;
       return;
     }
 
@@ -84,6 +86,15 @@ export default class SupportComposePage extends Page {
   }
 
   view() {
+    if (isGuest()) {
+      return this._wrap(
+        m('div', { className: 'LinkRobinsSupport-container' }, [
+          m('header', { className: 'LinkRobinsSupport-header' }, m('h1', { className: 'LinkRobinsSupport-title' }, tr('nav', 'Support'))),
+          m(SupportGuestPrompt, { message: tr('guest.compose_message', 'Sign in to open a support ticket.') }),
+        ])
+      );
+    }
+
     if (supportAppealBanned() && isUserSuspended()) {
       return this._wrap(
         m('div', { className: 'LinkRobinsSupport-container' }, [

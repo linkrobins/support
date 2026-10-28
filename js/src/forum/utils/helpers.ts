@@ -35,6 +35,10 @@ export function showForumNavOnSupportPages(): boolean {
   return !!readForumAttribute('linkrobinsSupportForumNavOnSupportPages');
 }
 
+export function isGuest(): boolean {
+  return !app.session || !app.session.user;
+}
+
 export function basePath(): string {
   try {
     return (app.forum && app.forum.attribute && app.forum.attribute('basePath')) || '';
@@ -105,4 +109,30 @@ export function userLink(user: User | null | undefined): any {
   if (!username) return label;
   const href = basePath() + '/u/' + encodeURIComponent(username);
   return Link.component({ href }, label);
+}
+
+/**
+ * Put a support page on core's history, so the phone header shows its back
+ * control (core shows "back" only when app.history can go back, and a page
+ * puts itself there with app.history.push()).
+ *
+ * Core starts every page load with one entry, the forum home. So when a
+ * support page is the first one loaded, the support front page goes on first
+ * and back lands on /support instead of leaving the support desk. When the
+ * visitor came from another page, back goes there. The front page itself
+ * pushes nothing in the first case, so a direct load of /support has no back.
+ */
+export function pushSupportHistory(name: string, title: string): void {
+  try {
+    const history = app.history;
+    if (!history) return;
+    const front = 'linkrobins-support.index';
+    if (!history.canGoBack()) {
+      if (name === front) return;
+      history.push(front, trText('nav', 'Support'), app.route(front));
+    }
+    history.push(name, title);
+  } catch (e) {
+    // A back button is never worth a broken page.
+  }
 }

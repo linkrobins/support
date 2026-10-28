@@ -4,9 +4,10 @@ import Button from 'flarum/common/components/Button';
 import Link from 'flarum/common/components/Link';
 import PageStructure from 'flarum/forum/components/PageStructure';
 import SupportIndexSidebar from './SupportIndexSidebar';
+import SupportGuestPrompt from './SupportGuestPrompt';
 import SupportTicketRow from './SupportTicketRow';
 import { tr, trText } from '../utils/translate';
-import { showError } from '../utils/helpers';
+import { showError, pushSupportHistory, isGuest } from '../utils/helpers';
 import { canHandleSupportTickets } from '../utils/permissions';
 import { loadTickets } from '../utils/api';
 import { SUPPORT_TICKETS_RESOURCE } from '../query/ticketGambits';
@@ -39,7 +40,7 @@ export default class SupportSearchPage extends Page {
     try {
       app.setTitle(title);
     } catch (e) {}
-    app.history.push('linkrobins-support.search', title);
+    pushSupportHistory('linkrobins-support.search', title);
     this._load();
   }
 
@@ -90,6 +91,10 @@ export default class SupportSearchPage extends Page {
   }
 
   _load() {
+    if (isGuest()) {
+      this.loading = false;
+      return;
+    }
     this.loading = true;
     this.error = null;
     m.redraw();
@@ -135,7 +140,12 @@ export default class SupportSearchPage extends Page {
   }
 
   view() {
-    const content = m('div', { className: 'LinkRobinsSupport-container' }, [this._renderHeader(), this._renderList()]);
+    const content = isGuest()
+      ? m('div', { className: 'LinkRobinsSupport-container' }, [
+          m('header', { className: 'LinkRobinsSupport-header' }, m('h1', { className: 'LinkRobinsSupport-title' }, tr('nav', 'Support'))),
+          m(SupportGuestPrompt),
+        ])
+      : m('div', { className: 'LinkRobinsSupport-container' }, [this._renderHeader(), this._renderList()]);
 
     return m(
       PageStructure,

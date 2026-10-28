@@ -9,8 +9,9 @@ import ReplyItem from './ReplyItem';
 import TicketEventItem from './TicketEventItem';
 import SavedRepliesMenu from './SavedRepliesMenu';
 import ReplyComposer from './ReplyComposer';
-import { tr } from '../utils/translate';
-import { basePath, BASE_PATH, safeNavigate, showError } from '../utils/helpers';
+import SupportGuestPrompt from './SupportGuestPrompt';
+import { tr, trText } from '../utils/translate';
+import { basePath, BASE_PATH, safeNavigate, showError, pushSupportHistory, isGuest } from '../utils/helpers';
 import { canHandleSupportTickets } from '../utils/permissions';
 import { loadTicket, loadReplies, loadEvents, markTicketRead, postReply, uploadFilesToBody } from '../utils/api';
 import { onLive } from '../utils/live';
@@ -68,6 +69,7 @@ export default class SupportShowPage extends Page<any> {
     try {
       app.setTitle(tr('show.title', 'Ticket'));
     } catch (e) {}
+    pushSupportHistory('linkrobins-support.show', trText('show.title', 'Ticket'));
     this._ticketId = (this.attrs && this.attrs.id) || null;
     if (this._ticketId) this._load();
   }
@@ -97,6 +99,10 @@ export default class SupportShowPage extends Page<any> {
   }
 
   _load() {
+    if (isGuest()) {
+      this.loading = false;
+      return;
+    }
     this.loading = true;
     m.redraw();
 
@@ -170,6 +176,14 @@ export default class SupportShowPage extends Page<any> {
   }
 
   view() {
+    if (isGuest()) {
+      return this._wrap(
+        m('div', { className: 'LinkRobinsSupport-container' }, [
+          m('header', { className: 'LinkRobinsSupport-header' }, m('h1', { className: 'LinkRobinsSupport-title' }, tr('nav', 'Support'))),
+          m(SupportGuestPrompt, { message: tr('guest.ticket_message', 'Sign in to view this ticket.') }),
+        ])
+      );
+    }
     if (this.loading) {
       return this._wrap(m('div', { className: 'LinkRobinsSupport-container' }, m(LoadingIndicator)));
     }
