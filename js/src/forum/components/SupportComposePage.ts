@@ -3,9 +3,9 @@ import Page from 'flarum/common/components/Page';
 import ItemList from 'flarum/common/utils/ItemList';
 import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
 import PageStructure from 'flarum/forum/components/PageStructure';
+import extractText from 'flarum/common/utils/extractText';
 import SupportIndexSidebar from './SupportIndexSidebar';
 import SupportGuestPrompt from './SupportGuestPrompt';
-import { tr, trText } from '../utils/translate';
 import { BASE_PATH, showError, pushSupportHistory, isGuest } from '../utils/helpers';
 import { isUserSuspended, supportAppealBanned } from '../utils/permissions';
 import { loadCategories, createTicket, uploadFilesToBody } from '../utils/api';
@@ -37,9 +37,9 @@ export default class SupportComposePage extends Page {
     this.uploadingCount = 0;
     this.uploadError = null;
     try {
-      app.setTitle(tr('index.new_ticket', 'New ticket'));
+      app.setTitle(extractText(app.translator.trans('linkrobins-support.forum.index.new_ticket')));
     } catch (e) {}
-    pushSupportHistory('linkrobins-support.compose', trText('index.new_ticket', 'New ticket'));
+    pushSupportHistory('linkrobins-support.compose', extractText(app.translator.trans('linkrobins-support.forum.index.new_ticket')));
 
     if (isGuest()) {
       this.loading = false;
@@ -90,8 +90,12 @@ export default class SupportComposePage extends Page {
     if (isGuest()) {
       return this._wrap(
         m('div', { className: 'LinkRobinsSupport-container' }, [
-          m('header', { className: 'LinkRobinsSupport-header' }, m('h1', { className: 'LinkRobinsSupport-title' }, tr('nav', 'Support'))),
-          m(SupportGuestPrompt, { message: tr('guest.compose_message', 'Sign in to open a support ticket.') }),
+          m(
+            'header',
+            { className: 'LinkRobinsSupport-header' },
+            m('h1', { className: 'LinkRobinsSupport-title' }, app.translator.trans('linkrobins-support.forum.nav'))
+          ),
+          m(SupportGuestPrompt, { message: app.translator.trans('linkrobins-support.forum.guest.compose_message') }),
         ])
       );
     }
@@ -99,11 +103,15 @@ export default class SupportComposePage extends Page {
     if (supportAppealBanned() && isUserSuspended()) {
       return this._wrap(
         m('div', { className: 'LinkRobinsSupport-container' }, [
-          m('header', { className: 'LinkRobinsSupport-header' }, m('h1', { className: 'LinkRobinsSupport-title' }, tr('nav', 'Support'))),
+          m(
+            'header',
+            { className: 'LinkRobinsSupport-header' },
+            m('h1', { className: 'LinkRobinsSupport-title' }, app.translator.trans('linkrobins-support.forum.nav'))
+          ),
           m(
             'div',
             { className: 'LinkRobinsSupport-empty LinkRobinsSupport-empty--blocked' },
-            tr('compose.appeal_banned', 'You are not permitted to file appeals. Please contact the site owner via another channel.')
+            app.translator.trans('linkrobins-support.forum.compose.appeal_banned')
           ),
         ])
       );
@@ -116,13 +124,17 @@ export default class SupportComposePage extends Page {
     if (this.categories.length === 0) {
       return this._wrap(
         m('div', { className: 'LinkRobinsSupport-container' }, [
-          m('header', { className: 'LinkRobinsSupport-header' }, m('h1', { className: 'LinkRobinsSupport-title' }, tr('nav', 'Support'))),
+          m(
+            'header',
+            { className: 'LinkRobinsSupport-header' },
+            m('h1', { className: 'LinkRobinsSupport-title' }, app.translator.trans('linkrobins-support.forum.nav'))
+          ),
           m(
             'div',
             { className: 'LinkRobinsSupport-empty' },
             isUserSuspended()
-              ? tr('compose.no_appeal_categories', 'No appeal categories are currently available.')
-              : tr('compose.no_categories', 'No support categories have been set up yet. Please contact an admin.')
+              ? app.translator.trans('linkrobins-support.forum.compose.no_appeal_categories')
+              : app.translator.trans('linkrobins-support.forum.compose.no_categories')
           ),
         ])
       );
@@ -159,13 +171,13 @@ export default class SupportComposePage extends Page {
     items.add(
       'subject',
       m('div', { className: 'Form-group' }, [
-        m('label', null, tr('compose.subject_label', 'Subject')),
+        m('label', null, app.translator.trans('linkrobins-support.forum.compose.subject_label')),
         m('input', {
           type: 'text',
           className: 'FormControl',
           value: this.subject,
           disabled: this.saving,
-          placeholder: tr('compose.subject_placeholder', 'Short summary of your issue'),
+          placeholder: extractText(app.translator.trans('linkrobins-support.forum.compose.subject_placeholder')),
           maxlength: 200,
           oninput: (e: any) => {
             this.subject = e.target.value;
@@ -181,13 +193,13 @@ export default class SupportComposePage extends Page {
       items.add(
         'message',
         m('div', { className: 'Form-group' }, [
-          m('label', null, tr('compose.message_label', 'Message')),
+          m('label', null, app.translator.trans('linkrobins-support.forum.compose.message_label')),
           m(
             'div',
             { className: 'LinkRobinsSupport-composePreview' },
             supportComposerPreview({
               composing: composerOpen,
-              placeholder: tr('compose.message_placeholder_click', 'Click to write your message…'),
+              placeholder: app.translator.trans('linkrobins-support.forum.compose.message_placeholder_click'),
               onclick: () => this._openComposeComposer(),
             })
           ),
@@ -203,13 +215,13 @@ export default class SupportComposePage extends Page {
     items.add(
       'message',
       m('div', { className: 'Form-group' }, [
-        m('label', null, tr('compose.message_label', 'Message')),
+        m('label', null, app.translator.trans('linkrobins-support.forum.compose.message_label')),
         m('textarea', {
           className: 'FormControl LinkRobinsSupport-body',
           rows: 10,
           value: this.body,
           disabled: this.saving,
-          placeholder: tr('compose.body_placeholder', 'Describe the issue in detail. Markdown is supported.'),
+          placeholder: extractText(app.translator.trans('linkrobins-support.forum.compose.body_placeholder')),
           oninput: (e: any) => {
             this.body = e.target.value;
           },
@@ -227,8 +239,8 @@ export default class SupportComposePage extends Page {
               'div',
               { className: 'LinkRobinsSupport-uploadStatus' },
               this.uploadingCount === 1
-                ? tr('common.uploading_one', 'Uploading 1 file…')
-                : tr('common.uploading_many', 'Uploading {count} files…', { count: this.uploadingCount })
+                ? app.translator.trans('linkrobins-support.forum.common.uploading_one')
+                : app.translator.trans('linkrobins-support.forum.common.uploading_many', { count: this.uploadingCount })
             )
           : null,
       ]),
@@ -250,7 +262,7 @@ export default class SupportComposePage extends Page {
                     if (this._composeFileInput) this._composeFileInput.click();
                   },
                 },
-                [m('i', { className: 'fas fa-paperclip' }), ' ', tr('action.attach_files', 'Attach files')]
+                [m('i', { className: 'fas fa-paperclip' }), ' ', app.translator.trans('linkrobins-support.forum.action.attach_files')]
               ),
               m('input', {
                 type: 'file',
@@ -285,7 +297,9 @@ export default class SupportComposePage extends Page {
               this._submit();
             },
           },
-          this.saving ? tr('compose.submitting', 'Submitting…') : tr('compose.submit', 'Submit ticket')
+          this.saving
+            ? app.translator.trans('linkrobins-support.forum.compose.submitting')
+            : app.translator.trans('linkrobins-support.forum.compose.submit')
         ),
       ]),
       -100
@@ -315,13 +329,15 @@ export default class SupportComposePage extends Page {
                 this._backToCategories();
               },
             },
-            [m('i', { className: 'fas fa-chevron-left' }), ' ', tr('compose.back_to_categories', 'Back to categories')]
+            [m('i', { className: 'fas fa-chevron-left' }), ' ', app.translator.trans('linkrobins-support.forum.compose.back_to_categories')]
           )
         : null,
       m(
         'h1',
         { className: 'LinkRobinsSupport-title' },
-        this._isAppealOnly() ? tr('compose.title_appeal', 'File an appeal') : tr('compose.title', 'New support ticket')
+        this._isAppealOnly()
+          ? app.translator.trans('linkrobins-support.forum.compose.title_appeal')
+          : app.translator.trans('linkrobins-support.forum.compose.title')
       ),
       this._renderChosenCategory(),
     ]);
@@ -342,9 +358,9 @@ export default class SupportComposePage extends Page {
     openSupportComposer({
       supportContext: 'new-ticket',
       className: 'LinkRobinsSupport-ticketComposer',
-      placeholder: tr('compose.body_placeholder', 'Describe the issue in detail. Markdown is supported.'),
-      submitLabel: tr('compose.submit', 'Submit ticket'),
-      confirmExit: tr('compose.discard_confirm', 'You have an unsubmitted ticket. Discard it?'),
+      placeholder: extractText(app.translator.trans('linkrobins-support.forum.compose.body_placeholder')),
+      submitLabel: extractText(app.translator.trans('linkrobins-support.forum.compose.submit')),
+      confirmExit: extractText(app.translator.trans('linkrobins-support.forum.compose.discard_confirm')),
       originalContent: this.body || '',
       supportHeaderItems: () => [
         {
@@ -352,7 +368,7 @@ export default class SupportComposePage extends Page {
           content: m('h3', { className: 'LinkRobinsSupport-composerTitle' }, [
             m('i', { className: (cat && cat.icon()) || 'fas fa-life-ring' }),
             ' ',
-            this.subject || tr('compose.title', 'New support ticket'),
+            this.subject || app.translator.trans('linkrobins-support.forum.compose.title'),
             cat && cat.name() ? m('span', { className: 'LinkRobinsSupport-composerTitle-cat' }, ' · ' + cat.name()) : null,
           ]),
         },
@@ -371,14 +387,16 @@ export default class SupportComposePage extends Page {
         m(
           'h1',
           { className: 'LinkRobinsSupport-title' },
-          appeal ? tr('compose.title_appeal', 'File an appeal') : tr('compose.title', 'New support ticket')
+          appeal
+            ? app.translator.trans('linkrobins-support.forum.compose.title_appeal')
+            : app.translator.trans('linkrobins-support.forum.compose.title')
         ),
         m(
           'p',
           { className: 'LinkRobinsSupport-pickerHint' },
           appeal
-            ? tr('compose.choose_category_appeal', 'Choose an appeal category to get started.')
-            : tr('compose.choose_category', 'Choose a category to get started.')
+            ? app.translator.trans('linkrobins-support.forum.compose.choose_category_appeal')
+            : app.translator.trans('linkrobins-support.forum.compose.choose_category')
         ),
       ]),
       m(
@@ -460,14 +478,14 @@ export default class SupportComposePage extends Page {
 
   _errorMessage() {
     const err = this.error;
-    if (!err) return tr('errors.unknown', 'Unknown error.');
+    if (!err) return app.translator.trans('linkrobins-support.forum.errors.unknown');
     try {
       const errors = err.response && err.response.errors;
       if (errors && errors[0]) {
-        return errors[0].detail || errors[0].title || tr('errors.submit', 'Could not submit.');
+        return errors[0].detail || errors[0].title || app.translator.trans('linkrobins-support.forum.errors.submit');
       }
     } catch (e) {}
-    return tr('errors.submit_ticket', 'Could not submit the ticket.');
+    return app.translator.trans('linkrobins-support.forum.errors.submit_ticket');
   }
 
   /**
@@ -501,11 +519,11 @@ export default class SupportComposePage extends Page {
     const category = this._chosenCategory();
 
     if (this.subject.trim() === '' || this.categoryId === '' || !category) {
-      showError(tr('compose.subject_first', 'Enter a subject first, then write your message.'));
+      showError(app.translator.trans('linkrobins-support.forum.compose.subject_first'));
       return;
     }
     if (!bodyText || bodyText.trim() === '') {
-      showError(tr('errors.empty_body', 'Please write your message before submitting.'));
+      showError(app.translator.trans('linkrobins-support.forum.errors.empty_body'));
       return;
     }
 
@@ -516,7 +534,7 @@ export default class SupportComposePage extends Page {
       if (driver && driver.validate) {
         const error = driver.validate(data, this);
         if (error) {
-          showError(typeof error === 'string' ? error : tr('compose.validation_failed', 'Validation failed. Please check your input.'));
+          showError(typeof error === 'string' ? error : app.translator.trans('linkrobins-support.forum.compose.validation_failed'));
           return;
         }
       }

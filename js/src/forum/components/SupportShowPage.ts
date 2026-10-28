@@ -1,8 +1,10 @@
+import app from 'flarum/forum/app';
 import Page from 'flarum/common/components/Page';
 import ItemList from 'flarum/common/utils/ItemList';
 import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
 import Button from 'flarum/common/components/Button';
 import PageStructure from 'flarum/forum/components/PageStructure';
+import extractText from 'flarum/common/utils/extractText';
 import SupportIndexSidebar from './SupportIndexSidebar';
 import TicketHeader from './TicketHeader';
 import ReplyItem from './ReplyItem';
@@ -10,7 +12,6 @@ import TicketEventItem from './TicketEventItem';
 import SavedRepliesMenu from './SavedRepliesMenu';
 import ReplyComposer from './ReplyComposer';
 import SupportGuestPrompt from './SupportGuestPrompt';
-import { tr, trText } from '../utils/translate';
 import { basePath, BASE_PATH, safeNavigate, showError, pushSupportHistory, isGuest } from '../utils/helpers';
 import { canHandleSupportTickets } from '../utils/permissions';
 import { loadTicket, loadReplies, loadEvents, markTicketRead, postReply, uploadFilesToBody } from '../utils/api';
@@ -67,9 +68,9 @@ export default class SupportShowPage extends Page<any> {
     this.uploadingCount = 0;
     this.uploadError = null;
     try {
-      app.setTitle(tr('show.title', 'Ticket'));
+      app.setTitle(extractText(app.translator.trans('linkrobins-support.forum.show.title')));
     } catch (e) {}
-    pushSupportHistory('linkrobins-support.show', trText('show.title', 'Ticket'));
+    pushSupportHistory('linkrobins-support.show', extractText(app.translator.trans('linkrobins-support.forum.show.title')));
     this._ticketId = (this.attrs && this.attrs.id) || null;
     if (this._ticketId) this._load();
   }
@@ -152,7 +153,7 @@ export default class SupportShowPage extends Page<any> {
       .catch((err: any) => {
         this.loadingMore = false;
         console.error('[linkrobins/support] load more replies failed:', err);
-        showError(tr('errors.load_more_replies', 'Could not load more replies.'));
+        showError(app.translator.trans('linkrobins-support.forum.errors.load_more_replies'));
         m.redraw();
       });
   }
@@ -179,8 +180,12 @@ export default class SupportShowPage extends Page<any> {
     if (isGuest()) {
       return this._wrap(
         m('div', { className: 'LinkRobinsSupport-container' }, [
-          m('header', { className: 'LinkRobinsSupport-header' }, m('h1', { className: 'LinkRobinsSupport-title' }, tr('nav', 'Support'))),
-          m(SupportGuestPrompt, { message: tr('guest.ticket_message', 'Sign in to view this ticket.') }),
+          m(
+            'header',
+            { className: 'LinkRobinsSupport-header' },
+            m('h1', { className: 'LinkRobinsSupport-title' }, app.translator.trans('linkrobins-support.forum.nav'))
+          ),
+          m(SupportGuestPrompt, { message: app.translator.trans('linkrobins-support.forum.guest.ticket_message') }),
         ])
       );
     }
@@ -202,15 +207,11 @@ export default class SupportShowPage extends Page<any> {
                   safeNavigate(basePath() + BASE_PATH, e);
                 },
               },
-              [m('i', { className: 'fas fa-arrow-left' }), ' ', tr('action.back', 'Back')]
+              [m('i', { className: 'fas fa-arrow-left' }), ' ', app.translator.trans('linkrobins-support.forum.action.back')]
             ),
-            m('h1', { className: 'LinkRobinsSupport-title' }, tr('show.title', 'Ticket')),
+            m('h1', { className: 'LinkRobinsSupport-title' }, app.translator.trans('linkrobins-support.forum.show.title')),
           ]),
-          m(
-            'div',
-            { className: 'LinkRobinsSupport-empty' },
-            tr('errors.load_ticket', 'Could not load this ticket. It may have been deleted, or you may not have permission to view it.')
-          ),
+          m('div', { className: 'LinkRobinsSupport-empty' }, app.translator.trans('linkrobins-support.forum.errors.load_ticket')),
         ])
       );
     }
@@ -279,8 +280,8 @@ export default class SupportShowPage extends Page<any> {
             })
           : m('div', { className: 'LinkRobinsSupport-empty' }, [
               ticket.status() === 'closed'
-                ? tr('show.closed_notice', 'This ticket has been closed and cannot be replied to.')
-                : tr('show.cannot_reply', 'You cannot reply to this ticket.'),
+                ? app.translator.trans('linkrobins-support.forum.show.closed_notice')
+                : app.translator.trans('linkrobins-support.forum.show.cannot_reply'),
               // Owner-facing Reopen button on a closed ticket (staff use the
               // status bar above instead). canReopen is false for appeals.
               ticket.status() === 'closed' && ticket.canReopen() && !canHandleSupportTickets()
@@ -295,7 +296,7 @@ export default class SupportShowPage extends Page<any> {
                         disabled: this.updating,
                         onclick: () => this._reopen(),
                       },
-                      tr('action.reopen', 'Reopen ticket')
+                      app.translator.trans('linkrobins-support.forum.action.reopen')
                     )
                   )
                 : null,
@@ -336,18 +337,18 @@ export default class SupportShowPage extends Page<any> {
       m('div', { className: 'LinkRobinsSupport-confirmSolved-text' }, [
         m('i', { className: 'fas fa-check-circle', 'aria-hidden': 'true' }),
         ' ',
-        tr('show.confirm_solved_prompt', 'This ticket was marked resolved. Did this solve your problem?'),
+        app.translator.trans('linkrobins-support.forum.show.confirm_solved_prompt'),
       ]),
       m('div', { className: 'LinkRobinsSupport-confirmSolved-actions' }, [
         m(
           Button,
           { className: 'Button Button--primary', disabled: this.updating, onclick: () => this._confirmSolved() },
-          tr('show.confirm_solved_yes', 'Yes, close it')
+          app.translator.trans('linkrobins-support.forum.show.confirm_solved_yes')
         ),
         m(
           Button,
           { className: 'Button', disabled: this.updating, onclick: () => this._openReplyComposer(false) },
-          tr('show.confirm_solved_no', 'No, I still need help')
+          app.translator.trans('linkrobins-support.forum.show.confirm_solved_no')
         ),
       ]),
     ]);
@@ -366,7 +367,7 @@ export default class SupportShowPage extends Page<any> {
       .catch((err: any) => {
         this.updating = false;
         console.error('[linkrobins/support] confirm solved failed:', err);
-        showError(tr('errors.update_status', 'Could not update status.'));
+        showError(app.translator.trans('linkrobins-support.forum.errors.update_status'));
         m.redraw();
       });
   }
@@ -498,7 +499,9 @@ export default class SupportShowPage extends Page<any> {
             this._loadMoreReplies();
           },
         },
-        this.loadingMore ? tr('action.loading_more', 'Loading…') : tr('action.load_more_replies', 'Load more replies')
+        this.loadingMore
+          ? app.translator.trans('linkrobins-support.forum.action.loading_more')
+          : app.translator.trans('linkrobins-support.forum.action.load_more_replies')
       )
     );
   }
@@ -530,7 +533,7 @@ export default class SupportShowPage extends Page<any> {
       .catch((err: any) => {
         this.updating = false;
         console.error('[linkrobins/support] assignment update failed:', err);
-        showError(tr('errors.update_assignment', 'Could not update assignment.'));
+        showError(app.translator.trans('linkrobins-support.forum.errors.update_assignment'));
         m.redraw();
       });
   }
@@ -547,7 +550,7 @@ export default class SupportShowPage extends Page<any> {
     // not gated.)
     if (status === 'closed') {
       try {
-        if (!window.confirm(tr('confirm.close_ticket', 'Close this ticket? It cannot be replied to until it is reopened.'))) {
+        if (!window.confirm(extractText(app.translator.trans('linkrobins-support.forum.confirm.close_ticket')))) {
           m.redraw(); // reset the status dropdown to the current value
           return;
         }
@@ -567,7 +570,7 @@ export default class SupportShowPage extends Page<any> {
       .catch((err: any) => {
         this.updating = false;
         console.error('[linkrobins/support] status update failed:', err);
-        showError(tr('errors.update_status', 'Could not update status.'));
+        showError(app.translator.trans('linkrobins-support.forum.errors.update_status'));
         m.redraw();
       });
   }
@@ -584,7 +587,7 @@ export default class SupportShowPage extends Page<any> {
       .catch((err: any) => {
         this.updating = false;
         console.error('[linkrobins/support] priority update failed:', err);
-        showError(tr('errors.update_priority', 'Could not update the priority.'));
+        showError(app.translator.trans('linkrobins-support.forum.errors.update_priority'));
         m.redraw();
       });
   }
@@ -601,7 +604,7 @@ export default class SupportShowPage extends Page<any> {
       .catch((err: any) => {
         this.updating = false;
         console.error('[linkrobins/support] decision update failed:', err);
-        showError(tr('errors.update_decision', 'Could not update the decision.'));
+        showError(app.translator.trans('linkrobins-support.forum.errors.update_decision'));
         m.redraw();
       });
   }
@@ -618,9 +621,9 @@ export default class SupportShowPage extends Page<any> {
       openSupportComposer({
         supportContext: 'edit-reply:' + reply.id(),
         className: 'LinkRobinsSupport-replyComposer',
-        placeholder: tr('reply.placeholder', 'Write a reply…'),
-        submitLabel: tr('action.save_changes', 'Save changes'),
-        confirmExit: tr('reply.discard_confirm', 'You have unsaved changes. Discard them?'),
+        placeholder: extractText(app.translator.trans('linkrobins-support.forum.reply.placeholder')),
+        submitLabel: extractText(app.translator.trans('linkrobins-support.forum.action.save_changes')),
+        confirmExit: extractText(app.translator.trans('linkrobins-support.forum.reply.discard_confirm')),
         originalContent: draft,
         supportHeaderItems: () => [
           {
@@ -628,7 +631,7 @@ export default class SupportShowPage extends Page<any> {
             content: m('h3', { className: 'LinkRobinsSupport-composerTitle' }, [
               m('i', { className: 'fas fa-pencil-alt' }),
               ' ',
-              tr('action.edit_reply', 'Edit reply'),
+              app.translator.trans('linkrobins-support.forum.action.edit_reply'),
             ]),
           },
         ],
@@ -680,14 +683,14 @@ export default class SupportShowPage extends Page<any> {
         if (state) state.busy = false;
         if (body) body.loading = false;
         console.error('[linkrobins/support] edit reply failed:', err);
-        showError(tr('errors.save_edit', 'Could not save the edit.'));
+        showError(app.translator.trans('linkrobins-support.forum.errors.save_edit'));
         m.redraw();
       });
   }
 
   _softDeleteReply(reply: any) {
     try {
-      if (!window.confirm(tr('confirm.soft_delete_reply', 'Soft-delete this reply? Staff can restore it later.'))) return;
+      if (!window.confirm(extractText(app.translator.trans('linkrobins-support.forum.confirm.soft_delete_reply')))) return;
     } catch (e) {}
     this._patchReplyDeletedState(reply, true);
   }
@@ -708,14 +711,18 @@ export default class SupportShowPage extends Page<any> {
       .catch((err: any) => {
         this._setReplyBusy(reply.id(), false);
         console.error('[linkrobins/support] toggle delete failed:', err);
-        showError(isDeleted ? tr('errors.delete_reply', 'Could not delete the reply.') : tr('errors.restore_reply', 'Could not restore the reply.'));
+        showError(
+          isDeleted
+            ? app.translator.trans('linkrobins-support.forum.errors.delete_reply')
+            : app.translator.trans('linkrobins-support.forum.errors.restore_reply')
+        );
         m.redraw();
       });
   }
 
   _forceDeleteReply(reply: any) {
     try {
-      if (!window.confirm(tr('confirm.delete_reply_forever', 'Permanently delete this reply? This cannot be undone.'))) return;
+      if (!window.confirm(extractText(app.translator.trans('linkrobins-support.forum.confirm.delete_reply_forever')))) return;
     } catch (e) {}
     this._setReplyBusy(reply.id(), true);
 
@@ -740,7 +747,7 @@ export default class SupportShowPage extends Page<any> {
       .catch((err: any) => {
         this._setReplyBusy(reply.id(), false);
         console.error('[linkrobins/support] force delete failed:', err);
-        showError(tr('errors.delete_reply_forever', 'Could not permanently delete the reply.'));
+        showError(app.translator.trans('linkrobins-support.forum.errors.delete_reply_forever'));
         m.redraw();
       });
   }
@@ -762,15 +769,7 @@ export default class SupportShowPage extends Page<any> {
 
   _softDeleteTicket() {
     try {
-      if (
-        !window.confirm(
-          tr(
-            'confirm.soft_delete_ticket',
-            'Soft-delete this ticket? It will be hidden from the index and from the ticket owner; staff can restore it.'
-          )
-        )
-      )
-        return;
+      if (!window.confirm(extractText(app.translator.trans('linkrobins-support.forum.confirm.soft_delete_ticket')))) return;
     } catch (e) {}
     this._patchTicketDeletedState(true);
   }
@@ -794,7 +793,9 @@ export default class SupportShowPage extends Page<any> {
         this._ticketBusy = false;
         console.error('[linkrobins/support] ticket delete toggle failed:', err);
         showError(
-          isDeleted ? tr('errors.delete_ticket', 'Could not delete the ticket.') : tr('errors.restore_ticket', 'Could not restore the ticket.')
+          isDeleted
+            ? app.translator.trans('linkrobins-support.forum.errors.delete_ticket')
+            : app.translator.trans('linkrobins-support.forum.errors.restore_ticket')
         );
         m.redraw();
       });
@@ -803,7 +804,7 @@ export default class SupportShowPage extends Page<any> {
   _forceDeleteTicket() {
     if (!this.ticket) return;
     try {
-      if (!window.confirm(tr('confirm.delete_ticket_forever', 'Permanently delete this ticket and all its replies? This cannot be undone.'))) return;
+      if (!window.confirm(extractText(app.translator.trans('linkrobins-support.forum.confirm.delete_ticket_forever')))) return;
     } catch (e) {}
     this._ticketBusy = true;
     m.redraw();
@@ -820,7 +821,7 @@ export default class SupportShowPage extends Page<any> {
       .catch((err: any) => {
         this._ticketBusy = false;
         console.error('[linkrobins/support] ticket force delete failed:', err);
-        showError(tr('errors.delete_ticket_forever', 'Could not permanently delete the ticket.'));
+        showError(app.translator.trans('linkrobins-support.forum.errors.delete_ticket_forever'));
         m.redraw();
       });
   }
@@ -834,9 +835,9 @@ export default class SupportShowPage extends Page<any> {
     openSupportComposer({
       supportContext: 'reply:' + ticket.id(),
       className: 'LinkRobinsSupport-replyComposer',
-      placeholder: tr('reply.placeholder', 'Write a reply…'),
-      submitLabel: tr('reply.post_reply', 'Post reply'),
-      confirmExit: tr('reply.discard_confirm', 'You have an unsaved reply. Discard it?'),
+      placeholder: extractText(app.translator.trans('linkrobins-support.forum.reply.placeholder')),
+      submitLabel: extractText(app.translator.trans('linkrobins-support.forum.reply.post_reply')),
+      confirmExit: extractText(app.translator.trans('linkrobins-support.forum.reply.discard_confirm')),
       originalContent: '',
       supportHeaderItems: (body: any) => {
         const rows: any[] = [
@@ -862,7 +863,7 @@ export default class SupportShowPage extends Page<any> {
                   },
                 }),
                 ' ',
-                tr('reply.internal_note', 'Internal note'),
+                app.translator.trans('linkrobins-support.forum.reply.internal_note'),
               ]),
               m(SavedRepliesMenu),
             ]),
@@ -926,7 +927,7 @@ export default class SupportShowPage extends Page<any> {
         this.posting = false;
         if (body) body.loading = false;
         console.error('[linkrobins/support] reply failed:', err);
-        showError(tr('errors.post_reply', 'Could not post reply.'));
+        showError(app.translator.trans('linkrobins-support.forum.errors.post_reply'));
         m.redraw();
       });
   }
