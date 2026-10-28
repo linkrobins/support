@@ -1,4 +1,5 @@
-import { tr } from './translate';
+import app from 'flarum/forum/app';
+import extractText from 'flarum/common/utils/extractText';
 import { refreshCounts } from './counts';
 import type SupportTicket from '../../common/models/SupportTicket';
 import type SupportReply from '../../common/models/SupportReply';
@@ -165,13 +166,13 @@ export function uploadFilesToBody(target: any, files: FileList | File[], bodyKey
           target[bodyKey] = existing + sep + inserted + '\n';
         }
       } else {
-        target.uploadError = tr('errors.upload_no_files', 'Upload returned no files. Please try again.');
+        target.uploadError = extractText(app.translator.trans('linkrobins-support.forum.errors.upload_no_files'));
       }
       m.redraw();
     })
     .catch((err: any) => {
       target.uploadingCount = Math.max(0, target.uploadingCount - files.length);
-      let msg = tr('errors.upload', 'Could not upload file.');
+      let msg = extractText(app.translator.trans('linkrobins-support.forum.errors.upload'));
       try {
         const resp = err && err.response;
         if (resp && resp.errors && resp.errors[0]) {

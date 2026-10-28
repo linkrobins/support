@@ -2,7 +2,6 @@ import app from 'flarum/forum/app';
 import Avatar from 'flarum/common/components/Avatar';
 import username from 'flarum/common/helpers/username';
 import ComposerPostPreview from 'flarum/forum/components/ComposerPostPreview';
-import { tr } from './translate';
 import { showError } from './helpers';
 
 // Resolved on first use. We drive Flarum's real docked composer (app.composer)
@@ -109,7 +108,7 @@ export function openSupportComposer(attrs: any): boolean {
   if (!attrs.user) attrs.user = app.session && app.session.user;
   ensureSupportComposer().then((Cls: any) => {
     if (!Cls) {
-      showError(tr('errors.unknown', 'Unknown error.'));
+      showError(app.translator.trans('linkrobins-support.forum.errors.unknown'));
       return;
     }
     app.composer.load(Cls, attrs).then(() => {

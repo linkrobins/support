@@ -4,7 +4,6 @@ import Link from 'flarum/common/components/Link';
 import LinkButton from 'flarum/common/components/LinkButton';
 import type { GlobalSearchSource } from 'flarum/common/components/AbstractGlobalSearch';
 import extractText from 'flarum/common/utils/extractText';
-import { tr } from '../utils/translate';
 import { canHandleSupportTickets } from '../utils/permissions';
 import { statusChip } from '../utils/status';
 import { loadTickets } from '../utils/api';
@@ -20,7 +19,7 @@ export default class SupportTicketsSearchSource implements GlobalSearchSource {
   public resource: string = SUPPORT_TICKETS_RESOURCE;
 
   title(): string {
-    return extractText(tr('index.tickets', 'Tickets'));
+    return extractText(app.translator.trans('linkrobins-support.forum.index.tickets'));
   }
 
   isCached(query: string): boolean {
@@ -83,7 +82,7 @@ export default class SupportTicketsSearchSource implements GlobalSearchSource {
           [
             m('span', { className: 'LinkRobinsSupport-searchResult-subject' }, [
               m('span', { className: 'LinkRobinsSupport-searchResult-number' }, `#${number} `),
-              ticket.subject() || tr('index.untitled', 'Untitled'),
+              ticket.subject() || app.translator.trans('linkrobins-support.forum.index.untitled'),
             ]),
             m('span', { className: 'LinkRobinsSupport-searchResult-meta' }, [
               cat
@@ -119,7 +118,7 @@ export default class SupportTicketsSearchSource implements GlobalSearchSource {
           icon: 'fas fa-search',
           href: app.route('linkrobins-support.search', trimmed ? { q: trimmed } : {}),
         },
-        tr('index.search_all_tickets', 'View all tickets matching "{query}"', { query: trimmed })
+        app.translator.trans('linkrobins-support.forum.index.search_all_tickets', { query: trimmed })
       )
     );
   }
