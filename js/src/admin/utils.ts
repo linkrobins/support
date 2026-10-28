@@ -1,34 +1,4 @@
-// i18n helpers. t() returns whatever the translator returns (vdom or string);
-// tx() always returns a plain string for attributes, alerts, and confirms.
-export function t(key: string, params?: Record<string, any>): any {
-  try {
-    if (app && app.translator && typeof app.translator.trans === 'function') {
-      return app.translator.trans(key, params || {});
-    }
-  } catch (e) {}
-  return key;
-}
-
-export function tx(key: string, params?: Record<string, any>): string {
-  try {
-    if (app && app.translator && typeof app.translator.trans === 'function') {
-      return app.translator.trans(key, params || {}, true);
-    }
-  } catch (e) {}
-  return key;
-}
-
-export function showError(message: any): void {
-  try {
-    if (app && app.alerts && typeof app.alerts.show === 'function') {
-      app.alerts.show({ type: 'error' }, message);
-      return;
-    }
-  } catch (e) {}
-  try {
-    alert(message);
-  } catch (e) {}
-}
+import app from 'flarum/admin/app';
 
 // --- Category CRUD via the store ----------------------------------------
 

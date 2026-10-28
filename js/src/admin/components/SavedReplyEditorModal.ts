@@ -1,7 +1,8 @@
+import app from 'flarum/admin/app';
 import FormModal from 'flarum/common/components/FormModal';
 import Form from 'flarum/common/components/Form';
 import Button from 'flarum/common/components/Button';
-import { tx } from '../utils';
+import extractText from 'flarum/common/utils/extractText';
 
 /**
  * Create or edit a saved reply. Same shape as the category editor: a real
@@ -29,7 +30,9 @@ export default class SavedReplyEditorModal extends FormModal<any> {
   }
 
   title() {
-    return this.reply ? tx('linkrobins-support.admin.saved_replies.title_edit') : tx('linkrobins-support.admin.saved_replies.title_new');
+    return this.reply
+      ? app.translator.trans('linkrobins-support.admin.saved_replies.title_edit')
+      : app.translator.trans('linkrobins-support.admin.saved_replies.title_new');
   }
 
   content() {
@@ -39,7 +42,7 @@ export default class SavedReplyEditorModal extends FormModal<any> {
       this.error ? m('div', { className: 'Alert Alert--danger' }, this._errorMessage()) : null,
       m(Form, null, [
         m('div', { className: 'Form-group' }, [
-          m('label', null, tx('linkrobins-support.admin.saved_replies.field_title')),
+          m('label', null, app.translator.trans('linkrobins-support.admin.saved_replies.field_title')),
           m('input', {
             type: 'text',
             className: 'FormControl',
@@ -50,10 +53,10 @@ export default class SavedReplyEditorModal extends FormModal<any> {
               this.replyTitle = e.target.value;
             },
           }),
-          m('div', { className: 'helpText' }, tx('linkrobins-support.admin.saved_replies.field_title_help')),
+          m('div', { className: 'helpText' }, app.translator.trans('linkrobins-support.admin.saved_replies.field_title_help')),
         ]),
         m('div', { className: 'Form-group' }, [
-          m('label', null, tx('linkrobins-support.admin.saved_replies.field_content')),
+          m('label', null, app.translator.trans('linkrobins-support.admin.saved_replies.field_content')),
           m('textarea', {
             className: 'FormControl',
             rows: 8,
@@ -64,10 +67,10 @@ export default class SavedReplyEditorModal extends FormModal<any> {
               this.replyContent = e.target.value;
             },
           }),
-          m('div', { className: 'helpText' }, tx('linkrobins-support.admin.saved_replies.field_content_help')),
+          m('div', { className: 'helpText' }, app.translator.trans('linkrobins-support.admin.saved_replies.field_content_help')),
         ]),
         m('div', { className: 'Form-group' }, [
-          m('label', null, tx('linkrobins-support.admin.saved_replies.field_position')),
+          m('label', null, app.translator.trans('linkrobins-support.admin.saved_replies.field_position')),
           m('input', {
             type: 'number',
             className: 'FormControl',
@@ -78,13 +81,15 @@ export default class SavedReplyEditorModal extends FormModal<any> {
               this.position = e.target.value;
             },
           }),
-          m('div', { className: 'helpText' }, tx('linkrobins-support.admin.saved_replies.field_position_help')),
+          m('div', { className: 'helpText' }, app.translator.trans('linkrobins-support.admin.saved_replies.field_position_help')),
         ]),
         m('div', { className: 'Form-group Form-controls' }, [
           m(
             Button,
             { type: 'submit', className: 'Button Button--primary', loading: this.saving, disabled: !canSave },
-            this.reply ? tx('linkrobins-support.admin.saved_replies.submit_update') : tx('linkrobins-support.admin.saved_replies.submit_create')
+            this.reply
+              ? app.translator.trans('linkrobins-support.admin.saved_replies.submit_update')
+              : app.translator.trans('linkrobins-support.admin.saved_replies.submit_create')
           ),
           this.reply
             ? m(
@@ -95,7 +100,7 @@ export default class SavedReplyEditorModal extends FormModal<any> {
                   disabled: this.saving,
                   onclick: () => this._delete(),
                 },
-                tx('linkrobins-support.admin.saved_replies.delete_button')
+                app.translator.trans('linkrobins-support.admin.saved_replies.delete_button')
               )
             : null,
         ]),
@@ -122,7 +127,8 @@ export default class SavedReplyEditorModal extends FormModal<any> {
   _delete() {
     if (!this.reply) return;
     try {
-      if (!window.confirm(tx('linkrobins-support.admin.saved_replies.delete_confirm', { name: this.reply.title() }))) return;
+      if (!window.confirm(extractText(app.translator.trans('linkrobins-support.admin.saved_replies.delete_confirm', { name: this.reply.title() }))))
+        return;
     } catch (e) {}
 
     this.saving = true;
@@ -154,6 +160,6 @@ export default class SavedReplyEditorModal extends FormModal<any> {
       const errors = this.error && this.error.response && this.error.response.errors;
       if (errors && errors[0]) return errors[0].detail || errors[0].title;
     } catch (e) {}
-    return tx('linkrobins-support.admin.saved_replies.error_save');
+    return extractText(app.translator.trans('linkrobins-support.admin.saved_replies.error_save'));
   }
 }
