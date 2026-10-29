@@ -23,6 +23,7 @@ import {
 
 import Extend from 'flarum/common/extenders';
 import { tr } from './forum/utils/translate';
+import { clearTargetOnModalClose } from './forum/utils/guestAction';
 import { installRealtime } from './forum/utils/live';
 import { basePath, BASE_PATH, showNavInSidebar, showNavInAccountMenu, readForumAttribute, showError } from './forum/utils/helpers';
 import { ticketTypes, TicketTypeRegistry } from './common/ticketTypes';
@@ -55,6 +56,11 @@ export const extend = [
 app.initializers.add('linkrobins-support', () => {
   (app as any).support = { ticketTypes };
   addSupportSearch();
+
+  // A guest sent to the log-in modal by a support action carries a target
+  // through the post-login reload. Closing the modal without logging in
+  // drops it, so it can never redirect anyone later.
+  clearTargetOnModalClose();
 
   // Register the store models so app.store.find()/createRecord() return typed,
   // cached, relationship-aware records for our resources.

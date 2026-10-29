@@ -5,11 +5,12 @@ import SelectDropdown from 'flarum/common/components/SelectDropdown';
 import ItemList from 'flarum/common/utils/ItemList';
 import Separator from 'flarum/common/components/Separator';
 import { tr } from '../utils/translate';
-import { basePath, BASE_PATH, safeNavigate, showForumNavOnSupportPages } from '../utils/helpers';
+import { basePath, BASE_PATH, safeNavigate, showForumNavOnSupportPages, isGuest } from '../utils/helpers';
 import { canCreateSupportTicket, canHandleSupportTickets } from '../utils/permissions';
 import { FILTER_OPTIONS, filterLabel, filterHrefFor } from '../utils/status';
 import { refreshCounts, supportCount, COUNT_FOR_FILTER } from '../utils/counts';
 import { onLive } from '../utils/live';
+import { promptLogIn, followGuestTarget } from '../utils/guestAction';
 import SupportStatsModal from './SupportStatsModal';
 
 /**
@@ -35,6 +36,7 @@ export default class SupportIndexSidebar extends IndexSidebar<any> {
 
   oncreate(vnode: any) {
     super.oncreate(vnode);
+    followGuestTarget();
     refreshCounts();
     this._stopLive = onLive(() => refreshCounts());
   }
@@ -49,7 +51,9 @@ export default class SupportIndexSidebar extends IndexSidebar<any> {
     const items = new ItemList();
 
     // "New ticket" primary button -- mirrors the blog's "Compose" button.
-    if (canCreateSupportTicket()) {
+    // Guests see the button too: tapping it opens the log-in modal and, once
+    // they are in, takes them to the form.
+    if (isGuest() || canCreateSupportTicket()) {
       const newHref = basePath() + BASE_PATH + '/new';
       items.add(
         'newTicket',
@@ -62,6 +66,11 @@ export default class SupportIndexSidebar extends IndexSidebar<any> {
             'aria-label': tr('index.new_ticket', 'New ticket'),
             title: tr('index.new_ticket_tooltip', 'Open a new support ticket'),
             onclick: (e: any) => {
+              if (isGuest()) {
+                if (e && e.preventDefault) e.preventDefault();
+                promptLogIn(BASE_PATH + '/new');
+                return;
+              }
               safeNavigate(newHref, e);
             },
           },
