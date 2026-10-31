@@ -77,7 +77,8 @@
         "flarum-cli": {
             "modules": {
                 "githubActions": true,
-                "backendTesting": true
+                "backendTesting": true,
+                "jsCommon": true
             }
         }
     }

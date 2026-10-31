@@ -1,3 +1,4 @@
+import app from 'flarum/forum/app';
 import Page from 'flarum/common/components/Page';
 import ItemList from 'flarum/common/utils/ItemList';
 import LoadingIndicator from 'flarum/common/components/LoadingIndicator';

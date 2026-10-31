@@ -104,11 +104,13 @@ export function createTicket(subjectOrData: string | Record<string, any>, catego
       ? subjectOrData
       : { subject: subjectOrData, firstPost: body, relationships: { category } };
 
-  return app.store.createRecord('linkrobins-support-tickets').save(payload);
+  return app.store.createRecord<SupportTicket>('linkrobins-support-tickets').save(payload);
 }
 
 export function postReply(ticket: SupportTicket, content: string, isInternal: boolean): Promise<SupportReply> {
-  return app.store.createRecord('linkrobins-support-replies').save({ content, isInternalNote: !!isInternal, relationships: { ticket } });
+  return app.store
+    .createRecord<SupportReply>('linkrobins-support-replies')
+    .save({ content, isInternalNote: !!isInternal, relationships: { ticket } });
 }
 
 // --- File upload --------------------------------------------------------

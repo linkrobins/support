@@ -131,7 +131,7 @@ export function pushSupportHistory(name: string, title: string): void {
       if (name === front) return;
       history.push(front, trText('nav', 'Support'), app.route(front));
     }
-    history.push(name, title);
+    history.push(name, title, m.route.get());
   } catch (e) {
     // A back button is never worth a broken page.
   }

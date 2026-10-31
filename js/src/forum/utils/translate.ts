@@ -21,7 +21,7 @@ function flattenToText(node: any): string {
  */
 export function tr(key: string, fallback?: string, params?: Record<string, any>): any {
   try {
-    const out = app.translator.trans(NS + key, params || {});
+    const out = app.translator.trans(NS + key, params || {}) as any;
     if (typeof out === 'string' && out.indexOf('linkrobins-support.') !== 0) {
       return out;
     }
