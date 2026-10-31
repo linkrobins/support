@@ -1,92 +1,28 @@
-// Aliased to flarumExtend to prevent naming collision with the Flarum 2.x frontend
-// extender array exported as `extend` below, as this repo consolidates both in forum.ts.
-import { extend as flarumExtend } from 'flarum/common/extend';
+import app from 'flarum/forum/app';
+import { extend } from 'flarum/common/extend';
 import IndexSidebar from 'flarum/forum/components/IndexSidebar';
 import UserControls from 'flarum/forum/utils/UserControls';
 import LinkButton from 'flarum/common/components/LinkButton';
 import Button from 'flarum/common/components/Button';
 
-import SupportCategory from './common/models/SupportCategory';
-import SupportTicket from './common/models/SupportTicket';
-import SupportReply from './common/models/SupportReply';
-import SupportEvent from './common/models/SupportEvent';
-import SupportSavedReply from './common/models/SupportSavedReply';
+import { installSupportNotificationGrouping } from './components/notifications';
+import { tr } from './utils/translate';
+import { installRealtime } from './utils/live';
+import { basePath, BASE_PATH, showNavInSidebar, showNavInAccountMenu, readForumAttribute, showError } from './utils/helpers';
+import { clearTargetOnModalClose } from './utils/guestAction';
+import { ticketTypes } from '../common/ticketTypes';
+import addSupportSearch from './addSupportSearch';
 
-import {
-  NewSupportReplyNotification,
-  NewSupportTicketNotification,
-  TicketAssignedNotification,
-  AwaitingReminderNotification,
-  TicketStatusChangedNotification,
-  installSupportNotificationGrouping,
-} from './forum/components/notifications';
-
-import Extend from 'flarum/common/extenders';
-import { tr } from './forum/utils/translate';
-import { clearTargetOnModalClose } from './forum/utils/guestAction';
-import { installRealtime } from './forum/utils/live';
-import { basePath, BASE_PATH, showNavInSidebar, showNavInAccountMenu, readForumAttribute, showError } from './forum/utils/helpers';
-import { ticketTypes, TicketTypeRegistry } from './common/ticketTypes';
-import type { TicketTypeClientDriver } from './common/ticketTypes';
-import {
-  SUPPORT_TICKETS_RESOURCE,
-  StatusGambit,
-  AssignedGambit,
-  MineGambit,
-  PriorityGambit,
-  CategoryGambit,
-  TicketTypeGambit,
-  AuthorGambit,
-} from './forum/query/ticketGambits';
-import addSupportSearch from './forum/addSupportSearch';
-export { ticketTypes, TicketTypeRegistry };
-export type { TicketTypeClientDriver };
-
-export const extend = [
-  new Extend.Search()
-    .gambit(SUPPORT_TICKETS_RESOURCE, StatusGambit)
-    .gambit(SUPPORT_TICKETS_RESOURCE, AssignedGambit)
-    .gambit(SUPPORT_TICKETS_RESOURCE, MineGambit)
-    .gambit(SUPPORT_TICKETS_RESOURCE, PriorityGambit)
-    .gambit(SUPPORT_TICKETS_RESOURCE, CategoryGambit)
-    .gambit(SUPPORT_TICKETS_RESOURCE, TicketTypeGambit)
-    .gambit(SUPPORT_TICKETS_RESOURCE, AuthorGambit),
-];
+export { default as extend } from './extend';
 
 app.initializers.add('linkrobins-support', () => {
-  (app as any).support = { ticketTypes };
+  app.support = { ticketTypes };
   addSupportSearch();
 
   // A guest sent to the log-in modal by a support action carries a target
   // through the post-login reload. Closing the modal without logging in
   // drops it, so it can never redirect anyone later.
   clearTargetOnModalClose();
-
-  // Register the store models so app.store.find()/createRecord() return typed,
-  // cached, relationship-aware records for our resources.
-  app.store.models['linkrobins-support-categories'] = SupportCategory;
-  app.store.models['linkrobins-support-tickets'] = SupportTicket;
-  app.store.models['linkrobins-support-replies'] = SupportReply;
-  app.store.models['linkrobins-support-events'] = SupportEvent;
-  app.store.models['linkrobins-support-saved-replies'] = SupportSavedReply;
-
-  // The desk's pages load on demand, as their own chunks: a visitor reading a
-  // discussion never opens them, and parsing them on every page costs phones
-  // time. extend.php publishes the chunks with ->jsDirectory(); without it
-  // they 404 and every support route falls back to the home page.
-  app.routes['linkrobins-support.index'] = { path: BASE_PATH, component: () => import('./forum/components/SupportIndexPage') };
-  app.routes['linkrobins-support.search'] = { path: BASE_PATH + '/search', component: () => import('./forum/components/SupportSearchPage') };
-  app.routes['linkrobins-support.compose'] = { path: BASE_PATH + '/new', component: () => import('./forum/components/SupportComposePage') };
-  app.routes['linkrobins-support.filtered'] = { path: BASE_PATH + '/status/:status', component: () => import('./forum/components/SupportIndexPage') };
-  app.routes['linkrobins-support.show'] = { path: BASE_PATH + '/:id', component: () => import('./forum/components/SupportShowPage') };
-
-  if (app.notificationComponents) {
-    app.notificationComponents['linkrobinsSupportNewReply'] = NewSupportReplyNotification;
-    app.notificationComponents['linkrobinsSupportNewTicket'] = NewSupportTicketNotification;
-    app.notificationComponents['linkrobinsSupportTicketStatusChanged'] = TicketStatusChangedNotification;
-    app.notificationComponents['linkrobinsSupportTicketAssigned'] = TicketAssignedNotification;
-    app.notificationComponents['linkrobinsSupportAwaitingReminder'] = AwaitingReminderNotification;
-  }
 
   // Group support notifications under a translatable "Support" heading in the
   // notifications dropdown, instead of the generic forum-title group.
@@ -99,7 +35,7 @@ app.initializers.add('linkrobins-support', () => {
   // registry at init time -- a direct import resolves to undefined. Use the
   // string-path form of extend(), which defers resolution until the module
   // actually loads.
-  flarumExtend('flarum/forum/components/NotificationGrid' as any, 'notificationTypes', (items: any) => {
+  extend('flarum/forum/components/NotificationGrid' as any, 'notificationTypes', (items: any) => {
     items.add('linkrobinsSupportNewReply', {
       name: 'linkrobinsSupportNewReply',
       icon: 'fas fa-life-ring',
@@ -131,7 +67,7 @@ app.initializers.add('linkrobins-support', () => {
   // as Suspend). Shown only to users with the manage_appeal_bans permission.
   // UserControls is a plain object (not a component class), so we extend the
   // object itself -- extending `.prototype` would silently no-op.
-  flarumExtend(UserControls, 'moderationControls', (items: any, user: any) => {
+  extend(UserControls, 'moderationControls', (items: any, user: any) => {
     if (!readForumAttribute('canManageSupportAppealBans')) return;
     if (!user || typeof user.attribute !== 'function') return;
     const banned = !!user.attribute('supportAppealBanned');
@@ -164,7 +100,7 @@ app.initializers.add('linkrobins-support', () => {
   // list (-14), so it doesn't sit oddly between "All Discussions" and the tags
   // block. Without the tags extension it simply lands under the remaining nav
   // links.
-  flarumExtend(IndexSidebar.prototype, 'navItems', (items: any) => {
+  extend(IndexSidebar.prototype, 'navItems', (items: any) => {
     if (!app.session || !app.session.user || !showNavInSidebar()) return;
     items.add('linkrobins-support', supportLink(), -11);
   });
@@ -173,20 +109,20 @@ app.initializers.add('linkrobins-support', () => {
   // with the other entries that are about you rather than about the forum.
   // String-path extend for the same reason as NotificationGrid above: it
   // defers resolution until the module is actually loaded.
-  flarumExtend('flarum/forum/components/SessionDropdown' as any, 'items', (items: any) => {
+  extend('flarum/forum/components/SessionDropdown' as any, 'items', (items: any) => {
     if (!app.session || !app.session.user || !showNavInAccountMenu()) return;
     items.add('linkrobins-support', supportLink(), 40);
   });
 
   // Support stats for staff, in the account menu beside the Support link,
   // opening a modal the way LR Birdseye's Analytics item does.
-  flarumExtend('flarum/forum/components/SessionDropdown' as any, 'items', (items: any) => {
+  extend('flarum/forum/components/SessionDropdown' as any, 'items', (items: any) => {
     if (!app.session || !app.session.user || !readForumAttribute('canHandleSupportTickets')) return;
     items.add(
       'linkrobins-support-stats',
       m(
         Button,
-        { icon: 'fas fa-chart-bar', onclick: () => app.modal.show(() => import('./forum/components/SupportStatsModal')) },
+        { icon: 'fas fa-chart-bar', onclick: () => app.modal.show(() => import('./components/SupportStatsModal')) },
         tr('stats.title', 'Support stats')
       ),
       39

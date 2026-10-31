@@ -1,4 +1,5 @@
 import ItemList from 'flarum/common/utils/ItemList';
+import extractText from 'flarum/common/utils/extractText';
 
 export interface TicketTypeClientDriver {
   id: string;
@@ -50,12 +51,12 @@ export const ticketTypes = new TicketTypeRegistry();
 // Register built-in ticket types as living examples for other extensions
 ticketTypes.register({
   id: 'standard',
-  name: () => app.translator.trans('linkrobins-support.admin.ticket_types.standard'),
+  name: () => extractText(app.translator.trans('linkrobins-support.admin.ticket_types.standard')),
 });
 
 ticketTypes.register({
   id: 'appeal',
-  name: () => app.translator.trans('linkrobins-support.admin.ticket_types.appeal'),
+  name: () => extractText(app.translator.trans('linkrobins-support.admin.ticket_types.appeal')),
 });
 
 export default ticketTypes;

@@ -204,7 +204,7 @@ export default class SupportAdminPage extends ExtensionPage {
 
   _typeLabel(category: any) {
     const typeId = (category.ticketType && category.ticketType()) || 'standard';
-    const types = (app.forum && app.forum.attribute('supportTicketTypes')) || [];
+    const types = (app.forum && app.forum.attribute<any[]>('supportTicketTypes')) || [];
     const matched = types.find((t: any) => t.id === typeId);
     if (matched && matched.name) {
       return m('span', { className: 'badge' }, matched.name);

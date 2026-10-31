@@ -1,3 +1,4 @@
+import app from 'flarum/forum/app';
 import Notification from 'flarum/forum/components/Notification';
 import { override } from 'flarum/common/extend';
 import NotificationList from 'flarum/forum/components/NotificationList';

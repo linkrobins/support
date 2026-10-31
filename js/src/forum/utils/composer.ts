@@ -1,3 +1,4 @@
+import app from 'flarum/forum/app';
 import Avatar from 'flarum/common/components/Avatar';
 import username from 'flarum/common/helpers/username';
 import ComposerPostPreview from 'flarum/forum/components/ComposerPostPreview';
