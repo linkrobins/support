@@ -1,5 +1,6 @@
 import app from 'flarum/forum/app';
 import extractText from 'flarum/common/utils/extractText';
+import Icon from 'flarum/common/components/Icon';
 import { basePath, BASE_PATH } from './helpers';
 
 /**
@@ -152,7 +153,8 @@ export function emptyLabel(filter: string | null, canCreate: boolean): string {
 export function priorityChip(priority: string | null | undefined): any {
   if (priority !== 'urgent' && priority !== 'low') return null;
   return m('span', { className: 'LinkRobinsSupport-chip LinkRobinsSupport-chip--priority is-' + priority }, [
-    m('i', { className: priority === 'urgent' ? 'fas fa-exclamation' : 'fas fa-arrow-down', 'aria-hidden': 'true' }),
+    m(Icon, { name: priority === 'urgent' ? 'fas fa-exclamation' : 'fas fa-arrow-down', 'aria-hidden': 'true' }),
+    ' ',
     priority === 'urgent'
       ? app.translator.trans('linkrobins-support.forum.priority.urgent')
       : app.translator.trans('linkrobins-support.forum.priority.low'),
