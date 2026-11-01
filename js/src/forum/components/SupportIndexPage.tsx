@@ -2,6 +2,7 @@ import app from 'flarum/forum/app';
 import Page from 'flarum/common/components/Page';
 import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
 import Button from 'flarum/common/components/Button';
+import Icon from 'flarum/common/components/Icon';
 import PageStructure from 'flarum/forum/components/PageStructure';
 import extractText from 'flarum/common/utils/extractText';
 import SupportIndexSidebar from './SupportIndexSidebar';
@@ -174,37 +175,40 @@ export default class SupportIndexPage extends Page {
   }
 
   view() {
-    const content = isGuest()
-      ? m('div', { className: 'LinkRobinsSupport-container' }, [
-          m(
-            'header',
-            { className: 'LinkRobinsSupport-header' },
-            m('h1', { className: 'LinkRobinsSupport-title' }, [
-              m('i', { className: 'fas fa-life-ring' }),
-              ' ',
-              app.translator.trans('linkrobins-support.forum.nav'),
-            ])
-          ),
-          m(SupportGuestPrompt),
-        ])
-      : m('div', { className: 'LinkRobinsSupport-container' }, [this._renderHeader(), this._renderList()]);
+    const content = isGuest() ? (
+      <div className="LinkRobinsSupport-container">
+        <header className="LinkRobinsSupport-header">
+          <h1 className="LinkRobinsSupport-title">
+            <Icon name="fas fa-life-ring" /> {app.translator.trans('linkrobins-support.forum.nav')}
+          </h1>
+        </header>
+        <SupportGuestPrompt />
+      </div>
+    ) : (
+      <div className="LinkRobinsSupport-container">
+        {this._renderHeader()}
+        {this._renderList()}
+      </div>
+    );
 
-    return m(
-      PageStructure,
-      {
-        className: 'IndexPage LinkRobinsSupport-page',
-        sidebar: () => this._renderSidebar(),
-      },
-      content
+    return (
+      <PageStructure
+        className="IndexPage LinkRobinsSupport-page"
+        sidebar={() => this._renderSidebar()}
+      >
+        {content}
+      </PageStructure>
     );
   }
 
   _renderSidebar() {
     try {
-      return m(SupportIndexSidebar, {
-        className: 'LinkRobinsSupport-sidebar',
-        activeFilter: this.filter,
-      });
+      return (
+        <SupportIndexSidebar
+          className="LinkRobinsSupport-sidebar"
+          activeFilter={this.filter}
+        />
+      );
     } catch (e) {
       console.error('[linkrobins/support] sidebar render failed:', e);
     }
@@ -213,10 +217,14 @@ export default class SupportIndexPage extends Page {
 
   _renderHeader() {
     const label = this._headingFor(this.filter);
-    return m('header', { className: 'LinkRobinsSupport-header LinkRobinsSupport-indexHeader' }, [
-      m('h1', { className: 'LinkRobinsSupport-title' }, [m('i', { className: 'fas fa-life-ring' }), ' ', label]),
-      this._renderSearch(),
-    ]);
+    return (
+      <header className="LinkRobinsSupport-header LinkRobinsSupport-indexHeader">
+        <h1 className="LinkRobinsSupport-title">
+          <Icon name="fas fa-life-ring" /> {label}
+        </h1>
+        {this._renderSearch()}
+      </header>
+    );
   }
 
   /**
@@ -224,21 +232,23 @@ export default class SupportIndexPage extends Page {
    * reloads after a short pause rather than on every key.
    */
   _renderSearch() {
-    return m('div', { className: 'LinkRobinsSupport-search' }, [
-      m('i', { className: 'fas fa-search LinkRobinsSupport-search-icon', 'aria-hidden': 'true' }),
-      m('input', {
-        className: 'FormControl LinkRobinsSupport-search-input',
-        type: 'search',
-        value: this.query,
-        placeholder: extractText(app.translator.trans('linkrobins-support.forum.index.search_placeholder')),
-        'aria-label': extractText(app.translator.trans('linkrobins-support.forum.index.search_placeholder')),
-        oninput: (e: any) => {
-          this.query = e.target.value;
-          clearTimeout(this._searchTimer);
-          this._searchTimer = setTimeout(() => this._load(true, true), 300);
-        },
-      }),
-    ]);
+    return (
+      <div className="LinkRobinsSupport-search">
+        <Icon name="fas fa-search" className="LinkRobinsSupport-search-icon" />
+        <input
+          className="FormControl LinkRobinsSupport-search-input"
+          type="search"
+          value={this.query}
+          placeholder={extractText(app.translator.trans('linkrobins-support.forum.index.search_placeholder'))}
+          aria-label={extractText(app.translator.trans('linkrobins-support.forum.index.search_placeholder'))}
+          oninput={(e: any) => {
+            this.query = e.target.value;
+            clearTimeout(this._searchTimer);
+            this._searchTimer = setTimeout(() => this._load(true, true), 300);
+          }}
+        />
+      </div>
+    );
   }
 
   _headingFor(filter: string | null) {
@@ -251,39 +261,36 @@ export default class SupportIndexPage extends Page {
 
   _renderList() {
     if (this.loading) {
-      return m(LoadingIndicator);
+      return <LoadingIndicator />;
     }
     if (this.error) {
-      return m('div', { className: 'LinkRobinsSupport-empty' }, app.translator.trans('linkrobins-support.forum.errors.load_tickets'));
+      return <div className="LinkRobinsSupport-empty">{app.translator.trans('linkrobins-support.forum.errors.load_tickets')}</div>;
     }
     if (!this.tickets.length && this.query.trim()) {
-      return m('div', { className: 'LinkRobinsSupport-empty' }, app.translator.trans('linkrobins-support.forum.index.no_results'));
+      return <div className="LinkRobinsSupport-empty">{app.translator.trans('linkrobins-support.forum.index.no_results')}</div>;
     }
     if (!this.tickets.length) {
-      return m('div', { className: 'LinkRobinsSupport-empty' }, emptyLabel(this.filter, canCreateSupportTicket()));
+      return <div className="LinkRobinsSupport-empty">{emptyLabel(this.filter, canCreateSupportTicket())}</div>;
     }
-    return [
-      m(
-        'div',
-        { className: 'LinkRobinsSupport-list' },
-        this.tickets.map((t: any) => m(SupportTicketRow, { ticket: t, key: 'ticket-' + t.id() }))
-      ),
-      // Exactly how core's discussion list does it: its container class (so
-      // core's styling applies), a plain button with core's own "Load More"
-      // wording, swapped for a spinner while the next page loads.
-      this.hasMore || this.loadingMore
-        ? m(
-            'div',
-            { className: 'DiscussionList-loadMore' },
-            this.loadingMore
-              ? m(LoadingIndicator)
-              : m(
-                  Button,
-                  { className: 'Button', onclick: () => this._loadMore() },
-                  app.translator.trans('core.forum.discussion_list.load_more_button')
-                )
-          )
-        : null,
-    ];
+    return (
+      <>
+        <div className="LinkRobinsSupport-list">
+          {this.tickets.map((t: any) => (
+            <SupportTicketRow ticket={t} key={'ticket-' + t.id()} />
+          ))}
+        </div>
+        {(this.hasMore || this.loadingMore) && (
+          <div className="DiscussionList-loadMore">
+            {this.loadingMore ? (
+              <LoadingIndicator />
+            ) : (
+              <Button className="Button" onclick={() => this._loadMore()}>
+                {app.translator.trans('core.forum.discussion_list.load_more_button')}
+              </Button>
+            )}
+          </div>
+        )}
+      </>
+    );
   }
 }
