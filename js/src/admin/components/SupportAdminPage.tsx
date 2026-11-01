@@ -3,6 +3,7 @@ import ExtensionPage from 'flarum/admin/components/ExtensionPage';
 import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
 import Button from 'flarum/common/components/Button';
 import Icon from 'flarum/common/components/Icon';
+import Switch from 'flarum/common/components/Switch';
 import Form from 'flarum/common/components/Form';
 import FormSectionGroup from 'flarum/admin/components/FormSectionGroup';
 import FormSection from 'flarum/admin/components/FormSection';
@@ -261,16 +262,14 @@ export default class SupportAdminPage extends ExtensionPage {
 
           return (
             <div className="Form-group" key={sw.key}>
-              <label className="checkbox">
-                <input
-                  type="checkbox"
-                  checked={!(value() === '' || value() === '0')}
-                  onchange={(e: any) => {
-                    value(e.target.checked ? '1' : '0');
-                  }}
-                />{' '}
+              <Switch
+                state={!(value() === '' || value() === '0')}
+                onchange={(val: boolean) => {
+                  value(val ? '1' : '0');
+                }}
+              >
                 {app.translator.trans(sw.labelKey)}
-              </label>
+              </Switch>
               <div className="helpText">{app.translator.trans(sw.helpKey)}</div>
             </div>
           );
