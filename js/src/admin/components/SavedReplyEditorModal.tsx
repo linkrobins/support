@@ -38,74 +38,77 @@ export default class SavedReplyEditorModal extends FormModal<any> {
   content() {
     const canSave = !!this.replyTitle.trim() && !!this.replyContent.trim();
 
-    return m('div', { className: 'Modal-body' }, [
-      this.error ? m('div', { className: 'Alert Alert--danger' }, this._errorMessage()) : null,
-      m(Form, null, [
-        m('div', { className: 'Form-group' }, [
-          m('label', null, app.translator.trans('linkrobins-support.admin.saved_replies.field_title')),
-          m('input', {
-            type: 'text',
-            className: 'FormControl',
-            maxlength: 100,
-            value: this.replyTitle,
-            disabled: this.saving,
-            oninput: (e: any) => {
-              this.replyTitle = e.target.value;
-            },
-          }),
-          m('div', { className: 'helpText' }, app.translator.trans('linkrobins-support.admin.saved_replies.field_title_help')),
-        ]),
-        m('div', { className: 'Form-group' }, [
-          m('label', null, app.translator.trans('linkrobins-support.admin.saved_replies.field_content')),
-          m('textarea', {
-            className: 'FormControl',
-            rows: 8,
-            maxlength: 10000,
-            value: this.replyContent,
-            disabled: this.saving,
-            oninput: (e: any) => {
-              this.replyContent = e.target.value;
-            },
-          }),
-          m('div', { className: 'helpText' }, app.translator.trans('linkrobins-support.admin.saved_replies.field_content_help')),
-        ]),
-        m('div', { className: 'Form-group' }, [
-          m('label', null, app.translator.trans('linkrobins-support.admin.saved_replies.field_position')),
-          m('input', {
-            type: 'number',
-            className: 'FormControl',
-            min: 0,
-            value: this.position,
-            disabled: this.saving,
-            oninput: (e: any) => {
-              this.position = e.target.value;
-            },
-          }),
-          m('div', { className: 'helpText' }, app.translator.trans('linkrobins-support.admin.saved_replies.field_position_help')),
-        ]),
-        m('div', { className: 'Form-group Form-controls' }, [
-          m(
-            Button,
-            { type: 'submit', className: 'Button Button--primary', loading: this.saving, disabled: !canSave },
-            this.reply
-              ? app.translator.trans('linkrobins-support.admin.saved_replies.submit_update')
-              : app.translator.trans('linkrobins-support.admin.saved_replies.submit_create')
-          ),
-          this.reply
-            ? m(
-                'button',
-                {
-                  type: 'button',
-                  className: 'Button LinkRobinsSupportCategoryEditorModal-delete',
-                  disabled: this.saving,
-                  onclick: () => this._delete(),
-                },
-                app.translator.trans('linkrobins-support.admin.saved_replies.delete_button')
-              )
-            : null,
-        ]),
-      ]),
-    ]);
+    return (
+      <div className="Modal-body">
+        {this.error && <div className="Alert Alert--danger">{this._errorMessage()}</div>}
+        <Form>
+          <div className="Form-group">
+            <label>{app.translator.trans('linkrobins-support.admin.saved_replies.field_title')}</label>
+            <input
+              type="text"
+              className="FormControl"
+              maxLength={100}
+              value={this.replyTitle}
+              disabled={this.saving}
+              oninput={(e: any) => {
+                this.replyTitle = e.target.value;
+              }}
+            />
+            <div className="helpText">{app.translator.trans('linkrobins-support.admin.saved_replies.field_title_help')}</div>
+          </div>
+          <div className="Form-group">
+            <label>{app.translator.trans('linkrobins-support.admin.saved_replies.field_content')}</label>
+            <textarea
+              className="FormControl"
+              rows={8}
+              maxLength={10000}
+              value={this.replyContent}
+              disabled={this.saving}
+              oninput={(e: any) => {
+                this.replyContent = e.target.value;
+              }}
+            />
+            <div className="helpText">{app.translator.trans('linkrobins-support.admin.saved_replies.field_content_help')}</div>
+          </div>
+          <div className="Form-group">
+            <label>{app.translator.trans('linkrobins-support.admin.saved_replies.field_position')}</label>
+            <input
+              type="number"
+              className="FormControl"
+              min={0}
+              value={this.position}
+              disabled={this.saving}
+              oninput={(e: any) => {
+                this.position = e.target.value;
+              }}
+            />
+            <div className="helpText">{app.translator.trans('linkrobins-support.admin.saved_replies.field_position_help')}</div>
+          </div>
+          <div className="Form-group Form-controls">
+            <Button
+              type="submit"
+              className="Button Button--primary"
+              loading={this.saving}
+              disabled={!canSave}
+            >
+              {this.reply
+                ? app.translator.trans('linkrobins-support.admin.saved_replies.submit_update')
+                : app.translator.trans('linkrobins-support.admin.saved_replies.submit_create')}
+            </Button>
+            {this.reply && (
+              <Button
+                type="button"
+                className="Button LinkRobinsSupportCategoryEditorModal-delete"
+                disabled={this.saving}
+                onclick={() => this._delete()}
+              >
+                {app.translator.trans('linkrobins-support.admin.saved_replies.delete_button')}
+              </Button>
+            )}
+          </div>
+        </Form>
+      </div>
+    );
   }
 
   onsubmit(e: any) {

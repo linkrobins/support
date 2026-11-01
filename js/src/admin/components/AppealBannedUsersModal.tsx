@@ -36,60 +36,67 @@ export default class AppealBannedUsersModal extends Modal {
   }
 
   content() {
-    return m('div', { className: 'Modal-body' }, [
-      m('p', { className: 'helpText' }, app.translator.trans('linkrobins-support.admin.appeal_bans.intro')),
-      this.loadingUsers && this.users.length === 0
-        ? m(LoadingIndicator)
-        : this.users.length > 0
-          ? [this._renderTable(), this._renderLoadMore()]
-          : m('div', { className: 'LinkRobinsSupportAdmin-empty' }, app.translator.trans('linkrobins-support.admin.appeal_bans.banned_empty')),
-    ]);
+    return (
+      <div className="Modal-body">
+        <p className="helpText">{app.translator.trans('linkrobins-support.admin.appeal_bans.intro')}</p>
+        {this.loadingUsers && this.users.length === 0 ? (
+          <LoadingIndicator />
+        ) : this.users.length > 0 ? (
+          <>
+            {this._renderTable()}
+            {this._renderLoadMore()}
+          </>
+        ) : (
+          <div className="LinkRobinsSupportAdmin-empty">
+            {app.translator.trans('linkrobins-support.admin.appeal_bans.banned_empty')}
+          </div>
+        )}
+      </div>
+    );
   }
 
   _renderTable() {
     const base = (app.forum && app.forum.attribute && app.forum.attribute('baseUrl')) || '';
-    return m(
-      'div',
-      { className: 'LinkRobinsSupportAdmin-tableWrap' },
-      m('table', { className: 'LinkRobinsSupportAdmin-catTable' }, [
-        m(
-          'thead',
-          null,
-          m('tr', null, [
-            m('th', null, app.translator.trans('linkrobins-support.admin.appeal_bans.column_username')),
-            m('th', null, app.translator.trans('linkrobins-support.admin.appeal_bans.column_email')),
-          ])
-        ),
-        m(
-          'tbody',
-          null,
-          this.users.map((u: any) =>
-            m('tr', { key: u.id() }, [
-              m('td', null, m('a', { href: base + '/u/' + encodeURIComponent(u.username() || ''), target: '_blank' }, u.username() || '?')),
-              m('td', { className: 'LinkRobinsSupportAdmin-mono' }, u.email() || '—'),
-            ])
-          )
-        ),
-      ])
+    return (
+      <div className="LinkRobinsSupportAdmin-tableWrap">
+        <table className="LinkRobinsSupportAdmin-catTable">
+          <thead>
+            <tr>
+              <th>{app.translator.trans('linkrobins-support.admin.appeal_bans.column_username')}</th>
+              <th>{app.translator.trans('linkrobins-support.admin.appeal_bans.column_email')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {this.users.map((u: any) => (
+              <tr key={u.id()}>
+                <td>
+                  <a href={base + '/u/' + encodeURIComponent(u.username() || '')} target="_blank" rel="noopener noreferrer">
+                    {u.username() || '?'}
+                  </a>
+                </td>
+                <td className="LinkRobinsSupportAdmin-mono">{u.email() || '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     );
   }
 
   _renderLoadMore() {
     if (!this.hasMore) return null;
-    return m(
-      'div',
-      { className: 'LinkRobinsSupportAdmin-loadMore', style: 'margin-top:10px;' },
-      m(
-        Button,
-        {
-          className: 'Button',
-          disabled: this.loadingUsers,
-          onclick: () => this._load(true),
-        },
-        this.loadingUsers
-          ? app.translator.trans('linkrobins-support.admin.common.loading')
-          : app.translator.trans('linkrobins-support.admin.appeal_bans.load_more')
-      )
+    return (
+      <div className="LinkRobinsSupportAdmin-loadMore" style={{ marginTop: '10px' }}>
+        <Button
+          className="Button"
+          disabled={this.loadingUsers}
+          onclick={() => this._load(true)}
+        >
+          {this.loadingUsers
+            ? app.translator.trans('linkrobins-support.admin.common.loading')
+            : app.translator.trans('linkrobins-support.admin.appeal_bans.load_more')}
+        </Button>
+      </div>
     );
   }
 
