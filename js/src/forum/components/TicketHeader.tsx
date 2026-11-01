@@ -3,6 +3,7 @@ import Component from 'flarum/common/Component';
 import Button from 'flarum/common/components/Button';
 import Dropdown from 'flarum/common/components/Dropdown';
 import Avatar from 'flarum/common/components/Avatar';
+import Icon from 'flarum/common/components/Icon';
 import ItemList from 'flarum/common/utils/ItemList';
 import extractText from 'flarum/common/utils/extractText';
 import { statusChip, statusClass, statusLabel, decisionLabel, priorityChip } from '../utils/status';
@@ -29,20 +30,25 @@ export default class TicketHeader extends Component {
     const { ticket, canModerate, isStaff } = this.attrs as any;
     const isDeleted = !!ticket.isDeleted();
 
-    return m('header', { className: 'LinkRobinsSupport-header LinkRobinsSupport-ticket-header' }, [
-      canModerate ? this.actions(ticket, isDeleted) : null,
-      m('h1', { className: 'LinkRobinsSupport-title' }, ticket.subject()),
-      m('div', { className: 'LinkRobinsSupport-ticket-meta' }, this.metaItems(ticket, isDeleted).toArray()),
-      ticket.decision()
-        ? m('div', { className: 'LinkRobinsSupport-decision' }, [
-            app.translator.trans('linkrobins-support.forum.show.decision'),
-            ' ',
-            isStaff && !isDeleted && this.decisionItems(ticket).toArray().length
-              ? this.decisionControl(ticket)
-              : m('span', { className: 'LinkRobinsSupport-decision-' + ticket.decision() }, decisionLabel(ticket.decision())),
-          ])
-        : null,
-    ]);
+    return (
+      <header className="LinkRobinsSupport-header LinkRobinsSupport-ticket-header">
+        {canModerate && this.actions(ticket, isDeleted)}
+        <h1 className="LinkRobinsSupport-title">{ticket.subject()}</h1>
+        <div className="LinkRobinsSupport-ticket-meta">{this.metaItems(ticket, isDeleted).toArray()}</div>
+        {ticket.decision() && (
+          <div className="LinkRobinsSupport-decision">
+            {app.translator.trans('linkrobins-support.forum.show.decision')}{' '}
+            {isStaff && !isDeleted && this.decisionItems(ticket).toArray().length ? (
+              this.decisionControl(ticket)
+            ) : (
+              <span className={`LinkRobinsSupport-decision-${ticket.decision()}`}>
+                {decisionLabel(ticket.decision())}
+              </span>
+            )}
+          </div>
+        )}
+      </header>
+    );
   }
 
   /**
@@ -64,11 +70,9 @@ export default class TicketHeader extends Component {
     if (isDeleted) {
       items.add(
         'deleted',
-        m('span', { className: 'LinkRobinsSupport-reply-deletedBadge' }, [
-          m('i', { className: 'fas fa-trash' }),
-          ' ',
-          app.translator.trans('linkrobins-support.forum.show.deleted_badge'),
-        ]),
+        <span className="LinkRobinsSupport-reply-deletedBadge">
+          <Icon name="fas fa-trash" /> {app.translator.trans('linkrobins-support.forum.show.deleted_badge')}
+        </span>,
         80
       );
     }
@@ -76,10 +80,10 @@ export default class TicketHeader extends Component {
     if (category) {
       items.add(
         'category',
-        m('span', { className: 'LinkRobinsSupport-chip LinkRobinsSupport-chip--category' }, [
-          m('span', { className: 'LinkRobinsSupport-chip-dot', style: { background: category.color() || 'var(--muted-color)' } }),
-          category.name(),
-        ]),
+        <span className="LinkRobinsSupport-chip LinkRobinsSupport-chip--category">
+          <span className="LinkRobinsSupport-chip-dot" style={{ background: category.color() || 'var(--muted-color)' }} />
+          {category.name()}
+        </span>,
         70
       );
 
@@ -103,26 +107,24 @@ export default class TicketHeader extends Component {
     const { onSetStatus, updating } = this.attrs as any;
     const current = ticket.status();
 
-    return m(
-      Dropdown,
-      {
-        className: 'LinkRobinsSupport-statusDropdown',
-        buttonClassName: 'LinkRobinsSupport-chip LinkRobinsSupport-chip--status ' + statusClass(current),
-        label: [m('span', { className: 'LinkRobinsSupport-chip-dot' }), statusLabel(current)],
-        caretIcon: 'fas fa-caret-down',
-        accessibleToggleLabel: extractText(app.translator.trans('linkrobins-support.forum.staff.change_status')),
-      },
-      STATUSES.map((s) =>
-        m(
-          Button,
-          {
-            icon: s === current ? 'fas fa-check' : 'fas fa-fw',
-            disabled: !!updating || s === current,
-            onclick: () => onSetStatus(s),
-          },
-          statusLabel(s)
-        )
-      )
+    return (
+      <Dropdown
+        className="LinkRobinsSupport-statusDropdown"
+        buttonClassName={`LinkRobinsSupport-chip LinkRobinsSupport-chip--status ${statusClass(current)}`}
+        label={[<span className="LinkRobinsSupport-chip-dot" />, statusLabel(current)]}
+        caretIcon="fas fa-caret-down"
+        accessibleToggleLabel={extractText(app.translator.trans('linkrobins-support.forum.staff.change_status'))}
+      >
+        {STATUSES.map((s) => (
+          <Button
+            icon={s === current ? 'fas fa-check' : 'fas fa-fw'}
+            disabled={!!updating || s === current}
+            onclick={() => onSetStatus(s)}
+          >
+            {statusLabel(s)}
+          </Button>
+        ))}
+      </Dropdown>
     );
   }
 
@@ -130,16 +132,16 @@ export default class TicketHeader extends Component {
     const current = ticket.decision();
     const items = this.decisionItems(ticket);
 
-    return m(
-      Dropdown,
-      {
-        className: 'LinkRobinsSupport-decisionDropdown',
-        buttonClassName: 'Button Button--text LinkRobinsSupport-decisionToggle LinkRobinsSupport-decision-' + current,
-        label: decisionLabel(current),
-        caretIcon: 'fas fa-caret-down',
-        accessibleToggleLabel: extractText(app.translator.trans('linkrobins-support.forum.staff.change_decision')),
-      },
-      items.toArray()
+    return (
+      <Dropdown
+        className="LinkRobinsSupport-decisionDropdown"
+        buttonClassName={`Button Button--text LinkRobinsSupport-decisionToggle LinkRobinsSupport-decision-${current}`}
+        label={decisionLabel(current)}
+        caretIcon="fas fa-caret-down"
+        accessibleToggleLabel={extractText(app.translator.trans('linkrobins-support.forum.staff.change_decision'))}
+      >
+        {items.toArray()}
+      </Dropdown>
     );
   }
 
@@ -158,15 +160,13 @@ export default class TicketHeader extends Component {
     decisions.forEach((d) => {
       items.add(
         d,
-        m(
-          Button,
-          {
-            icon: d === current ? 'fas fa-check' : 'fas fa-fw',
-            disabled: !!updating || d === current,
-            onclick: () => onSetDecision(d),
-          },
-          decisionLabel(d)
-        )
+        <Button
+          icon={d === current ? 'fas fa-check' : 'fas fa-fw'}
+          disabled={!!updating || d === current}
+          onclick={() => onSetDecision(d)}
+        >
+          {decisionLabel(d)}
+        </Button>
       );
     });
 
@@ -182,21 +182,22 @@ export default class TicketHeader extends Component {
 
   assignee(ticket: any) {
     const assigned = ticket.assignedStaff && ticket.assignedStaff();
-    return assigned
-      ? m(
-          'span',
-          {
-            className: 'LinkRobinsSupport-chip LinkRobinsSupport-chip--assignee',
-            title: extractText(
-              app.translator.trans('linkrobins-support.forum.show.assigned_to_name', { name: assigned.displayName() || assigned.username() })
-            ),
-          },
-          [m(Avatar, { user: assigned }), assigned.displayName() || assigned.username()]
-        )
-      : m('span', { className: 'LinkRobinsSupport-chip LinkRobinsSupport-chip--assignee is-unassigned' }, [
-          m('i', { className: 'fas fa-user-slash', 'aria-hidden': 'true' }),
-          app.translator.trans('linkrobins-support.forum.show.unassigned'),
-        ]);
+    return assigned ? (
+      <span
+        className="LinkRobinsSupport-chip LinkRobinsSupport-chip--assignee"
+        title={extractText(
+          app.translator.trans('linkrobins-support.forum.show.assigned_to_name', { name: assigned.displayName() || assigned.username() })
+        )}
+      >
+        <Avatar user={assigned} />
+        {assigned.displayName() || assigned.username()}
+      </span>
+    ) : (
+      <span className="LinkRobinsSupport-chip LinkRobinsSupport-chip--assignee is-unassigned">
+        <Icon name="fas fa-user-slash" />
+        {app.translator.trans('linkrobins-support.forum.show.unassigned')}
+      </span>
+    );
   }
 
   actions(ticket: any, isDeleted: boolean) {
@@ -204,19 +205,17 @@ export default class TicketHeader extends Component {
 
     if (items.isEmpty()) return null;
 
-    return m(
-      'span',
-      { className: 'LinkRobinsSupport-ticket-actions' },
-      m(
-        Dropdown,
-        {
-          menuClassName: 'Dropdown-menu--right',
-          buttonClassName: 'Button Button--icon Button--flat LinkRobinsSupport-reply-actionsToggle',
-          icon: 'fas fa-ellipsis-h',
-          accessibleToggleLabel: extractText(app.translator.trans('linkrobins-support.forum.ticket.mod_actions')),
-        },
-        items.toArray()
-      )
+    return (
+      <span className="LinkRobinsSupport-ticket-actions">
+        <Dropdown
+          menuClassName="Dropdown-menu--right"
+          buttonClassName="Button Button--icon Button--flat LinkRobinsSupport-reply-actionsToggle"
+          icon="fas fa-ellipsis-h"
+          accessibleToggleLabel={extractText(app.translator.trans('linkrobins-support.forum.ticket.mod_actions'))}
+        >
+          {items.toArray()}
+        </Dropdown>
+      </span>
     );
   }
 
@@ -241,19 +240,18 @@ export default class TicketHeader extends Component {
         const assigned = ticket.assignedStaff && ticket.assignedStaff();
         items.add(
           'assign',
-          m(
-            Button,
-            {
-              icon: 'fas fa-user-tag',
-              disabled: busy || !!updating,
-              onclick: () =>
-                app.modal.show(AssignTicketModal, {
-                  currentId: assigned ? assigned.id() : null,
-                  onAssign: (member: any) => onAssign(member),
-                }),
-            },
-            app.translator.trans('linkrobins-support.forum.ticket.assign')
-          ),
+          <Button
+            icon="fas fa-user-tag"
+            disabled={busy || !!updating}
+            onclick={() =>
+              app.modal.show(AssignTicketModal, {
+                currentId: assigned ? assigned.id() : null,
+                onAssign: (member: any) => onAssign(member),
+              })
+            }
+          >
+            {app.translator.trans('linkrobins-support.forum.ticket.assign')}
+          </Button>,
           100
         );
 
@@ -267,22 +265,26 @@ export default class TicketHeader extends Component {
         levels
           .filter(([level]) => level !== current)
           .forEach(([level, icon, label], i) => {
-            items.add('priority-' + level, m(Button, { icon, disabled: busy || !!updating, onclick: () => onSetPriority(level) }, label), 90 - i);
+            items.add(
+              'priority-' + level,
+              <Button icon={icon} disabled={busy || !!updating} onclick={() => onSetPriority(level)}>
+                {label}
+              </Button>,
+              90 - i
+            );
           });
       }
       if (canUpdate && isStaff) {
         items.add(
           'delete',
-          m(
-            Button,
-            {
-              icon: 'fas fa-trash',
-              className: 'LinkRobinsSupport-reply-action--danger',
-              disabled: busy,
-              onclick: () => onSoftDelete(),
-            },
-            app.translator.trans('linkrobins-support.forum.ticket.delete')
-          ),
+          <Button
+            icon="fas fa-trash"
+            className="LinkRobinsSupport-reply-action--danger"
+            disabled={busy}
+            onclick={() => onSoftDelete()}
+          >
+            {app.translator.trans('linkrobins-support.forum.ticket.delete')}
+          </Button>,
           -10
         );
       }
@@ -290,27 +292,23 @@ export default class TicketHeader extends Component {
       if (canUpdate && isStaff) {
         items.add(
           'restore',
-          m(
-            Button,
-            { icon: 'fas fa-undo', disabled: busy, onclick: () => onRestore() },
-            app.translator.trans('linkrobins-support.forum.ticket.restore')
-          ),
+          <Button icon="fas fa-undo" disabled={busy} onclick={() => onRestore()}>
+            {app.translator.trans('linkrobins-support.forum.ticket.restore')}
+          </Button>,
           -10
         );
       }
       if (canDelete) {
         items.add(
           'forceDelete',
-          m(
-            Button,
-            {
-              icon: 'fas fa-times',
-              className: 'LinkRobinsSupport-reply-action--danger',
-              disabled: busy,
-              onclick: () => onForceDelete(),
-            },
-            app.translator.trans('linkrobins-support.forum.action.delete_forever')
-          ),
+          <Button
+            icon="fas fa-times"
+            className="LinkRobinsSupport-reply-action--danger"
+            disabled={busy}
+            onclick={() => onForceDelete()}
+          >
+            {app.translator.trans('linkrobins-support.forum.action.delete_forever')}
+          </Button>,
           -100
         );
       }
