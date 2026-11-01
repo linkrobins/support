@@ -3,6 +3,8 @@ import Page from 'flarum/common/components/Page';
 import ItemList from 'flarum/common/utils/ItemList';
 import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
 import Button from 'flarum/common/components/Button';
+import Icon from 'flarum/common/components/Icon';
+import Link from 'flarum/common/components/Link';
 import PageStructure from 'flarum/forum/components/PageStructure';
 import extractText from 'flarum/common/utils/extractText';
 import SupportIndexSidebar from './SupportIndexSidebar';
@@ -159,60 +161,55 @@ export default class SupportShowPage extends Page<any> {
   }
 
   _wrap(inner: any) {
-    return m(
-      PageStructure,
-      {
-        className: 'IndexPage LinkRobinsSupport-page',
+    return (
+      <PageStructure
+        className="IndexPage LinkRobinsSupport-page"
         // Highlight the sidebar item this ticket belongs to: its status for
         // staff (who see the status views), or "My tickets" for the owner.
         // Null while the ticket is still loading.
-        sidebar: () =>
-          m(SupportIndexSidebar, {
-            className: 'LinkRobinsSupport-sidebar',
-            activeFilter: this.ticket ? (canHandleSupportTickets() ? this.ticket.status() : 'mine') : null,
-          }),
-      },
-      inner
+        sidebar={() => (
+          <SupportIndexSidebar
+            className="LinkRobinsSupport-sidebar"
+            activeFilter={this.ticket ? (canHandleSupportTickets() ? this.ticket.status() : 'mine') : null}
+          />
+        )}
+      >
+        {inner}
+      </PageStructure>
     );
   }
 
   view() {
     if (isGuest()) {
       return this._wrap(
-        m('div', { className: 'LinkRobinsSupport-container' }, [
-          m(
-            'header',
-            { className: 'LinkRobinsSupport-header' },
-            m('h1', { className: 'LinkRobinsSupport-title' }, app.translator.trans('linkrobins-support.forum.nav'))
-          ),
-          m(SupportGuestPrompt, { message: app.translator.trans('linkrobins-support.forum.guest.ticket_message') }),
-        ])
+        <div className="LinkRobinsSupport-container">
+          <header className="LinkRobinsSupport-header">
+            <h1 className="LinkRobinsSupport-title">{app.translator.trans('linkrobins-support.forum.nav')}</h1>
+          </header>
+          <SupportGuestPrompt message={app.translator.trans('linkrobins-support.forum.guest.ticket_message')} />
+        </div>
       );
     }
     if (this.loading) {
-      return this._wrap(m('div', { className: 'LinkRobinsSupport-container' }, m(LoadingIndicator)));
+      return this._wrap(
+        <div className="LinkRobinsSupport-container">
+          <LoadingIndicator />
+        </div>
+      );
     }
     if (this.error || !this.ticket) {
       return this._wrap(
-        m('div', { className: 'LinkRobinsSupport-container' }, [
-          m('header', { className: 'LinkRobinsSupport-header' }, [
-            // Back link first: the header is a column, so this reads as a
-            // breadcrumb above the title instead of a second column beside it.
-            m(
-              'a',
-              {
-                href: basePath() + BASE_PATH,
-                className: 'Button Button--text LinkRobinsSupport-backBtn',
-                onclick: (e: any) => {
-                  safeNavigate(basePath() + BASE_PATH, e);
-                },
-              },
-              [m('i', { className: 'fas fa-arrow-left' }), ' ', app.translator.trans('linkrobins-support.forum.action.back')]
-            ),
-            m('h1', { className: 'LinkRobinsSupport-title' }, app.translator.trans('linkrobins-support.forum.show.title')),
-          ]),
-          m('div', { className: 'LinkRobinsSupport-empty' }, app.translator.trans('linkrobins-support.forum.errors.load_ticket')),
-        ])
+        <div className="LinkRobinsSupport-container">
+          <header className="LinkRobinsSupport-header">
+            {/* Back link first: the header is a column, so this reads as a
+                breadcrumb above the title instead of a second column beside it. */}
+            <Link href={basePath() + BASE_PATH} className="Button Button--text LinkRobinsSupport-backBtn">
+              <Icon name="fas fa-arrow-left" /> {app.translator.trans('linkrobins-support.forum.action.back')}
+            </Link>
+            <h1 className="LinkRobinsSupport-title">{app.translator.trans('linkrobins-support.forum.show.title')}</h1>
+          </header>
+          <div className="LinkRobinsSupport-empty">{app.translator.trans('linkrobins-support.forum.errors.load_ticket')}</div>
+        </div>
       );
     }
 
@@ -221,87 +218,86 @@ export default class SupportShowPage extends Page<any> {
     const canModerate = canHandleSupportTickets() || !!ticket.canDelete();
 
     return this._wrap(
-      m('div', { className: 'LinkRobinsSupport-container' + (isDeleted ? ' LinkRobinsSupport-container--deleted' : '') }, [
-        m(TicketHeader, {
-          ticket,
-          canModerate,
-          isStaff: canHandleSupportTickets(),
-          updating: this.updating,
-          onSetStatus: (s: string) => this._setStatus(s),
-          onSetDecision: (d: string) => this._setDecision(d),
-          onAssign: (member: any) => this._assignTo(member),
-          onSetPriority: (priority: string) => this._setPriority(priority),
-          ticketBusy: this._ticketBusy,
-          onSoftDelete: () => this._softDeleteTicket(),
-          onRestore: () => this._restoreTicket(),
-          onForceDelete: () => this._forceDeleteTicket(),
-        }),
+      <div className={'LinkRobinsSupport-container' + (isDeleted ? ' LinkRobinsSupport-container--deleted' : '')}>
+        <TicketHeader
+          ticket={ticket}
+          canModerate={canModerate}
+          isStaff={canHandleSupportTickets()}
+          updating={this.updating}
+          onSetStatus={(s: string) => this._setStatus(s)}
+          onSetDecision={(d: string) => this._setDecision(d)}
+          onAssign={(member: any) => this._assignTo(member)}
+          onSetPriority={(priority: string) => this._setPriority(priority)}
+          ticketBusy={this._ticketBusy}
+          onSoftDelete={() => this._softDeleteTicket()}
+          onRestore={() => this._restoreTicket()}
+          onForceDelete={() => this._forceDeleteTicket()}
+        />
 
-        this.content(ticket),
+        {this.content(ticket)}
 
-        m(
-          'div',
-          { className: 'LinkRobinsSupport-replies' },
-          this._timeline().map((entry: any) =>
-            entry.kind === 'event' ? m(TicketEventItem, { key: 'event-' + entry.item.id(), event: entry.item }) : this._renderReply(entry.item)
-          )
-        ),
+        <div className="LinkRobinsSupport-replies">
+          {this._timeline().map((entry: any) =>
+            entry.kind === 'event' ? (
+              <TicketEventItem key={'event-' + entry.item.id()} event={entry.item} />
+            ) : (
+              this._renderReply(entry.item)
+            )
+          )}
+        </div>
 
-        this._renderLoadMore(),
+        {this._renderLoadMore()}
 
-        this._renderConfirmSolved(),
+        {this._renderConfirmSolved()}
 
-        ticket.canReply()
-          ? m(ReplyComposer, {
-              ticket,
-              posting: this.posting,
-              replyText: this.replyText,
-              replyIsInternal: this.replyIsInternal,
-              uploadingCount: this.uploadingCount,
-              uploadError: this.uploadError,
-              onOpenComposer: (canPostInternal: boolean) => this._openReplyComposer(canPostInternal),
-              onSubmit: () => this._postReply(),
-              onReplyTextInput: (v: string) => {
-                this.replyText = v;
-              },
-              onToggleInternal: (v: boolean) => {
-                this.replyIsInternal = v;
-              },
-              onAttachClick: () => {
-                if (this._replyFileInput) this._replyFileInput.click();
-              },
-              onFileInputCreate: (dom: any) => {
-                this._replyFileInput = dom;
-              },
-              onFileInputRemove: () => {
-                this._replyFileInput = null;
-              },
-              onFilesChosen: (files: any) => this._uploadFiles(files),
-            })
-          : m('div', { className: 'LinkRobinsSupport-empty' }, [
-              ticket.status() === 'closed'
-                ? app.translator.trans('linkrobins-support.forum.show.closed_notice')
-                : app.translator.trans('linkrobins-support.forum.show.cannot_reply'),
-              // Owner-facing Reopen button on a closed ticket (staff use the
-              // status bar above instead). canReopen is false for appeals.
-              ticket.status() === 'closed' && ticket.canReopen() && !canHandleSupportTickets()
-                ? m(
-                    'div',
-                    { className: 'LinkRobinsSupport-reopenRow' },
-                    m(
-                      'button',
-                      {
-                        type: 'button',
-                        className: 'Button Button--primary',
-                        disabled: this.updating,
-                        onclick: () => this._reopen(),
-                      },
-                      app.translator.trans('linkrobins-support.forum.action.reopen')
-                    )
-                  )
-                : null,
-            ]),
-      ])
+        {ticket.canReply() ? (
+          <ReplyComposer
+            ticket={ticket}
+            posting={this.posting}
+            replyText={this.replyText}
+            replyIsInternal={this.replyIsInternal}
+            uploadingCount={this.uploadingCount}
+            uploadError={this.uploadError}
+            onOpenComposer={(canPostInternal: boolean) => this._openReplyComposer(canPostInternal)}
+            onSubmit={() => this._postReply()}
+            onReplyTextInput={(v: string) => {
+              this.replyText = v;
+            }}
+            onToggleInternal={(v: boolean) => {
+              this.replyIsInternal = v;
+            }}
+            onAttachClick={() => {
+              if (this._replyFileInput) this._replyFileInput.click();
+            }}
+            onFileInputCreate={(dom: any) => {
+              this._replyFileInput = dom;
+            }}
+            onFileInputRemove={() => {
+              this._replyFileInput = null;
+            }}
+            onFilesChosen={(files: any) => this._uploadFiles(files)}
+          />
+        ) : (
+          <div className="LinkRobinsSupport-empty">
+            {ticket.status() === 'closed'
+              ? app.translator.trans('linkrobins-support.forum.show.closed_notice')
+              : app.translator.trans('linkrobins-support.forum.show.cannot_reply')}
+            {/* Owner-facing Reopen button on a closed ticket (staff use the
+                status bar above instead). canReopen is false for appeals. */}
+            {ticket.status() === 'closed' && ticket.canReopen() && !canHandleSupportTickets() ? (
+              <div className="LinkRobinsSupport-reopenRow">
+                <Button
+                  className="Button Button--primary"
+                  disabled={this.updating}
+                  onclick={() => this._reopen()}
+                >
+                  {app.translator.trans('linkrobins-support.forum.action.reopen')}
+                </Button>
+              </div>
+            ) : null}
+          </div>
+        )}
+      </div>
     );
   }
 
@@ -309,7 +305,7 @@ export default class SupportShowPage extends Page<any> {
     const items = this.contentItems(ticket);
     if (items.isEmpty()) return null;
 
-    return m('div', { className: 'LinkRobinsSupport-ticket-content' }, items.toArray());
+    return <div className="LinkRobinsSupport-ticket-content">{items.toArray()}</div>;
   }
 
   contentItems(ticket: any) {
@@ -333,25 +329,30 @@ export default class SupportShowPage extends Page<any> {
     const ticket = this.ticket;
     if (!ticket || !(ticket.canConfirmSolved && ticket.canConfirmSolved())) return null;
 
-    return m('div', { className: 'LinkRobinsSupport-confirmSolved' }, [
-      m('div', { className: 'LinkRobinsSupport-confirmSolved-text' }, [
-        m('i', { className: 'fas fa-check-circle', 'aria-hidden': 'true' }),
-        ' ',
-        app.translator.trans('linkrobins-support.forum.show.confirm_solved_prompt'),
-      ]),
-      m('div', { className: 'LinkRobinsSupport-confirmSolved-actions' }, [
-        m(
-          Button,
-          { className: 'Button Button--primary', disabled: this.updating, onclick: () => this._confirmSolved() },
-          app.translator.trans('linkrobins-support.forum.show.confirm_solved_yes')
-        ),
-        m(
-          Button,
-          { className: 'Button', disabled: this.updating, onclick: () => this._openReplyComposer(false) },
-          app.translator.trans('linkrobins-support.forum.show.confirm_solved_no')
-        ),
-      ]),
-    ]);
+    return (
+      <div className="LinkRobinsSupport-confirmSolved">
+        <div className="LinkRobinsSupport-confirmSolved-text">
+          <Icon name="fas fa-check-circle" aria-hidden="true" />{' '}
+          {app.translator.trans('linkrobins-support.forum.show.confirm_solved_prompt')}
+        </div>
+        <div className="LinkRobinsSupport-confirmSolved-actions">
+          <Button
+            className="Button Button--primary"
+            disabled={this.updating}
+            onclick={() => this._confirmSolved()}
+          >
+            {app.translator.trans('linkrobins-support.forum.show.confirm_solved_yes')}
+          </Button>
+          <Button
+            className="Button"
+            disabled={this.updating}
+            onclick={() => this._openReplyComposer(false)}
+          >
+            {app.translator.trans('linkrobins-support.forum.show.confirm_solved_no')}
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   _confirmSolved() {
@@ -373,17 +374,19 @@ export default class SupportShowPage extends Page<any> {
   }
 
   _renderReply(r: any) {
-    return m(ReplyItem, {
-      key: 'reply-' + r.id(),
-      reply: r,
-      editState: this._replyEditState ? this._replyEditState[r.id()] : null,
-      onBeginEdit: (rep: any) => this._beginEditReply(rep),
-      onSaveEditInline: (rep: any) => this._saveEditReply(rep),
-      onCancelEdit: (rep: any) => this._cancelEditReply(rep),
-      onSoftDelete: (rep: any) => this._softDeleteReply(rep),
-      onRestore: (rep: any) => this._restoreReply(rep),
-      onForceDelete: (rep: any) => this._forceDeleteReply(rep),
-    });
+    return (
+      <ReplyItem
+        key={'reply-' + r.id()}
+        reply={r}
+        editState={this._replyEditState ? this._replyEditState[r.id()] : null}
+        onBeginEdit={(rep: any) => this._beginEditReply(rep)}
+        onSaveEditInline={(rep: any) => this._saveEditReply(rep)}
+        onCancelEdit={(rep: any) => this._cancelEditReply(rep)}
+        onSoftDelete={(rep: any) => this._softDeleteReply(rep)}
+        onRestore={(rep: any) => this._restoreReply(rep)}
+        onForceDelete={(rep: any) => this._forceDeleteReply(rep)}
+      />
+    );
   }
 
   /**
@@ -486,23 +489,20 @@ export default class SupportShowPage extends Page<any> {
     const total = ticket && typeof ticket.replyCount === 'function' ? ticket.replyCount() : null;
     if (total == null || this.replies.length >= total) return null;
 
-    return m(
-      'div',
-      { className: 'LinkRobinsSupport-loadMore' },
-      m(
-        'button',
-        {
-          type: 'button',
-          className: 'Button Button--default LinkRobinsSupport-loadMoreBtn',
-          disabled: this.loadingMore,
-          onclick: () => {
+    return (
+      <div className="LinkRobinsSupport-loadMore">
+        <Button
+          className="Button Button--default LinkRobinsSupport-loadMoreBtn"
+          disabled={this.loadingMore}
+          onclick={() => {
             this._loadMoreReplies();
-          },
-        },
-        this.loadingMore
-          ? app.translator.trans('linkrobins-support.forum.action.loading_more')
-          : app.translator.trans('linkrobins-support.forum.action.load_more_replies')
-      )
+          }}
+        >
+          {this.loadingMore
+            ? app.translator.trans('linkrobins-support.forum.action.loading_more')
+            : app.translator.trans('linkrobins-support.forum.action.load_more_replies')}
+        </Button>
+      </div>
     );
   }
 
@@ -628,11 +628,11 @@ export default class SupportShowPage extends Page<any> {
         supportHeaderItems: () => [
           {
             name: 'title',
-            content: m('h3', { className: 'LinkRobinsSupport-composerTitle' }, [
-              m('i', { className: 'fas fa-pencil-alt' }),
-              ' ',
-              app.translator.trans('linkrobins-support.forum.action.edit_reply'),
-            ]),
+            content: (
+              <h3 className="LinkRobinsSupport-composerTitle">
+                <Icon name="fas fa-pencil-alt" /> {app.translator.trans('linkrobins-support.forum.action.edit_reply')}
+              </h3>
+            ),
           },
         ],
         onSupportSubmit: (content: string, body: any) => {
@@ -844,7 +844,11 @@ export default class SupportShowPage extends Page<any> {
           {
             name: 'title',
             priority: 10,
-            content: m('h3', { className: 'LinkRobinsSupport-composerTitle' }, [m('i', { className: 'fas fa-reply' }), ' ', subject]),
+            content: (
+              <h3 className="LinkRobinsSupport-composerTitle">
+                <Icon name="fas fa-reply" /> {subject}
+              </h3>
+            ),
           },
         ];
         if (canPostInternal) {
@@ -853,20 +857,21 @@ export default class SupportShowPage extends Page<any> {
           // would stack.
           rows.push({
             name: 'staffTools',
-            content: m('div', { className: 'LinkRobinsSupport-composerTools' }, [
-              m('label', { className: 'LinkRobinsSupport-internalToggle' }, [
-                m('input', {
-                  type: 'checkbox',
-                  checked: !!body._supportInternal,
-                  onchange: (e: any) => {
-                    body._supportInternal = !!e.target.checked;
-                  },
-                }),
-                ' ',
-                app.translator.trans('linkrobins-support.forum.reply.internal_note'),
-              ]),
-              m(SavedRepliesMenu),
-            ]),
+            content: (
+              <div className="LinkRobinsSupport-composerTools">
+                <label className="LinkRobinsSupport-internalToggle">
+                  <input
+                    type="checkbox"
+                    checked={!!body._supportInternal}
+                    onchange={(e: any) => {
+                      body._supportInternal = !!e.target.checked;
+                    }}
+                  />{' '}
+                  {app.translator.trans('linkrobins-support.forum.reply.internal_note')}
+                </label>
+                <SavedRepliesMenu />
+              </div>
+            ),
           });
         }
         return rows;

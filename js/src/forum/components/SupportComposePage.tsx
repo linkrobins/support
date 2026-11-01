@@ -2,6 +2,8 @@ import app from 'flarum/forum/app';
 import Page from 'flarum/common/components/Page';
 import ItemList from 'flarum/common/utils/ItemList';
 import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
+import Button from 'flarum/common/components/Button';
+import Icon from 'flarum/common/components/Icon';
 import PageStructure from 'flarum/forum/components/PageStructure';
 import extractText from 'flarum/common/utils/extractText';
 import SupportIndexSidebar from './SupportIndexSidebar';
@@ -73,70 +75,64 @@ export default class SupportComposePage extends Page {
   }
 
   _wrap(inner: any) {
-    return m(
-      PageStructure,
-      {
-        className: 'IndexPage LinkRobinsSupport-page',
+    return (
+      <PageStructure
+        className="IndexPage LinkRobinsSupport-page"
         // No filter is "active" on the compose page -- they're filing a new
         // ticket, not viewing a list. Pass null so all sidebar items render
         // as inactive.
-        sidebar: () => m(SupportIndexSidebar, { className: 'LinkRobinsSupport-sidebar', activeFilter: null }),
-      },
-      inner
+        sidebar={() => <SupportIndexSidebar className="LinkRobinsSupport-sidebar" activeFilter={null} />}
+      >
+        {inner}
+      </PageStructure>
     );
   }
 
   view() {
     if (isGuest()) {
       return this._wrap(
-        m('div', { className: 'LinkRobinsSupport-container' }, [
-          m(
-            'header',
-            { className: 'LinkRobinsSupport-header' },
-            m('h1', { className: 'LinkRobinsSupport-title' }, app.translator.trans('linkrobins-support.forum.nav'))
-          ),
-          m(SupportGuestPrompt, { message: app.translator.trans('linkrobins-support.forum.guest.compose_message') }),
-        ])
+        <div className="LinkRobinsSupport-container">
+          <header className="LinkRobinsSupport-header">
+            <h1 className="LinkRobinsSupport-title">{app.translator.trans('linkrobins-support.forum.nav')}</h1>
+          </header>
+          <SupportGuestPrompt message={app.translator.trans('linkrobins-support.forum.guest.compose_message')} />
+        </div>
       );
     }
 
     if (supportAppealBanned() && isUserSuspended()) {
       return this._wrap(
-        m('div', { className: 'LinkRobinsSupport-container' }, [
-          m(
-            'header',
-            { className: 'LinkRobinsSupport-header' },
-            m('h1', { className: 'LinkRobinsSupport-title' }, app.translator.trans('linkrobins-support.forum.nav'))
-          ),
-          m(
-            'div',
-            { className: 'LinkRobinsSupport-empty LinkRobinsSupport-empty--blocked' },
-            app.translator.trans('linkrobins-support.forum.compose.appeal_banned')
-          ),
-        ])
+        <div className="LinkRobinsSupport-container">
+          <header className="LinkRobinsSupport-header">
+            <h1 className="LinkRobinsSupport-title">{app.translator.trans('linkrobins-support.forum.nav')}</h1>
+          </header>
+          <div className="LinkRobinsSupport-empty LinkRobinsSupport-empty--blocked">
+            {app.translator.trans('linkrobins-support.forum.compose.appeal_banned')}
+          </div>
+        </div>
       );
     }
 
     if (this.loading) {
-      return this._wrap(m('div', { className: 'LinkRobinsSupport-container' }, m(LoadingIndicator)));
+      return this._wrap(
+        <div className="LinkRobinsSupport-container">
+          <LoadingIndicator />
+        </div>
+      );
     }
 
     if (this.categories.length === 0) {
       return this._wrap(
-        m('div', { className: 'LinkRobinsSupport-container' }, [
-          m(
-            'header',
-            { className: 'LinkRobinsSupport-header' },
-            m('h1', { className: 'LinkRobinsSupport-title' }, app.translator.trans('linkrobins-support.forum.nav'))
-          ),
-          m(
-            'div',
-            { className: 'LinkRobinsSupport-empty' },
-            isUserSuspended()
+        <div className="LinkRobinsSupport-container">
+          <header className="LinkRobinsSupport-header">
+            <h1 className="LinkRobinsSupport-title">{app.translator.trans('linkrobins-support.forum.nav')}</h1>
+          </header>
+          <div className="LinkRobinsSupport-empty">
+            {isUserSuspended()
               ? app.translator.trans('linkrobins-support.forum.compose.no_appeal_categories')
-              : app.translator.trans('linkrobins-support.forum.compose.no_categories')
-          ),
-        ])
+              : app.translator.trans('linkrobins-support.forum.compose.no_categories')}
+          </div>
+        </div>
       );
     }
 
@@ -147,11 +143,15 @@ export default class SupportComposePage extends Page {
     }
 
     return this._wrap(
-      m('div', { className: 'LinkRobinsSupport-container' }, [
-        this._renderComposeHeader(),
-        this.error ? m('div', { className: 'Alert Alert--danger' }, [m('span', { className: 'Alert-body' }, this._errorMessage())]) : null,
-        m('div', { className: 'LinkRobinsSupport-form' }, this.fields().toArray()),
-      ])
+      <div className="LinkRobinsSupport-container">
+        {this._renderComposeHeader()}
+        {this.error && (
+          <div className="Alert Alert--danger">
+            <span className="Alert-body">{this._errorMessage()}</span>
+          </div>
+        )}
+        <div className="LinkRobinsSupport-form">{this.fields().toArray()}</div>
+      </div>
     );
   }
 
@@ -170,20 +170,20 @@ export default class SupportComposePage extends Page {
 
     items.add(
       'subject',
-      m('div', { className: 'Form-group' }, [
-        m('label', null, app.translator.trans('linkrobins-support.forum.compose.subject_label')),
-        m('input', {
-          type: 'text',
-          className: 'FormControl',
-          value: this.subject,
-          disabled: this.saving,
-          placeholder: extractText(app.translator.trans('linkrobins-support.forum.compose.subject_placeholder')),
-          maxlength: 200,
-          oninput: (e: any) => {
+      <div className="Form-group">
+        <label>{app.translator.trans('linkrobins-support.forum.compose.subject_label')}</label>
+        <input
+          type="text"
+          className="FormControl"
+          value={this.subject}
+          disabled={this.saving}
+          placeholder={extractText(app.translator.trans('linkrobins-support.forum.compose.subject_placeholder'))}
+          maxLength={200}
+          oninput={(e: any) => {
             this.subject = e.target.value;
-          },
-        }),
-      ]),
+          }}
+        />
+      </div>,
       100
     );
 
@@ -192,18 +192,16 @@ export default class SupportComposePage extends Page {
 
       items.add(
         'message',
-        m('div', { className: 'Form-group' }, [
-          m('label', null, app.translator.trans('linkrobins-support.forum.compose.message_label')),
-          m(
-            'div',
-            { className: 'LinkRobinsSupport-composePreview' },
-            supportComposerPreview({
+        <div className="Form-group">
+          <label>{app.translator.trans('linkrobins-support.forum.compose.message_label')}</label>
+          <div className="LinkRobinsSupport-composePreview">
+            {supportComposerPreview({
               composing: composerOpen,
               placeholder: app.translator.trans('linkrobins-support.forum.compose.message_placeholder_click'),
               onclick: () => this._openComposeComposer(),
-            })
-          ),
-        ]),
+            })}
+          </div>
+        </div>,
         50
       );
 
@@ -214,94 +212,88 @@ export default class SupportComposePage extends Page {
 
     items.add(
       'message',
-      m('div', { className: 'Form-group' }, [
-        m('label', null, app.translator.trans('linkrobins-support.forum.compose.message_label')),
-        m('textarea', {
-          className: 'FormControl LinkRobinsSupport-body',
-          rows: 10,
-          value: this.body,
-          disabled: this.saving,
-          placeholder: extractText(app.translator.trans('linkrobins-support.forum.compose.body_placeholder')),
-          oninput: (e: any) => {
+      <div className="Form-group">
+        <label>{app.translator.trans('linkrobins-support.forum.compose.message_label')}</label>
+        <textarea
+          className="FormControl LinkRobinsSupport-body"
+          rows={10}
+          value={this.body}
+          disabled={this.saving}
+          placeholder={extractText(app.translator.trans('linkrobins-support.forum.compose.body_placeholder'))}
+          oninput={(e: any) => {
             this.body = e.target.value;
-          },
-          onkeydown: (e: any) => {
+          }}
+          onkeydown={(e: any) => {
             const isSubmit = (e.key === 'Enter' || e.keyCode === 13) && (e.ctrlKey || e.metaKey);
             if (isSubmit && canSaveFallback) {
               e.preventDefault();
               this._submit();
             }
-          },
-        }),
-        this.uploadError ? m('div', { className: 'Alert Alert--danger LinkRobinsSupport-uploadAlert' }, this.uploadError) : null,
-        this.uploadingCount > 0
-          ? m(
-              'div',
-              { className: 'LinkRobinsSupport-uploadStatus' },
-              this.uploadingCount === 1
-                ? app.translator.trans('linkrobins-support.forum.common.uploading_one')
-                : app.translator.trans('linkrobins-support.forum.common.uploading_many', { count: this.uploadingCount })
-            )
-          : null,
-      ]),
+          }}
+        />
+        {this.uploadError && <div className="Alert Alert--danger LinkRobinsSupport-uploadAlert">{this.uploadError}</div>}
+        {this.uploadingCount > 0 && (
+          <div className="LinkRobinsSupport-uploadStatus">
+            {this.uploadingCount === 1
+              ? app.translator.trans('linkrobins-support.forum.common.uploading_one')
+              : app.translator.trans('linkrobins-support.forum.common.uploading_many', { count: this.uploadingCount })}
+          </div>
+        )}
+      </div>,
       50
     );
 
     items.add(
       'actions',
-      m('div', { className: 'LinkRobinsSupport-form-actions' }, [
-        app.forum && app.forum.attribute('fof-upload.canUpload')
-          ? m('span', { className: 'LinkRobinsSupport-attachBtnWrap' }, [
-              m(
-                'button',
-                {
-                  type: 'button',
-                  className: 'Button Button--default LinkRobinsSupport-attachBtn',
-                  disabled: this.saving || this.uploadingCount > 0,
-                  onclick: () => {
-                    if (this._composeFileInput) this._composeFileInput.click();
-                  },
-                },
-                [m('i', { className: 'fas fa-paperclip' }), ' ', app.translator.trans('linkrobins-support.forum.action.attach_files')]
-              ),
-              m('input', {
-                type: 'file',
-                multiple: true,
-                style: 'display:none;',
-                disabled: this.saving || this.uploadingCount > 0,
-                oncreate: (vnode: any) => {
-                  this._composeFileInput = vnode.dom;
-                },
-                onremove: () => {
-                  this._composeFileInput = null;
-                },
-                onchange: (e: any) => {
-                  const files = e.target.files;
-                  if (files && files.length) {
-                    this._uploadFiles(files);
-                  }
-                  try {
-                    e.target.value = '';
-                  } catch (err) {}
-                },
-              }),
-            ])
-          : null,
-        m(
-          'button',
-          {
-            type: 'button',
-            className: 'Button Button--primary',
-            disabled: !canSaveFallback,
-            onclick: () => {
-              this._submit();
-            },
-          },
-          this.saving
+      <div className="LinkRobinsSupport-form-actions">
+        {app.forum && app.forum.attribute('fof-upload.canUpload') && (
+          <span className="LinkRobinsSupport-attachBtnWrap">
+            <Button
+              className="Button Button--default LinkRobinsSupport-attachBtn"
+              disabled={this.saving || this.uploadingCount > 0}
+              onclick={() => {
+                if (this._composeFileInput) this._composeFileInput.click();
+              }}
+              icon="fas fa-paperclip"
+            >
+              {app.translator.trans('linkrobins-support.forum.action.attach_files')}
+            </Button>
+            <input
+              type="file"
+              multiple
+              style={{ display: 'none' }}
+              disabled={this.saving || this.uploadingCount > 0}
+              oncreate={(vnode: any) => {
+                this._composeFileInput = vnode.dom;
+              }}
+              onremove={() => {
+                this._composeFileInput = null;
+              }}
+              onchange={(e: any) => {
+                const files = e.target.files;
+                if (files && files.length) {
+                  this._uploadFiles(files);
+                }
+                try {
+                  e.target.value = '';
+                } catch (err) {}
+              }}
+            />
+          </span>
+        )}
+        <Button
+          className="Button Button--primary"
+          disabled={!canSaveFallback}
+          loading={this.saving}
+          onclick={() => {
+            this._submit();
+          }}
+        >
+          {this.saving
             ? app.translator.trans('linkrobins-support.forum.compose.submitting')
-            : app.translator.trans('linkrobins-support.forum.compose.submit')
-        ),
-      ]),
+            : app.translator.trans('linkrobins-support.forum.compose.submit')}
+        </Button>
+      </div>,
       -100
     );
 
@@ -317,30 +309,28 @@ export default class SupportComposePage extends Page {
   }
 
   _renderComposeHeader() {
-    return m('header', { className: 'LinkRobinsSupport-header' }, [
-      this.categories.length > 1
-        ? m(
-            'button',
-            {
-              type: 'button',
-              className: 'Button Button--link LinkRobinsSupport-backBtn',
-              disabled: this.saving,
-              onclick: () => {
-                this._backToCategories();
-              },
-            },
-            [m('i', { className: 'fas fa-chevron-left' }), ' ', app.translator.trans('linkrobins-support.forum.compose.back_to_categories')]
-          )
-        : null,
-      m(
-        'h1',
-        { className: 'LinkRobinsSupport-title' },
-        this._isAppealOnly()
-          ? app.translator.trans('linkrobins-support.forum.compose.title_appeal')
-          : app.translator.trans('linkrobins-support.forum.compose.title')
-      ),
-      this._renderChosenCategory(),
-    ]);
+    return (
+      <header className="LinkRobinsSupport-header">
+        {this.categories.length > 1 && (
+          <Button
+            className="Button Button--link LinkRobinsSupport-backBtn"
+            disabled={this.saving}
+            icon="fas fa-chevron-left"
+            onclick={() => {
+              this._backToCategories();
+            }}
+          >
+            {app.translator.trans('linkrobins-support.forum.compose.back_to_categories')}
+          </Button>
+        )}
+        <h1 className="LinkRobinsSupport-title">
+          {this._isAppealOnly()
+            ? app.translator.trans('linkrobins-support.forum.compose.title_appeal')
+            : app.translator.trans('linkrobins-support.forum.compose.title')}
+        </h1>
+        {this._renderChosenCategory()}
+      </header>
+    );
   }
 
   _isAppealOnly(): boolean {
@@ -365,12 +355,13 @@ export default class SupportComposePage extends Page {
       supportHeaderItems: () => [
         {
           name: 'title',
-          content: m('h3', { className: 'LinkRobinsSupport-composerTitle' }, [
-            m('i', { className: (cat && cat.icon()) || 'fas fa-life-ring' }),
-            ' ',
-            this.subject || app.translator.trans('linkrobins-support.forum.compose.title'),
-            cat && cat.name() ? m('span', { className: 'LinkRobinsSupport-composerTitle-cat' }, ' · ' + cat.name()) : null,
-          ]),
+          content: (
+            <h3 className="LinkRobinsSupport-composerTitle">
+              <Icon name={(cat && cat.icon()) || 'fas fa-life-ring'} />{' '}
+              {this.subject || app.translator.trans('linkrobins-support.forum.compose.title')}
+              {cat && cat.name() && <span className="LinkRobinsSupport-composerTitle-cat">{' · ' + cat.name()}</span>}
+            </h3>
+          ),
         },
       ],
       onSupportSubmit: (content: string, body: any) => {
@@ -382,56 +373,45 @@ export default class SupportComposePage extends Page {
   // Step 1: clickable category cards (icon + name + description).
   _renderPicker() {
     const appeal = this._isAppealOnly();
-    return m('div', { className: 'LinkRobinsSupport-container' }, [
-      m('header', { className: 'LinkRobinsSupport-header LinkRobinsSupport-header--picker' }, [
-        m(
-          'h1',
-          { className: 'LinkRobinsSupport-title' },
-          appeal
-            ? app.translator.trans('linkrobins-support.forum.compose.title_appeal')
-            : app.translator.trans('linkrobins-support.forum.compose.title')
-        ),
-        m(
-          'p',
-          { className: 'LinkRobinsSupport-pickerHint' },
-          appeal
-            ? app.translator.trans('linkrobins-support.forum.compose.choose_category_appeal')
-            : app.translator.trans('linkrobins-support.forum.compose.choose_category')
-        ),
-      ]),
-      m(
-        'ul',
-        { className: 'LinkRobinsSupport-categoryCards' },
-        this.categories.map((c: any) => {
-          const color = c.color() || null;
-          return m(
-            'li',
-            { className: 'LinkRobinsSupport-categoryCards-item' },
-            m(
-              'button',
-              {
-                type: 'button',
-                className: 'LinkRobinsSupport-categoryCard',
-                onclick: () => {
-                  this._chooseCategory(String(c.id()));
-                },
-              },
-              [
-                m(
-                  'span',
-                  { className: 'LinkRobinsSupport-categoryCard-icon', style: color ? 'color:' + color : null },
-                  m('i', { className: c.icon() || 'fas fa-life-ring' })
-                ),
-                m('span', { className: 'LinkRobinsSupport-categoryCard-text' }, [
-                  m('span', { className: 'LinkRobinsSupport-categoryCard-name' }, c.name() || ''),
-                  c.description() ? m('span', { className: 'LinkRobinsSupport-categoryCard-desc' }, c.description()) : null,
-                ]),
-              ]
-            )
-          );
-        })
-      ),
-    ]);
+    return (
+      <div className="LinkRobinsSupport-container">
+        <header className="LinkRobinsSupport-header LinkRobinsSupport-header--picker">
+          <h1 className="LinkRobinsSupport-title">
+            {appeal
+              ? app.translator.trans('linkrobins-support.forum.compose.title_appeal')
+              : app.translator.trans('linkrobins-support.forum.compose.title')}
+          </h1>
+          <p className="LinkRobinsSupport-pickerHint">
+            {appeal
+              ? app.translator.trans('linkrobins-support.forum.compose.choose_category_appeal')
+              : app.translator.trans('linkrobins-support.forum.compose.choose_category')}
+          </p>
+        </header>
+        <ul className="LinkRobinsSupport-categoryCards">
+          {this.categories.map((c: any) => {
+            const color = c.color() || null;
+            return (
+              <li className="LinkRobinsSupport-categoryCards-item" key={c.id()}>
+                <Button
+                  className="LinkRobinsSupport-categoryCard"
+                  onclick={() => {
+                    this._chooseCategory(String(c.id()));
+                  }}
+                >
+                  <span className="LinkRobinsSupport-categoryCard-icon" style={color ? { color } : undefined}>
+                    <Icon name={c.icon() || 'fas fa-life-ring'} />
+                  </span>
+                  <span className="LinkRobinsSupport-categoryCard-text">
+                    <span className="LinkRobinsSupport-categoryCard-name">{c.name() || ''}</span>
+                    {c.description() && <span className="LinkRobinsSupport-categoryCard-desc">{c.description()}</span>}
+                  </span>
+                </Button>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    );
   }
 
   // The selected-category chip shown in the form header (step 2).
@@ -439,15 +419,18 @@ export default class SupportComposePage extends Page {
     const c = this._chosenCategory();
     if (!c) return null;
     const color = c.color() || null;
-    return m('div', { className: 'LinkRobinsSupport-chosenCategory' }, [
-      c.icon()
-        ? m('i', {
-            className: c.icon() + ' LinkRobinsSupport-chosenCategory-icon',
-            style: color ? 'color:' + color : null,
-          })
-        : null,
-      m('span', { className: 'LinkRobinsSupport-chosenCategory-name' }, c.name() || ''),
-    ]);
+    return (
+      <div className="LinkRobinsSupport-chosenCategory">
+        {c.icon() && (
+          <Icon
+            name={c.icon()}
+            className="LinkRobinsSupport-chosenCategory-icon"
+            style={color ? { color } : undefined}
+          />
+        )}
+        <span className="LinkRobinsSupport-chosenCategory-name">{c.name() || ''}</span>
+      </div>
+    );
   }
 
   _chosenCategory() {
