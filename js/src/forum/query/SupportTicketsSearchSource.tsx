@@ -65,41 +65,28 @@ export default class SupportTicketsSearchSource implements GlobalSearchSource {
       const status = ticket.status && ticket.status();
       const number = ticket.id ? ticket.id() : '';
 
-      return m(
-        'li',
-        {
-          className: 'DiscussionSearchResult LinkRobinsSupport-searchResult',
-          'data-index': 'tickets' + number,
-          'data-id': number,
-        },
-        m(
-          Link,
-          {
-            href: app.route('linkrobins-support.show', { id: number }),
-            className: 'LinkRobinsSupport-searchResult-link',
-            onclick: () => app.modal.close(),
-          },
-          [
-            m('span', { className: 'LinkRobinsSupport-searchResult-subject' }, [
-              m('span', { className: 'LinkRobinsSupport-searchResult-number' }, `#${number} `),
-              ticket.subject() || app.translator.trans('linkrobins-support.forum.index.untitled'),
-            ]),
-            m('span', { className: 'LinkRobinsSupport-searchResult-meta' }, [
-              cat
-                ? m('span', { className: 'LinkRobinsSupport-searchResult-cat' }, [
-                    cat.color()
-                      ? m('span', {
-                          className: 'LinkRobinsSupport-chip-dot',
-                          style: { background: cat.color() },
-                        })
-                      : null,
-                    cat.name(),
-                  ])
-                : null,
-              statusChip(status),
-            ]),
-          ]
-        )
+      return (
+        <li className="DiscussionSearchResult LinkRobinsSupport-searchResult" data-index={'tickets' + number} data-id={number}>
+          <Link
+            href={app.route('linkrobins-support.show', { id: number })}
+            className="LinkRobinsSupport-searchResult-link"
+            onclick={() => app.modal.close()}
+          >
+            <span className="LinkRobinsSupport-searchResult-subject">
+              <span className="LinkRobinsSupport-searchResult-number">{`#${number} `}</span>
+              {ticket.subject() || app.translator.trans('linkrobins-support.forum.index.untitled')}
+            </span>
+            <span className="LinkRobinsSupport-searchResult-meta">
+              {cat ? (
+                <span className="LinkRobinsSupport-searchResult-cat">
+                  {cat.color() ? <span className="LinkRobinsSupport-chip-dot" style={{ background: cat.color() }} /> : null}
+                  {cat.name()}
+                </span>
+              ) : null}
+              {statusChip(status)}
+            </span>
+          </Link>
+        </li>
       );
     }) as Array<Mithril.Vnode>;
   }
@@ -110,16 +97,12 @@ export default class SupportTicketsSearchSource implements GlobalSearchSource {
 
   fullPage(query: string): Mithril.Vnode {
     const trimmed = query.trim();
-    return m(
-      'li',
-      m(
-        LinkButton,
-        {
-          icon: 'fas fa-search',
-          href: app.route('linkrobins-support.search', trimmed ? { q: trimmed } : {}),
-        },
-        app.translator.trans('linkrobins-support.forum.index.search_all_tickets', { query: trimmed })
-      )
+    return (
+      <li>
+        <LinkButton icon="fas fa-search" href={app.route('linkrobins-support.search', trimmed ? { q: trimmed } : {})}>
+          {app.translator.trans('linkrobins-support.forum.index.search_all_tickets', { query: trimmed })}
+        </LinkButton>
+      </li>
     );
   }
 

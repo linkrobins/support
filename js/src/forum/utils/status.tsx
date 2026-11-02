@@ -42,10 +42,12 @@ export function statusClass(status: string): string {
  * in the ticket header and the ticket list so both read the same.
  */
 export function statusChip(status: string): any {
-  return m('span', { className: 'LinkRobinsSupport-chip LinkRobinsSupport-chip--status ' + statusClass(status) }, [
-    m('span', { className: 'LinkRobinsSupport-chip-dot' }),
-    statusLabel(status),
-  ]);
+  return (
+    <span className={'LinkRobinsSupport-chip LinkRobinsSupport-chip--status ' + statusClass(status)}>
+      <span className="LinkRobinsSupport-chip-dot" />
+      {statusLabel(status)}
+    </span>
+  );
 }
 
 /**
@@ -152,11 +154,12 @@ export function emptyLabel(filter: string | null, canCreate: boolean): string {
  */
 export function priorityChip(priority: string | null | undefined): any {
   if (priority !== 'urgent' && priority !== 'low') return null;
-  return m('span', { className: 'LinkRobinsSupport-chip LinkRobinsSupport-chip--priority is-' + priority }, [
-    m(Icon, { name: priority === 'urgent' ? 'fas fa-exclamation' : 'fas fa-arrow-down', 'aria-hidden': 'true' }),
-    ' ',
-    priority === 'urgent'
-      ? app.translator.trans('linkrobins-support.forum.priority.urgent')
-      : app.translator.trans('linkrobins-support.forum.priority.low'),
-  ]);
+  return (
+    <span className={'LinkRobinsSupport-chip LinkRobinsSupport-chip--priority is-' + priority}>
+      <Icon name={priority === 'urgent' ? 'fas fa-exclamation' : 'fas fa-arrow-down'} aria-hidden="true" />{' '}
+      {priority === 'urgent'
+        ? app.translator.trans('linkrobins-support.forum.priority.urgent')
+        : app.translator.trans('linkrobins-support.forum.priority.low')}
+    </span>
+  );
 }

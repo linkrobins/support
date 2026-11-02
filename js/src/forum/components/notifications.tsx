@@ -93,18 +93,22 @@ export function installSupportNotificationGrouping() {
           label = app.translator.trans('linkrobins-support.forum.nav');
         } else if (group.discussion) {
           const badges = group.discussion.badges().toArray();
-          label = m(Link, { href: app.route.discussion(group.discussion) }, [
-            badges && badges.length ? m('ul', { className: 'HeaderListGroup-badges badges' }, listItems(badges)) : null,
-            m('span', null, group.discussion.title()),
-          ]);
+          label = (
+            <Link href={app.route.discussion(group.discussion)}>
+              {badges && badges.length ? <ul className="HeaderListGroup-badges badges">{listItems(badges)}</ul> : null}
+              <span>{group.discussion.title()}</span>
+            </Link>
+          );
         } else {
           label = app.forum.attribute('title');
         }
 
-        return m(
-          HeaderListGroup,
-          { label },
-          group.notifications.map((notification: any) => m(NotificationType, { notification }))
+        return (
+          <HeaderListGroup label={label}>
+            {group.notifications.map((notification: any) => (
+              <NotificationType notification={notification} />
+            ))}
+          </HeaderListGroup>
         );
       });
     });

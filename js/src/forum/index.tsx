@@ -72,30 +72,31 @@ app.initializers.add('linkrobins-support', () => {
     const banned = !!user.attribute('supportAppealBanned');
     items.add(
       'linkrobinsSupportAppealBan',
-      m(
-        Button,
-        {
-          icon: banned ? 'fas fa-unlock' : 'fas fa-ban',
-          onclick: () => {
-            user
-              .save({ supportAppealBanned: !banned })
-              .then(() => {
-                m.redraw();
-              })
-              .catch(() => {
-                showError(app.translator.trans('linkrobins-support.forum.user_controls.toggle_failed'));
-              });
-          },
-        },
-        banned
+      <Button
+        icon={banned ? 'fas fa-unlock' : 'fas fa-ban'}
+        onclick={() => {
+          user
+            .save({ supportAppealBanned: !banned })
+            .then(() => {
+              m.redraw();
+            })
+            .catch(() => {
+              showError(app.translator.trans('linkrobins-support.forum.user_controls.toggle_failed'));
+            });
+        }}
+      >
+        {banned
           ? app.translator.trans('linkrobins-support.forum.user_controls.allow_appeals')
-          : app.translator.trans('linkrobins-support.forum.user_controls.disallow_appeals')
-      )
+          : app.translator.trans('linkrobins-support.forum.user_controls.disallow_appeals')}
+      </Button>
     );
   });
 
-  const supportLink = () =>
-    m(LinkButton, { href: basePath() + BASE_PATH, icon: 'fas fa-life-ring' }, app.translator.trans('linkrobins-support.forum.nav'));
+  const supportLink = () => (
+    <LinkButton href={basePath() + BASE_PATH} icon="fas fa-life-ring">
+      {app.translator.trans('linkrobins-support.forum.nav')}
+    </LinkButton>
+  );
 
   // Support link in the forum's sidebar nav. Priority -11 slots it directly
   // below flarum/tags' "Tags" link (-10) and above its separator (-12) and tag
@@ -122,11 +123,9 @@ app.initializers.add('linkrobins-support', () => {
     if (!app.session || !app.session.user || !readForumAttribute('canHandleSupportTickets')) return;
     items.add(
       'linkrobins-support-stats',
-      m(
-        Button,
-        { icon: 'fas fa-chart-bar', onclick: () => app.modal.show(() => import('./components/SupportStatsModal')) },
-        app.translator.trans('linkrobins-support.forum.stats.title')
-      ),
+      <Button icon="fas fa-chart-bar" onclick={() => app.modal.show(() => import('./components/SupportStatsModal'))}>
+        {app.translator.trans('linkrobins-support.forum.stats.title')}
+      </Button>,
       39
     );
   });
