@@ -1,8 +1,9 @@
+import app from 'flarum/forum/app';
 import Component, { ComponentAttrs } from 'flarum/common/Component';
 import Link from 'flarum/common/components/Link';
 import Avatar from 'flarum/common/components/Avatar';
 import ItemList from 'flarum/common/utils/ItemList';
-import { tr, trText } from '../utils/translate';
+import extractText from 'flarum/common/utils/extractText';
 import { formatDate } from '../utils/helpers';
 import { canHandleSupportTickets } from '../utils/permissions';
 import { statusChip, priorityChip } from '../utils/status';
@@ -33,12 +34,14 @@ export default class SupportTicketRow extends Component<ISupportTicketRowAttrs> 
             isUnread
               ? m('span', {
                   className: 'LinkRobinsSupport-unreadDot',
-                  title: trText('index.unread', 'New replies'),
-                  'aria-label': trText('index.unread', 'New replies'),
+                  title: extractText(app.translator.trans('linkrobins-support.forum.index.unread')),
+                  'aria-label': extractText(app.translator.trans('linkrobins-support.forum.index.unread')),
                 })
               : null,
-            ticket.subject() || tr('index.untitled', 'Untitled'),
-            isDeleted ? m('span', { className: 'LinkRobinsSupport-row-deletedBadge' }, tr('index.deleted_badge', 'Deleted')) : null,
+            ticket.subject() || app.translator.trans('linkrobins-support.forum.index.untitled'),
+            isDeleted
+              ? m('span', { className: 'LinkRobinsSupport-row-deletedBadge' }, app.translator.trans('linkrobins-support.forum.index.deleted_badge'))
+              : null,
           ]),
           m('div', { className: 'LinkRobinsSupport-row-meta' }, [
             cat
@@ -67,13 +70,16 @@ export default class SupportTicketRow extends Component<ISupportTicketRowAttrs> 
     if (!assignee) {
       return m('span', { className: 'LinkRobinsSupport-chip LinkRobinsSupport-chip--assignee is-unassigned' }, [
         m('i', { className: 'fas fa-user-slash', 'aria-hidden': 'true' }),
-        tr('index.unassigned', 'Unassigned'),
+        app.translator.trans('linkrobins-support.forum.index.unassigned'),
       ]);
     }
     const name = assignee.displayName() || assignee.username();
     return m(
       'span',
-      { className: 'LinkRobinsSupport-chip LinkRobinsSupport-chip--assignee', title: trText('index.assigned_to', 'Assigned to {name}', { name }) },
+      {
+        className: 'LinkRobinsSupport-chip LinkRobinsSupport-chip--assignee',
+        title: extractText(app.translator.trans('linkrobins-support.forum.index.assigned_to', { name })),
+      },
       [m(Avatar, { user: assignee }), name]
     );
   }

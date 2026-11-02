@@ -1,8 +1,8 @@
+import app from 'flarum/forum/app';
 import Modal from 'flarum/common/components/Modal';
 import Button from 'flarum/common/components/Button';
 import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
 import Avatar from 'flarum/common/components/Avatar';
-import { tr } from '../utils/translate';
 import { loadStaff, type StaffMember } from '../utils/api';
 
 /** A staff record from the endpoint, as a store user (reusing one if loaded). */
@@ -49,7 +49,7 @@ export default class AssignTicketModal extends Modal<any> {
   }
 
   title() {
-    return tr('assign.title', 'Assign ticket');
+    return app.translator.trans('linkrobins-support.forum.assign.title');
   }
 
   content() {
@@ -59,7 +59,7 @@ export default class AssignTicketModal extends Modal<any> {
       this.loadingStaff
         ? m(LoadingIndicator)
         : this.failed
-          ? m('p', { className: 'LinkRobinsSupport-empty' }, tr('assign.load_failed', 'Could not load the support team.'))
+          ? m('p', { className: 'LinkRobinsSupport-empty' }, app.translator.trans('linkrobins-support.forum.assign.load_failed'))
           : m(
               'ul',
               { className: 'LinkRobinsSupport-assignList' },
@@ -72,7 +72,7 @@ export default class AssignTicketModal extends Modal<any> {
             m(
               Button,
               { className: 'Button Button--link', icon: 'fas fa-user-slash', onclick: () => this.pick(null) },
-              tr('assign.unassign', 'Unassign')
+              app.translator.trans('linkrobins-support.forum.assign.unassign')
             )
           )
         : null,
@@ -97,7 +97,7 @@ export default class AssignTicketModal extends Modal<any> {
         [
           m(Avatar, { user, className: 'LinkRobinsSupport-assignAvatar' }),
           m('span', { className: 'LinkRobinsSupport-assignName' }, user.displayName() || user.username()),
-          id === me ? m('span', { className: 'LinkRobinsSupport-assignYou' }, tr('assign.you', '(you)')) : null,
+          id === me ? m('span', { className: 'LinkRobinsSupport-assignYou' }, app.translator.trans('linkrobins-support.forum.assign.you')) : null,
           isCurrent ? m('i', { className: 'fas fa-check LinkRobinsSupport-assignCheck', 'aria-hidden': 'true' }) : null,
         ]
       )

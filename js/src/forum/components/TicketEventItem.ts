@@ -1,5 +1,6 @@
+import app from 'flarum/forum/app';
 import Component from 'flarum/common/Component';
-import { tr } from '../utils/translate';
+import extractText from 'flarum/common/utils/extractText';
 import { formatDate } from '../utils/helpers';
 import { statusLabel } from '../utils/status';
 
@@ -38,38 +39,42 @@ export default class TicketEventItem extends Component {
       const to = event.toStatus() ? statusLabel(event.toStatus()) : '';
 
       if (!actor && event.fromStatus() === 'resolved' && event.toStatus() === 'closed') {
-        return tr('event.auto_closed', 'Closed automatically after a period with no activity');
+        return app.translator.trans('linkrobins-support.forum.event.auto_closed');
       }
       // Moved by a reply's status rules, not picked by whoever replied.
       if (event.isAutomatic()) {
-        return tr('event.status_changed_automatically', 'The status changed automatically from {from} to {to}', { from, to });
+        return app.translator.trans('linkrobins-support.forum.event.status_changed_automatically', { from, to });
       }
       return actor
-        ? tr('event.status_changed', '{name} changed the status from {from} to {to}', { name: actor, from, to })
-        : tr('event.status_changed_no_actor', 'The status changed from {from} to {to}', { from, to });
+        ? app.translator.trans('linkrobins-support.forum.event.status_changed', { name: actor, from, to })
+        : app.translator.trans('linkrobins-support.forum.event.status_changed_no_actor', { from, to });
     }
 
     const fromName = nameOf(event.fromUser && event.fromUser());
     const toName = nameOf(event.toUser && event.toUser());
-    const someone = tr('event.deleted_user', 'a deleted user');
+    const someone = extractText(app.translator.trans('linkrobins-support.forum.event.deleted_user'));
     const hadFrom = !!event.hadAssignee();
     const hasTo = !!event.hasAssignee();
 
     if (hasTo && !hadFrom) {
       if (actor && actor === toName) {
-        return tr('event.claimed', '{name} claimed this ticket', { name: actor });
+        return app.translator.trans('linkrobins-support.forum.event.claimed', { name: actor });
       }
       return actor
-        ? tr('event.assigned', '{name} assigned this ticket to {assignee}', { name: actor, assignee: toName || someone })
-        : tr('event.assigned_no_actor', 'Assigned to {assignee}', { assignee: toName || someone });
+        ? app.translator.trans('linkrobins-support.forum.event.assigned', { name: actor, assignee: toName || someone })
+        : app.translator.trans('linkrobins-support.forum.event.assigned_no_actor', { assignee: toName || someone });
     }
     if (!hasTo) {
       return actor
-        ? tr('event.unassigned', '{name} unassigned {assignee}', { name: actor, assignee: fromName || someone })
-        : tr('event.unassigned_no_actor', '{assignee} was unassigned', { assignee: fromName || someone });
+        ? app.translator.trans('linkrobins-support.forum.event.unassigned', { name: actor, assignee: fromName || someone })
+        : app.translator.trans('linkrobins-support.forum.event.unassigned_no_actor', { assignee: fromName || someone });
     }
     return actor
-      ? tr('event.reassigned', '{name} reassigned this ticket from {from} to {to}', { name: actor, from: fromName || someone, to: toName || someone })
-      : tr('event.reassigned_no_actor', 'Reassigned from {from} to {to}', { from: fromName || someone, to: toName || someone });
+      ? app.translator.trans('linkrobins-support.forum.event.reassigned', {
+          name: actor,
+          from: fromName || someone,
+          to: toName || someone,
+        })
+      : app.translator.trans('linkrobins-support.forum.event.reassigned_no_actor', { from: fromName || someone, to: toName || someone });
   }
 }

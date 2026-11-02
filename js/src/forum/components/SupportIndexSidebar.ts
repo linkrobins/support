@@ -1,10 +1,11 @@
+import app from 'flarum/forum/app';
 import IndexSidebar from 'flarum/forum/components/IndexSidebar';
 import LinkButton from 'flarum/common/components/LinkButton';
 import Button from 'flarum/common/components/Button';
 import SelectDropdown from 'flarum/common/components/SelectDropdown';
 import ItemList from 'flarum/common/utils/ItemList';
 import Separator from 'flarum/common/components/Separator';
-import { tr } from '../utils/translate';
+import extractText from 'flarum/common/utils/extractText';
 import { basePath, BASE_PATH, safeNavigate, showForumNavOnSupportPages, isGuest } from '../utils/helpers';
 import { canCreateSupportTicket, canHandleSupportTickets } from '../utils/permissions';
 import { FILTER_OPTIONS, filterLabel, filterHrefFor } from '../utils/status';
@@ -63,8 +64,8 @@ export default class SupportIndexSidebar extends IndexSidebar<any> {
             icon: 'fas fa-plus',
             className: 'Button Button--primary LinkRobinsSupport-newTicketButton',
             itemClassName: 'App-primaryControl',
-            'aria-label': tr('index.new_ticket', 'New ticket'),
-            title: tr('index.new_ticket_tooltip', 'Open a new support ticket'),
+            'aria-label': extractText(app.translator.trans('linkrobins-support.forum.index.new_ticket')),
+            title: extractText(app.translator.trans('linkrobins-support.forum.index.new_ticket_tooltip')),
             onclick: (e: any) => {
               if (isGuest()) {
                 if (e && e.preventDefault) e.preventDefault();
@@ -74,7 +75,7 @@ export default class SupportIndexSidebar extends IndexSidebar<any> {
               safeNavigate(newHref, e);
             },
           },
-          tr('index.new_ticket', 'New ticket')
+          app.translator.trans('linkrobins-support.forum.index.new_ticket')
         ),
         110
       );
@@ -89,7 +90,7 @@ export default class SupportIndexSidebar extends IndexSidebar<any> {
         {
           buttonClassName: 'Button',
           className: 'App-titleControl',
-          defaultLabel: active ? filterLabel(active) : tr('nav', 'Support'),
+          defaultLabel: active ? filterLabel(active) : extractText(app.translator.trans('linkrobins-support.forum.nav')),
         },
         this.navItems().toArray()
       ),
@@ -145,7 +146,7 @@ export default class SupportIndexSidebar extends IndexSidebar<any> {
         m(
           Button,
           { icon: 'fas fa-chart-bar', className: 'LinkButton LinkRobinsSupport-statsLink', onclick: () => app.modal.show(SupportStatsModal) },
-          tr('stats.title', 'Support stats')
+          app.translator.trans('linkrobins-support.forum.stats.title')
         ),
         -21 - FILTER_OPTIONS.length
       );

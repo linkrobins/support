@@ -1,7 +1,7 @@
+import app from 'flarum/admin/app';
 import Modal from 'flarum/common/components/Modal';
 import Button from 'flarum/common/components/Button';
 import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
-import { tx } from '../utils';
 
 // API maximum page size for the user list.
 const BANNED_PAGE_LIMIT = 100;
@@ -32,17 +32,17 @@ export default class AppealBannedUsersModal extends Modal {
   }
 
   title() {
-    return tx('linkrobins-support.admin.appeal_bans.banned_heading');
+    return app.translator.trans('linkrobins-support.admin.appeal_bans.banned_heading');
   }
 
   content() {
     return m('div', { className: 'Modal-body' }, [
-      m('p', { className: 'helpText' }, tx('linkrobins-support.admin.appeal_bans.intro')),
+      m('p', { className: 'helpText' }, app.translator.trans('linkrobins-support.admin.appeal_bans.intro')),
       this.loadingUsers && this.users.length === 0
         ? m(LoadingIndicator)
         : this.users.length > 0
           ? [this._renderTable(), this._renderLoadMore()]
-          : m('div', { className: 'LinkRobinsSupportAdmin-empty' }, tx('linkrobins-support.admin.appeal_bans.banned_empty')),
+          : m('div', { className: 'LinkRobinsSupportAdmin-empty' }, app.translator.trans('linkrobins-support.admin.appeal_bans.banned_empty')),
     ]);
   }
 
@@ -56,8 +56,8 @@ export default class AppealBannedUsersModal extends Modal {
           'thead',
           null,
           m('tr', null, [
-            m('th', null, tx('linkrobins-support.admin.appeal_bans.column_username')),
-            m('th', null, tx('linkrobins-support.admin.appeal_bans.column_email')),
+            m('th', null, app.translator.trans('linkrobins-support.admin.appeal_bans.column_username')),
+            m('th', null, app.translator.trans('linkrobins-support.admin.appeal_bans.column_email')),
           ])
         ),
         m(
@@ -86,7 +86,9 @@ export default class AppealBannedUsersModal extends Modal {
           disabled: this.loadingUsers,
           onclick: () => this._load(true),
         },
-        this.loadingUsers ? tx('linkrobins-support.admin.common.loading') : tx('linkrobins-support.admin.appeal_bans.load_more')
+        this.loadingUsers
+          ? app.translator.trans('linkrobins-support.admin.common.loading')
+          : app.translator.trans('linkrobins-support.admin.appeal_bans.load_more')
       )
     );
   }

@@ -6,7 +6,6 @@ import LinkButton from 'flarum/common/components/LinkButton';
 import Button from 'flarum/common/components/Button';
 
 import { installSupportNotificationGrouping } from './components/notifications';
-import { tr } from './utils/translate';
 import { installRealtime } from './utils/live';
 import { basePath, BASE_PATH, showNavInSidebar, showNavInAccountMenu, readForumAttribute, showError } from './utils/helpers';
 import { clearTargetOnModalClose } from './utils/guestAction';
@@ -39,27 +38,27 @@ app.initializers.add('linkrobins-support', () => {
     items.add('linkrobinsSupportNewReply', {
       name: 'linkrobinsSupportNewReply',
       icon: 'fas fa-life-ring',
-      label: tr('settings.notify_new_reply_label', 'Someone replies to your support ticket'),
+      label: app.translator.trans('linkrobins-support.forum.settings.notify_new_reply_label'),
     });
     items.add('linkrobinsSupportNewTicket', {
       name: 'linkrobinsSupportNewTicket',
       icon: 'fas fa-ticket-alt',
-      label: tr('settings.notify_new_ticket_label', 'A new support ticket is opened'),
+      label: app.translator.trans('linkrobins-support.forum.settings.notify_new_ticket_label'),
     });
     items.add('linkrobinsSupportTicketStatusChanged', {
       name: 'linkrobinsSupportTicketStatusChanged',
       icon: 'fas fa-exchange-alt',
-      label: tr('settings.notify_status_changed_label', "A support ticket's status changes"),
+      label: app.translator.trans('linkrobins-support.forum.settings.notify_status_changed_label'),
     });
     items.add('linkrobinsSupportTicketAssigned', {
       name: 'linkrobinsSupportTicketAssigned',
       icon: 'fas fa-user-check',
-      label: tr('settings.notify_assigned_label', 'A support ticket is assigned to you'),
+      label: app.translator.trans('linkrobins-support.forum.settings.notify_assigned_label'),
     });
     items.add('linkrobinsSupportAwaitingReminder', {
       name: 'linkrobinsSupportAwaitingReminder',
       icon: 'fas fa-hourglass-half',
-      label: tr('settings.notify_awaiting_reminder_label', 'Support has been waiting a few days for my reply'),
+      label: app.translator.trans('linkrobins-support.forum.settings.notify_awaiting_reminder_label'),
     });
   });
 
@@ -84,16 +83,19 @@ app.initializers.add('linkrobins-support', () => {
                 m.redraw();
               })
               .catch(() => {
-                showError(tr('user_controls.toggle_failed', 'Could not update the appeal-ban status.'));
+                showError(app.translator.trans('linkrobins-support.forum.user_controls.toggle_failed'));
               });
           },
         },
-        banned ? tr('user_controls.allow_appeals', 'Allow support appeals') : tr('user_controls.disallow_appeals', 'Disallow support appeals')
+        banned
+          ? app.translator.trans('linkrobins-support.forum.user_controls.allow_appeals')
+          : app.translator.trans('linkrobins-support.forum.user_controls.disallow_appeals')
       )
     );
   });
 
-  const supportLink = () => m(LinkButton, { href: basePath() + BASE_PATH, icon: 'fas fa-life-ring' }, tr('nav', 'Support'));
+  const supportLink = () =>
+    m(LinkButton, { href: basePath() + BASE_PATH, icon: 'fas fa-life-ring' }, app.translator.trans('linkrobins-support.forum.nav'));
 
   // Support link in the forum's sidebar nav. Priority -11 slots it directly
   // below flarum/tags' "Tags" link (-10) and above its separator (-12) and tag
@@ -123,7 +125,7 @@ app.initializers.add('linkrobins-support', () => {
       m(
         Button,
         { icon: 'fas fa-chart-bar', onclick: () => app.modal.show(() => import('./components/SupportStatsModal')) },
-        tr('stats.title', 'Support stats')
+        app.translator.trans('linkrobins-support.forum.stats.title')
       ),
       39
     );

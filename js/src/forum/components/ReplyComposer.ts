@@ -1,5 +1,6 @@
+import app from 'flarum/forum/app';
 import Component from 'flarum/common/Component';
-import { tr } from '../utils/translate';
+import extractText from 'flarum/common/utils/extractText';
 import { supportComposerSupported, supportComposerOpenFor, supportComposerPreview } from '../utils/composer';
 
 // Presentational reply composer. Preferred path is a click-to-open preview for
@@ -31,8 +32,8 @@ export default class ReplyComposer extends Component {
     const canSubmit = !a.posting && a.replyText.trim() !== '';
     const canUpload = !!(app.forum && typeof app.forum.attribute === 'function' && app.forum.attribute('fof-upload.canUpload'));
     const placeholder = a.replyIsInternal
-      ? tr('reply.internal_placeholder', 'Internal note (only staff will see this)…')
-      : tr('reply.placeholder', 'Write a reply…');
+      ? extractText(app.translator.trans('linkrobins-support.forum.reply.internal_placeholder'))
+      : extractText(app.translator.trans('linkrobins-support.forum.reply.placeholder'));
 
     return m('div', { className: 'LinkRobinsSupport-replyForm' }, [
       m('textarea', {
@@ -60,8 +61,8 @@ export default class ReplyComposer extends Component {
             'div',
             { className: 'LinkRobinsSupport-uploadStatus' },
             a.uploadingCount === 1
-              ? tr('common.uploading_one', 'Uploading 1 file…')
-              : tr('common.uploading_many', 'Uploading {count} files…', { count: a.uploadingCount })
+              ? app.translator.trans('linkrobins-support.forum.common.uploading_one')
+              : app.translator.trans('linkrobins-support.forum.common.uploading_many', { count: a.uploadingCount })
           )
         : null,
 
@@ -76,7 +77,7 @@ export default class ReplyComposer extends Component {
                   disabled: a.posting || a.uploadingCount > 0,
                   onclick: () => a.onAttachClick(),
                 },
-                [m('i', { className: 'fas fa-paperclip' }), ' ', tr('action.attach_files', 'Attach files')]
+                [m('i', { className: 'fas fa-paperclip' }), ' ', app.translator.trans('linkrobins-support.forum.action.attach_files')]
               ),
               m('input', {
                 type: 'file',
@@ -112,7 +113,7 @@ export default class ReplyComposer extends Component {
                 },
               }),
               ' ',
-              tr('reply.internal_note', 'Internal note'),
+              app.translator.trans('linkrobins-support.forum.reply.internal_note'),
             ])
           : null,
         m(
@@ -123,7 +124,9 @@ export default class ReplyComposer extends Component {
             disabled: !canSubmit,
             onclick: () => a.onSubmit(),
           },
-          a.posting ? tr('reply.posting', 'Posting…') : tr('reply.post_reply', 'Post reply')
+          a.posting
+            ? app.translator.trans('linkrobins-support.forum.reply.posting')
+            : app.translator.trans('linkrobins-support.forum.reply.post_reply')
         ),
       ]),
     ]);

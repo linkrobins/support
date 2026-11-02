@@ -7,7 +7,7 @@ import NotificationType from 'flarum/forum/components/NotificationType';
 import Discussion from 'flarum/common/models/Discussion';
 import Link from 'flarum/common/components/Link';
 import listItems from 'flarum/common/helpers/listItems';
-import { tr } from '../utils/translate';
+import extractText from 'flarum/common/utils/extractText';
 import { basePath, BASE_PATH } from '../utils/helpers';
 
 const SUPPORT_NOTIFICATION_TYPES = [
@@ -18,18 +18,18 @@ const SUPPORT_NOTIFICATION_TYPES = [
 ];
 
 /** Status labels live in one place; the locale calls awaiting_user "awaiting_response". */
-function statusLabel(status: string): string {
+function statusLabel(status: string): any {
   switch (status) {
     case 'open':
-      return tr('status.open', 'Open');
+      return app.translator.trans('linkrobins-support.forum.status.open');
     case 'in_progress':
-      return tr('status.in_progress', 'In progress');
+      return app.translator.trans('linkrobins-support.forum.status.in_progress');
     case 'awaiting_user':
-      return tr('status.awaiting_response', 'Awaiting response');
+      return app.translator.trans('linkrobins-support.forum.status.awaiting_response');
     case 'resolved':
-      return tr('status.resolved', 'Resolved');
+      return app.translator.trans('linkrobins-support.forum.status.resolved');
     case 'closed':
-      return tr('status.closed', 'Closed');
+      return app.translator.trans('linkrobins-support.forum.status.closed');
     default:
       return status;
   }
@@ -90,7 +90,7 @@ export function installSupportNotificationGrouping() {
       return groups.map((group) => {
         let label;
         if (group.support) {
-          label = tr('nav', 'Support');
+          label = app.translator.trans('linkrobins-support.forum.nav');
         } else if (group.discussion) {
           const badges = group.discussion.badges().toArray();
           label = m(Link, { href: app.route.discussion(group.discussion) }, [
@@ -128,9 +128,9 @@ export class NewSupportReplyNotification extends Notification {
     const n = this.attrs && this.attrs.notification;
     const from = n && n.fromUser && n.fromUser();
     if (from && from.displayName) {
-      return tr('notifications.reply_from', '{name} replied to your ticket', { name: from.displayName() });
+      return app.translator.trans('linkrobins-support.forum.notifications.reply_from', { name: from.displayName() });
     }
-    return tr('notifications.reply_generic', 'Support replied to your ticket');
+    return app.translator.trans('linkrobins-support.forum.notifications.reply_generic');
   }
   excerpt() {
     const subj = this.attrs && this.attrs.notification ? this.attrs.notification.subject() : null;
@@ -160,10 +160,10 @@ export class NewSupportTicketNotification extends Notification {
     const data: any = n && n.content && n.content();
     const isAppeal = !!(data && data.isAppeal);
     const from = n && n.fromUser && n.fromUser();
-    const who = from && from.displayName ? from.displayName() : tr('notifications.someone', 'A user');
+    const who = from && from.displayName ? from.displayName() : extractText(app.translator.trans('linkrobins-support.forum.notifications.someone'));
     return isAppeal
-      ? tr('notifications.new_appeal', '{name} opened a new appeal', { name: who })
-      : tr('notifications.new_ticket', '{name} opened a new support ticket', { name: who });
+      ? app.translator.trans('linkrobins-support.forum.notifications.new_appeal', { name: who })
+      : app.translator.trans('linkrobins-support.forum.notifications.new_ticket', { name: who });
   }
   excerpt() {
     const subj = this.attrs && this.attrs.notification ? this.attrs.notification.subject() : null;
@@ -194,16 +194,16 @@ export class TicketStatusChangedNotification extends Notification {
     // everything else is something that happened to the reader's ticket.
     const ownTicket = !!(subj && subj.user && me && subj.user() && String(subj.user().id()) === String(me.id()));
     if (!ownTicket && from && from.displayName && data.status === 'open') {
-      return tr('notifications.reopened_by_owner', '{name} reopened their ticket', { name: from.displayName() });
+      return app.translator.trans('linkrobins-support.forum.notifications.reopened_by_owner', { name: from.displayName() });
     }
     // The owner closing their own ticket from "Did this solve your problem?".
     const fromOwner = !!(subj && subj.user && from && subj.user() && String(subj.user().id()) === String(from.id()));
     if (!ownTicket && fromOwner && data.status === 'closed') {
-      return tr('notifications.confirmed_solved_by_owner', '{name} confirmed their ticket was solved', { name: from.displayName() });
+      return app.translator.trans('linkrobins-support.forum.notifications.confirmed_solved_by_owner', { name: from.displayName() });
     }
     return ownTicket
-      ? tr('notifications.status_changed', 'Your ticket was marked {status}', { status })
-      : tr('notifications.status_changed_generic', 'A ticket was marked {status}', { status });
+      ? app.translator.trans('linkrobins-support.forum.notifications.status_changed', { status })
+      : app.translator.trans('linkrobins-support.forum.notifications.status_changed_generic', { status });
   }
   excerpt() {
     return ticketExcerpt(this.attrs && this.attrs.notification);
@@ -221,8 +221,8 @@ export class TicketAssignedNotification extends Notification {
     const n = this.attrs && this.attrs.notification;
     const from = n && n.fromUser && n.fromUser();
     return from && from.displayName
-      ? tr('notifications.assigned', '{name} assigned a ticket to you', { name: from.displayName() })
-      : tr('notifications.assigned_generic', 'A ticket was assigned to you');
+      ? app.translator.trans('linkrobins-support.forum.notifications.assigned', { name: from.displayName() })
+      : app.translator.trans('linkrobins-support.forum.notifications.assigned_generic');
   }
   excerpt() {
     return ticketExcerpt(this.attrs && this.attrs.notification);
@@ -238,7 +238,7 @@ export class AwaitingReminderNotification extends Notification {
     return ticketHref(this.attrs && this.attrs.notification);
   }
   content() {
-    return tr('notifications.awaiting_reminder', 'Support is waiting for your reply');
+    return app.translator.trans('linkrobins-support.forum.notifications.awaiting_reminder');
   }
   excerpt() {
     return ticketExcerpt(this.attrs && this.attrs.notification);

@@ -1,6 +1,7 @@
+import app from 'flarum/forum/app';
 import Modal from 'flarum/common/components/Modal';
 import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
-import { tr, trText } from '../utils/translate';
+import extractText from 'flarum/common/utils/extractText';
 
 const WINDOWS = [7, 30, 90];
 
@@ -8,10 +9,10 @@ const WINDOWS = [7, 30, 90];
 function duration(seconds: number | null | undefined): string {
   if (seconds === null || seconds === undefined) return '–';
   const minutes = Math.round(seconds / 60);
-  if (minutes < 60) return trText('stats.minutes', '{count} min', { count: Math.max(1, minutes) });
+  if (minutes < 60) return extractText(app.translator.trans('linkrobins-support.forum.stats.minutes', { count: Math.max(1, minutes) }));
   const hours = seconds / 3600;
-  if (hours < 48) return trText('stats.hours', '{count} h', { count: Math.round(hours * 10) / 10 });
-  return trText('stats.days', '{count} days', { count: Math.round((hours / 24) * 10) / 10 });
+  if (hours < 48) return extractText(app.translator.trans('linkrobins-support.forum.stats.hours', { count: Math.round(hours * 10) / 10 }));
+  return extractText(app.translator.trans('linkrobins-support.forum.stats.days', { count: Math.round((hours / 24) * 10) / 10 }));
 }
 
 function shortDate(start: string): string {
@@ -19,7 +20,7 @@ function shortDate(start: string): string {
 }
 
 function periodLabel(start: string, days: number): string {
-  return days === 7 ? shortDate(start) : trText('stats.week_of', 'Week of {date}', { date: shortDate(start) });
+  return days === 7 ? shortDate(start) : extractText(app.translator.trans('linkrobins-support.forum.stats.week_of', { date: shortDate(start) }));
 }
 
 /**
@@ -45,7 +46,7 @@ export default class SupportStatsModal extends Modal<any> {
   }
 
   title() {
-    return tr('stats.title', 'Support stats');
+    return app.translator.trans('linkrobins-support.forum.stats.title');
   }
 
   _load() {
@@ -72,7 +73,7 @@ export default class SupportStatsModal extends Modal<any> {
 
   _body() {
     if (this.loading && !this.data) return m(LoadingIndicator);
-    if (this.error || !this.data) return m('p', { className: 'helpText' }, tr('stats.load_failed', 'Could not load stats.'));
+    if (this.error || !this.data) return m('p', { className: 'helpText' }, app.translator.trans('linkrobins-support.forum.stats.load_failed'));
 
     const d = this.data;
     const fr = d.firstResponse;
@@ -83,7 +84,11 @@ export default class SupportStatsModal extends Modal<any> {
         m('span'),
         m(
           'div',
-          { className: 'SupportStats-ranges', role: 'group', 'aria-label': trText('stats.range', 'Time range') },
+          {
+            className: 'SupportStats-ranges',
+            role: 'group',
+            'aria-label': extractText(app.translator.trans('linkrobins-support.forum.stats.range')),
+          },
           WINDOWS.map((n) =>
             m(
               'button',
@@ -97,28 +102,28 @@ export default class SupportStatsModal extends Modal<any> {
                   this._load();
                 },
               },
-              trText('stats.n_days', '{count} days', { count: n })
+              app.translator.trans('linkrobins-support.forum.stats.n_days', { count: n })
             )
           )
         ),
       ]),
 
       m('div', { className: 'SupportStats-tiles' }, [
-        this._tile(tr('stats.opened', 'Tickets opened'), String(d.opened)),
-        this._tile(tr('stats.closed', 'Tickets closed'), String(d.closed)),
-        this._tile(tr('stats.first_response', 'First response'), duration(fr.median)),
-        this._tile(tr('stats.time_to_resolve', 'Time to resolve'), duration(tt.median)),
+        this._tile(app.translator.trans('linkrobins-support.forum.stats.opened'), String(d.opened)),
+        this._tile(app.translator.trans('linkrobins-support.forum.stats.closed'), String(d.closed)),
+        this._tile(app.translator.trans('linkrobins-support.forum.stats.first_response'), duration(fr.median)),
+        this._tile(app.translator.trans('linkrobins-support.forum.stats.time_to_resolve'), duration(tt.median)),
       ]),
 
       this._card(
-        tr('stats.speed', 'Response times'),
-        tr('stats.median_note', 'typical (median) and slowest tenth'),
+        app.translator.trans('linkrobins-support.forum.stats.speed'),
+        app.translator.trans('linkrobins-support.forum.stats.median_note'),
         m('div', { className: 'SupportStats-strip' }, [
-          this._mini(duration(fr.median), tr('stats.first_response', 'First response')),
-          this._mini(duration(fr.p90), tr('stats.first_response_slow', 'Slowest first response')),
-          this._mini(duration(tt.median), tr('stats.time_to_resolve', 'Time to resolve')),
-          this._mini(duration(tt.p90), tr('stats.resolve_slow', 'Slowest resolve')),
-          this._mini(String(fr.unanswered), tr('stats.still_waiting', 'Still waiting for a reply')),
+          this._mini(duration(fr.median), app.translator.trans('linkrobins-support.forum.stats.first_response')),
+          this._mini(duration(fr.p90), app.translator.trans('linkrobins-support.forum.stats.first_response_slow')),
+          this._mini(duration(tt.median), app.translator.trans('linkrobins-support.forum.stats.time_to_resolve')),
+          this._mini(duration(tt.p90), app.translator.trans('linkrobins-support.forum.stats.resolve_slow')),
+          this._mini(String(fr.unanswered), app.translator.trans('linkrobins-support.forum.stats.still_waiting')),
         ])
       ),
 
@@ -126,13 +131,13 @@ export default class SupportStatsModal extends Modal<any> {
 
       m('div', { className: 'SupportStats-cards' }, [
         this._card(
-          tr('stats.backlog', 'Backlog right now'),
+          app.translator.trans('linkrobins-support.forum.stats.backlog'),
           null,
           m('div', { className: 'SupportStats-strip' }, [
-            this._mini(String(d.backlog.waiting), tr('stats.waiting', 'Waiting')),
-            this._mini(String(d.backlog.olderThan3Days), tr('stats.older_3', 'Over 3 days')),
-            this._mini(String(d.backlog.olderThan7Days), tr('stats.older_7', 'Over 7 days')),
-            this._mini(String(d.backlog.unassigned), tr('stats.unassigned', 'Unassigned')),
+            this._mini(String(d.backlog.waiting), app.translator.trans('linkrobins-support.forum.stats.waiting')),
+            this._mini(String(d.backlog.olderThan3Days), app.translator.trans('linkrobins-support.forum.stats.older_3')),
+            this._mini(String(d.backlog.olderThan7Days), app.translator.trans('linkrobins-support.forum.stats.older_7')),
+            this._mini(String(d.backlog.unassigned), app.translator.trans('linkrobins-support.forum.stats.unassigned')),
           ])
         ),
         this._endingsCard(d.endings),
@@ -140,14 +145,7 @@ export default class SupportStatsModal extends Modal<any> {
 
       this._staffCard(d.staff),
 
-      m(
-        'p',
-        { className: 'SupportStats-note helpText' },
-        tr(
-          'stats.footnote',
-          'Status history is recorded from this version on, so time to resolve and how tickets were closed fill in as new tickets move through.'
-        )
-      ),
+      m('p', { className: 'SupportStats-note helpText' }, app.translator.trans('linkrobins-support.forum.stats.footnote')),
     ];
   }
 
@@ -177,14 +175,14 @@ export default class SupportStatsModal extends Modal<any> {
     const pct = (n: number) => (total ? Math.round((n / total) * 100) + '%' : '–');
 
     return this._card(
-      tr('stats.endings', 'How resolved tickets were closed'),
+      app.translator.trans('linkrobins-support.forum.stats.endings'),
       null,
       total === 0
-        ? m('p', { className: 'helpText' }, tr('stats.no_endings', 'None closed in this period.'))
+        ? m('p', { className: 'helpText' }, app.translator.trans('linkrobins-support.forum.stats.no_endings'))
         : m('div', { className: 'SupportStats-strip' }, [
-            this._mini(pct(endings.confirmed), tr('stats.confirmed', 'Confirmed by the owner')),
-            this._mini(pct(endings.auto), tr('stats.auto', 'Closed automatically')),
-            this._mini(pct(endings.staff), tr('stats.by_staff', 'Closed by staff')),
+            this._mini(pct(endings.confirmed), app.translator.trans('linkrobins-support.forum.stats.confirmed')),
+            this._mini(pct(endings.auto), app.translator.trans('linkrobins-support.forum.stats.auto')),
+            this._mini(pct(endings.staff), app.translator.trans('linkrobins-support.forum.stats.by_staff')),
           ])
     );
   }
@@ -203,15 +201,15 @@ export default class SupportStatsModal extends Modal<any> {
 
     return m('div', { className: 'SupportStats-card' }, [
       m('div', { className: 'SupportStats-cardTitle' }, [
-        m('span', { className: 'SupportStats-cardTitleText' }, tr('stats.volume', 'Opened and closed')),
+        m('span', { className: 'SupportStats-cardTitleText' }, app.translator.trans('linkrobins-support.forum.stats.volume')),
         m('span', { className: 'SupportStats-cardTitleRight' }, [
           m('span', { className: 'SupportStats-legend' }, [
             m('i', { className: 'SupportStats-swatch is-opened' }),
-            tr('stats.legend_opened', 'Opened'),
+            app.translator.trans('linkrobins-support.forum.stats.legend_opened'),
           ]),
           m('span', { className: 'SupportStats-legend' }, [
             m('i', { className: 'SupportStats-swatch is-closed' }),
-            tr('stats.legend_closed', 'Closed'),
+            app.translator.trans('linkrobins-support.forum.stats.legend_closed'),
           ]),
           m('span', { className: 'SupportStats-span' }, span),
         ]),
@@ -226,16 +224,20 @@ export default class SupportStatsModal extends Modal<any> {
               key: v.start,
               className: 'SupportStats-chartCol',
               tabindex: 0,
-              'data-label': trText('stats.period_summary', '{period}: {opened} opened, {closed} closed', {
-                period: periodLabel(v.start, days),
-                opened: v.opened,
-                closed: v.closed,
-              }),
-              'aria-label': trText('stats.period_summary', '{period}: {opened} opened, {closed} closed', {
-                period: periodLabel(v.start, days),
-                opened: v.opened,
-                closed: v.closed,
-              }),
+              'data-label': extractText(
+                app.translator.trans('linkrobins-support.forum.stats.period_summary', {
+                  period: periodLabel(v.start, days),
+                  opened: v.opened,
+                  closed: v.closed,
+                })
+              ),
+              'aria-label': extractText(
+                app.translator.trans('linkrobins-support.forum.stats.period_summary', {
+                  period: periodLabel(v.start, days),
+                  opened: v.opened,
+                  closed: v.closed,
+                })
+              ),
             },
             [
               m('div', { className: 'SupportStats-chartPair' }, [
@@ -248,14 +250,14 @@ export default class SupportStatsModal extends Modal<any> {
         )
       ),
       m('details', { className: 'SupportStats-table' }, [
-        m('summary', tr('stats.show_table', 'Show as a table')),
+        m('summary', app.translator.trans('linkrobins-support.forum.stats.show_table')),
         m('table', [
           m(
             'thead',
             m('tr', [
-              m('th', tr('stats.col_period', 'Period')),
-              m('th', tr('stats.legend_opened', 'Opened')),
-              m('th', tr('stats.legend_closed', 'Closed')),
+              m('th', app.translator.trans('linkrobins-support.forum.stats.col_period')),
+              m('th', app.translator.trans('linkrobins-support.forum.stats.legend_opened')),
+              m('th', app.translator.trans('linkrobins-support.forum.stats.legend_closed')),
             ])
           ),
           m(
@@ -269,20 +271,20 @@ export default class SupportStatsModal extends Modal<any> {
 
   _staffCard(people: any[]) {
     return this._card(
-      tr('stats.people', 'By staff member'),
+      app.translator.trans('linkrobins-support.forum.stats.people'),
       null,
       people.length === 0
-        ? m('p', { className: 'helpText' }, tr('stats.no_people', 'No staff replies in this period.'))
+        ? m('p', { className: 'helpText' }, app.translator.trans('linkrobins-support.forum.stats.no_people'))
         : m('div', { className: 'SupportStats-tableScroll' }, [
             m('table', { className: 'SupportStats-people' }, [
               m(
                 'thead',
                 m('tr', [
                   m('th', ''),
-                  m('th', tr('stats.col_replies', 'Replies')),
-                  m('th', tr('stats.col_tickets', 'Tickets')),
-                  m('th', tr('stats.col_first', 'First to answer')),
-                  m('th', tr('stats.col_first_time', 'Typical first response')),
+                  m('th', app.translator.trans('linkrobins-support.forum.stats.col_replies')),
+                  m('th', app.translator.trans('linkrobins-support.forum.stats.col_tickets')),
+                  m('th', app.translator.trans('linkrobins-support.forum.stats.col_first')),
+                  m('th', app.translator.trans('linkrobins-support.forum.stats.col_first_time')),
                 ])
               ),
               m(

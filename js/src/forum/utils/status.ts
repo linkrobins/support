@@ -1,4 +1,5 @@
-import { tr } from './translate';
+import app from 'flarum/forum/app';
+import extractText from 'flarum/common/utils/extractText';
 import { basePath, BASE_PATH } from './helpers';
 
 /**
@@ -9,15 +10,15 @@ import { basePath, BASE_PATH } from './helpers';
 export function statusLabel(status: string): string {
   switch (status) {
     case 'open':
-      return tr('status.open', 'Open');
+      return extractText(app.translator.trans('linkrobins-support.forum.status.open'));
     case 'in_progress':
-      return tr('status.in_progress', 'In progress');
+      return extractText(app.translator.trans('linkrobins-support.forum.status.in_progress'));
     case 'awaiting_user':
-      return tr('status.awaiting_response', 'Awaiting response');
+      return extractText(app.translator.trans('linkrobins-support.forum.status.awaiting_response'));
     case 'resolved':
-      return tr('status.resolved', 'Resolved');
+      return extractText(app.translator.trans('linkrobins-support.forum.status.resolved'));
     case 'closed':
-      return tr('status.closed', 'Closed');
+      return extractText(app.translator.trans('linkrobins-support.forum.status.closed'));
     default:
       return status;
   }
@@ -53,11 +54,11 @@ export function statusChip(status: string): any {
 export function decisionLabel(decision: string): string {
   switch (decision) {
     case 'pending':
-      return tr('decision.pending', 'Pending');
+      return extractText(app.translator.trans('linkrobins-support.forum.decision.pending'));
     case 'accepted':
-      return tr('decision.accepted', 'Accepted');
+      return extractText(app.translator.trans('linkrobins-support.forum.decision.accepted'));
     case 'rejected':
-      return tr('decision.rejected', 'Rejected');
+      return extractText(app.translator.trans('linkrobins-support.forum.decision.rejected'));
     default:
       return decision;
   }
@@ -74,19 +75,37 @@ export interface FilterOption {
 // Label keys + fallbacks only -- resolved to text at render time via
 // filterLabel(), NOT at module load (see statusLabel above for why).
 export const FILTER_OPTIONS: FilterOption[] = [
-  { id: 'mine', labelKey: 'index.my_tickets', fallback: 'My tickets', icon: 'fas fa-user', staffOnly: false },
-  { id: 'assigned_to_me', labelKey: 'index.filter_assigned_to_me', fallback: 'Assigned to me', icon: 'fas fa-user-check', staffOnly: true },
-  { id: 'unassigned', labelKey: 'index.filter_unassigned', fallback: 'Unassigned', icon: 'fas fa-user-slash', staffOnly: true },
-  { id: 'all', labelKey: 'index.filter_all', fallback: 'All', icon: 'fas fa-inbox', staffOnly: true },
-  { id: 'open', labelKey: 'status.open', fallback: 'Open', icon: 'fas fa-circle', staffOnly: true },
-  { id: 'in_progress', labelKey: 'status.in_progress', fallback: 'In progress', icon: 'fas fa-spinner', staffOnly: true },
-  { id: 'awaiting_user', labelKey: 'status.awaiting_response', fallback: 'Awaiting response', icon: 'fas fa-clock', staffOnly: true },
-  { id: 'resolved', labelKey: 'status.resolved', fallback: 'Resolved', icon: 'fas fa-check-circle', staffOnly: true },
-  { id: 'closed', labelKey: 'status.closed', fallback: 'Closed', icon: 'fas fa-times-circle', staffOnly: true },
+  { id: 'mine', labelKey: 'linkrobins-support.forum.index.my_tickets', fallback: 'My tickets', icon: 'fas fa-user', staffOnly: false },
+  {
+    id: 'assigned_to_me',
+    labelKey: 'linkrobins-support.forum.index.filter_assigned_to_me',
+    fallback: 'Assigned to me',
+    icon: 'fas fa-user-check',
+    staffOnly: true,
+  },
+  {
+    id: 'unassigned',
+    labelKey: 'linkrobins-support.forum.index.filter_unassigned',
+    fallback: 'Unassigned',
+    icon: 'fas fa-user-slash',
+    staffOnly: true,
+  },
+  { id: 'all', labelKey: 'linkrobins-support.forum.index.filter_all', fallback: 'All', icon: 'fas fa-inbox', staffOnly: true },
+  { id: 'open', labelKey: 'linkrobins-support.forum.status.open', fallback: 'Open', icon: 'fas fa-circle', staffOnly: true },
+  { id: 'in_progress', labelKey: 'linkrobins-support.forum.status.in_progress', fallback: 'In progress', icon: 'fas fa-spinner', staffOnly: true },
+  {
+    id: 'awaiting_user',
+    labelKey: 'linkrobins-support.forum.status.awaiting_response',
+    fallback: 'Awaiting response',
+    icon: 'fas fa-clock',
+    staffOnly: true,
+  },
+  { id: 'resolved', labelKey: 'linkrobins-support.forum.status.resolved', fallback: 'Resolved', icon: 'fas fa-check-circle', staffOnly: true },
+  { id: 'closed', labelKey: 'linkrobins-support.forum.status.closed', fallback: 'Closed', icon: 'fas fa-times-circle', staffOnly: true },
 ];
 
 export function filterLabel(opt: FilterOption): string {
-  return tr(opt.labelKey, opt.fallback);
+  return extractText(app.translator.trans(opt.labelKey));
 }
 
 export function filterHrefFor(id: string): string {
@@ -102,25 +121,27 @@ export function emptyLabel(filter: string | null, canCreate: boolean): string {
   switch (filter) {
     case null:
     case 'mine':
-      return canCreate ? tr('index.empty_own', 'No tickets yet. Click "New ticket" to open one.') : tr('index.empty', 'No tickets to show.');
+      return canCreate
+        ? extractText(app.translator.trans('linkrobins-support.forum.index.empty_own'))
+        : extractText(app.translator.trans('linkrobins-support.forum.index.empty'));
     case 'assigned_to_me':
-      return tr('index.empty_assigned_to_me', 'No open tickets are assigned to you.');
+      return extractText(app.translator.trans('linkrobins-support.forum.index.empty_assigned_to_me'));
     case 'unassigned':
-      return tr('index.empty_unassigned', 'Every open ticket has been claimed.');
+      return extractText(app.translator.trans('linkrobins-support.forum.index.empty_unassigned'));
     case 'all':
-      return tr('index.empty', 'No tickets to show.');
+      return extractText(app.translator.trans('linkrobins-support.forum.index.empty'));
     case 'open':
-      return tr('index.empty_status.open', 'No open tickets.');
+      return extractText(app.translator.trans('linkrobins-support.forum.index.empty_status.open'));
     case 'in_progress':
-      return tr('index.empty_status.in_progress', 'No tickets in progress.');
+      return extractText(app.translator.trans('linkrobins-support.forum.index.empty_status.in_progress'));
     case 'awaiting_user':
-      return tr('index.empty_status.awaiting_response', 'No tickets awaiting a response.');
+      return extractText(app.translator.trans('linkrobins-support.forum.index.empty_status.awaiting_response'));
     case 'resolved':
-      return tr('index.empty_status.resolved', 'No resolved tickets.');
+      return extractText(app.translator.trans('linkrobins-support.forum.index.empty_status.resolved'));
     case 'closed':
-      return tr('index.empty_status.closed', 'No closed tickets.');
+      return extractText(app.translator.trans('linkrobins-support.forum.index.empty_status.closed'));
     default:
-      return tr('index.empty', 'No tickets to show.');
+      return extractText(app.translator.trans('linkrobins-support.forum.index.empty'));
   }
 }
 
@@ -132,6 +153,8 @@ export function priorityChip(priority: string | null | undefined): any {
   if (priority !== 'urgent' && priority !== 'low') return null;
   return m('span', { className: 'LinkRobinsSupport-chip LinkRobinsSupport-chip--priority is-' + priority }, [
     m('i', { className: priority === 'urgent' ? 'fas fa-exclamation' : 'fas fa-arrow-down', 'aria-hidden': 'true' }),
-    priority === 'urgent' ? tr('priority.urgent', 'Urgent') : tr('priority.low', 'Low priority'),
+    priority === 'urgent'
+      ? app.translator.trans('linkrobins-support.forum.priority.urgent')
+      : app.translator.trans('linkrobins-support.forum.priority.low'),
   ]);
 }

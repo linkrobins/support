@@ -1,13 +1,15 @@
+import app from 'flarum/admin/app';
 import ExtensionPage from 'flarum/admin/components/ExtensionPage';
 import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
 import Button from 'flarum/common/components/Button';
 import Form from 'flarum/common/components/Form';
 import FormSectionGroup from 'flarum/admin/components/FormSectionGroup';
 import FormSection from 'flarum/admin/components/FormSection';
+import extractText from 'flarum/common/utils/extractText';
 import CategoryEditorModal from './CategoryEditorModal';
 import SavedReplyEditorModal from './SavedReplyEditorModal';
 import AppealBannedUsersModal from './AppealBannedUsersModal';
-import { tx, loadCategoriesList } from '../utils';
+import { loadCategoriesList } from '../utils';
 
 export default class SupportAdminPage extends ExtensionPage {
   categories: any[] = [];
@@ -44,11 +46,11 @@ export default class SupportAdminPage extends ExtensionPage {
     const open = (reply: any) => app.modal.show(SavedReplyEditorModal, { reply, onSaved: () => this._loadSavedReplies() });
 
     return [
-      m('p', { className: 'helpText' }, tx('linkrobins-support.admin.saved_replies.intro')),
+      m('p', { className: 'helpText' }, app.translator.trans('linkrobins-support.admin.saved_replies.intro')),
       this.loadingReplies
         ? m(LoadingIndicator)
         : this.savedReplies.length === 0
-          ? m('div', { className: 'LinkRobinsSupportAdmin-empty' }, tx('linkrobins-support.admin.saved_replies.empty'))
+          ? m('div', { className: 'LinkRobinsSupportAdmin-empty' }, app.translator.trans('linkrobins-support.admin.saved_replies.empty'))
           : m(
               'div',
               { className: 'LinkRobinsSupportAdmin-tableWrap' },
@@ -72,7 +74,7 @@ export default class SupportAdminPage extends ExtensionPage {
                         m(
                           Button,
                           { className: 'Button', icon: 'fas fa-pencil-alt', onclick: () => open(r) },
-                          tx('linkrobins-support.admin.saved_replies.edit_button')
+                          app.translator.trans('linkrobins-support.admin.saved_replies.edit_button')
                         )
                       ),
                     ])
@@ -80,7 +82,11 @@ export default class SupportAdminPage extends ExtensionPage {
                 )
               )
             ),
-      m(Button, { className: 'Button', icon: 'fas fa-plus', onclick: () => open(null) }, tx('linkrobins-support.admin.saved_replies.new_button')),
+      m(
+        Button,
+        { className: 'Button', icon: 'fas fa-plus', onclick: () => open(null) },
+        app.translator.trans('linkrobins-support.admin.saved_replies.new_button')
+      ),
     ];
   }
 
@@ -112,12 +118,12 @@ export default class SupportAdminPage extends ExtensionPage {
         'div',
         { className: 'container' },
         m(FormSectionGroup, null, [
-          m(FormSection, { label: tx('linkrobins-support.admin.categories.heading') }, this._renderCategoriesSection()),
-          m(FormSection, { label: tx('linkrobins-support.admin.saved_replies.heading') }, this._renderSavedRepliesSection()),
-          m(FormSection, { label: tx('linkrobins-support.admin.navigation.heading') }, this._renderNavigationSection()),
-          m(FormSection, { label: tx('linkrobins-support.admin.auto_close.heading') }, this._renderAutoCloseSection()),
-          m(FormSection, { label: tx('linkrobins-support.admin.rate_limits.heading') }, this._renderSettingsSection()),
-          m(FormSection, { label: tx('linkrobins-support.admin.appeal_bans.heading_alt') }, this._renderAppealBansSection()),
+          m(FormSection, { label: app.translator.trans('linkrobins-support.admin.categories.heading') }, this._renderCategoriesSection()),
+          m(FormSection, { label: app.translator.trans('linkrobins-support.admin.saved_replies.heading') }, this._renderSavedRepliesSection()),
+          m(FormSection, { label: app.translator.trans('linkrobins-support.admin.navigation.heading') }, this._renderNavigationSection()),
+          m(FormSection, { label: app.translator.trans('linkrobins-support.admin.auto_close.heading') }, this._renderAutoCloseSection()),
+          m(FormSection, { label: app.translator.trans('linkrobins-support.admin.rate_limits.heading') }, this._renderSettingsSection()),
+          m(FormSection, { label: app.translator.trans('linkrobins-support.admin.appeal_bans.heading_alt') }, this._renderAppealBansSection()),
         ])
       )
     );
@@ -125,12 +131,14 @@ export default class SupportAdminPage extends ExtensionPage {
 
   _renderCategoriesSection() {
     return [
-      m('p', { className: 'helpText' }, tx('linkrobins-support.admin.categories.intro')),
-      this.catError ? m('div', { className: 'Alert Alert--danger' }, tx('linkrobins-support.admin.category_editor.error_load')) : null,
+      m('p', { className: 'helpText' }, app.translator.trans('linkrobins-support.admin.categories.intro')),
+      this.catError
+        ? m('div', { className: 'Alert Alert--danger' }, app.translator.trans('linkrobins-support.admin.category_editor.error_load'))
+        : null,
       this.loadingCats
         ? m(LoadingIndicator)
         : this.categories.length === 0
-          ? m('div', { className: 'LinkRobinsSupportAdmin-empty' }, tx('linkrobins-support.admin.categories.empty'))
+          ? m('div', { className: 'LinkRobinsSupportAdmin-empty' }, app.translator.trans('linkrobins-support.admin.categories.empty'))
           : m(
               'div',
               { className: 'LinkRobinsSupportAdmin-tableWrap' },
@@ -139,10 +147,10 @@ export default class SupportAdminPage extends ExtensionPage {
                   'thead',
                   null,
                   m('tr', null, [
-                    m('th', null, tx('linkrobins-support.admin.categories.column_name')),
-                    m('th', null, tx('linkrobins-support.admin.categories.column_type')),
-                    m('th', null, tx('linkrobins-support.admin.categories.column_assignee')),
-                    m('th', null, tx('linkrobins-support.admin.categories.column_tickets')),
+                    m('th', null, app.translator.trans('linkrobins-support.admin.categories.column_name')),
+                    m('th', null, app.translator.trans('linkrobins-support.admin.categories.column_type')),
+                    m('th', null, app.translator.trans('linkrobins-support.admin.categories.column_assignee')),
+                    m('th', null, app.translator.trans('linkrobins-support.admin.categories.column_tickets')),
                     m('th', null, ''),
                   ])
                 ),
@@ -167,10 +175,10 @@ export default class SupportAdminPage extends ExtensionPage {
                           {
                             className: 'Button',
                             icon: 'fas fa-pencil-alt',
-                            title: tx('linkrobins-support.admin.categories.edit_button'),
+                            title: extractText(app.translator.trans('linkrobins-support.admin.categories.edit_button')),
                             onclick: () => this._openEditor(c),
                           },
-                          tx('linkrobins-support.admin.categories.edit_button')
+                          app.translator.trans('linkrobins-support.admin.categories.edit_button')
                         )
                       ),
                     ])
@@ -185,7 +193,7 @@ export default class SupportAdminPage extends ExtensionPage {
           icon: 'fas fa-plus',
           onclick: () => this._openEditor(null),
         },
-        tx('linkrobins-support.admin.categories.new_button')
+        app.translator.trans('linkrobins-support.admin.categories.new_button')
       ),
     ];
   }
@@ -197,7 +205,11 @@ export default class SupportAdminPage extends ExtensionPage {
   _assigneeLabel(category: any) {
     const user = category.defaultAssignee && category.defaultAssignee();
     if (!user) {
-      return m('span', { className: 'LinkRobinsSupportAdmin-noAssignee' }, tx('linkrobins-support.admin.categories.assignee_all_staff'));
+      return m(
+        'span',
+        { className: 'LinkRobinsSupportAdmin-noAssignee' },
+        app.translator.trans('linkrobins-support.admin.categories.assignee_all_staff')
+      );
     }
     return user.displayName() || user.username();
   }
@@ -212,7 +224,9 @@ export default class SupportAdminPage extends ExtensionPage {
     return m(
       'span',
       { className: 'badge' },
-      typeId === 'appeal' ? tx('linkrobins-support.admin.categories.appeal_badge') : tx('linkrobins-support.admin.categories.general_badge')
+      typeId === 'appeal'
+        ? app.translator.trans('linkrobins-support.admin.categories.appeal_badge')
+        : app.translator.trans('linkrobins-support.admin.categories.general_badge')
     );
   }
 
@@ -251,7 +265,7 @@ export default class SupportAdminPage extends ExtensionPage {
     ];
 
     return m(Form, null, [
-      m('p', { className: 'helpText' }, tx('linkrobins-support.admin.navigation.intro')),
+      m('p', { className: 'helpText' }, app.translator.trans('linkrobins-support.admin.navigation.intro')),
       switches.map((sw) => {
         // Read AND write the page's own setting stream. Reading app.data
         // instead leaves the input controlled by the saved value, so a click
@@ -268,9 +282,9 @@ export default class SupportAdminPage extends ExtensionPage {
               },
             }),
             ' ',
-            tx(sw.labelKey),
+            app.translator.trans(sw.labelKey),
           ]),
-          m('div', { className: 'helpText' }, tx(sw.helpKey)),
+          m('div', { className: 'helpText' }, app.translator.trans(sw.helpKey)),
         ]);
       }),
       m('div', { className: 'Form-group Form-controls' }, this.submitButton()),
@@ -317,10 +331,10 @@ export default class SupportAdminPage extends ExtensionPage {
     ];
 
     return m(Form, null, [
-      m('p', { className: 'helpText' }, tx('linkrobins-support.admin.rate_limits.intro')),
+      m('p', { className: 'helpText' }, app.translator.trans('linkrobins-support.admin.rate_limits.intro')),
       fields.map((f) =>
         m('div', { className: 'Form-group', key: f.key }, [
-          m('label', null, tx(f.labelKey)),
+          m('label', null, app.translator.trans(f.labelKey)),
           m('input', {
             type: 'number',
             className: 'FormControl',
@@ -331,7 +345,7 @@ export default class SupportAdminPage extends ExtensionPage {
               this.setting(f.key, f.defaultValue)(e.target.value);
             },
           }),
-          m('div', { className: 'helpText' }, tx(f.helpKey)),
+          m('div', { className: 'helpText' }, app.translator.trans(f.helpKey)),
         ])
       ),
       m('div', { className: 'Form-group Form-controls' }, this.submitButton()),
@@ -341,9 +355,9 @@ export default class SupportAdminPage extends ExtensionPage {
   _renderAutoCloseSection() {
     const key = 'linkrobins-support.auto_close_resolved_days';
     return m(Form, null, [
-      m('p', { className: 'helpText' }, tx('linkrobins-support.admin.auto_close.intro')),
+      m('p', { className: 'helpText' }, app.translator.trans('linkrobins-support.admin.auto_close.intro')),
       m('div', { className: 'Form-group' }, [
-        m('label', null, tx('linkrobins-support.admin.auto_close.days')),
+        m('label', null, app.translator.trans('linkrobins-support.admin.auto_close.days')),
         m('input', {
           type: 'number',
           className: 'FormControl',
@@ -353,10 +367,10 @@ export default class SupportAdminPage extends ExtensionPage {
             this.setting(key, '7')(e.target.value);
           },
         }),
-        m('div', { className: 'helpText' }, tx('linkrobins-support.admin.auto_close.days_help')),
+        m('div', { className: 'helpText' }, app.translator.trans('linkrobins-support.admin.auto_close.days_help')),
       ]),
       m('div', { className: 'Form-group' }, [
-        m('label', null, tx('linkrobins-support.admin.auto_close.reminder_days')),
+        m('label', null, app.translator.trans('linkrobins-support.admin.auto_close.reminder_days')),
         m('input', {
           type: 'number',
           className: 'FormControl',
@@ -366,7 +380,7 @@ export default class SupportAdminPage extends ExtensionPage {
             this.setting('linkrobins-support.awaiting_reminder_days', '3')(e.target.value);
           },
         }),
-        m('div', { className: 'helpText' }, tx('linkrobins-support.admin.auto_close.reminder_days_help')),
+        m('div', { className: 'helpText' }, app.translator.trans('linkrobins-support.admin.auto_close.reminder_days_help')),
       ]),
       m('div', { className: 'Form-group Form-controls' }, this.submitButton()),
     ]);
@@ -374,7 +388,7 @@ export default class SupportAdminPage extends ExtensionPage {
 
   _renderAppealBansSection() {
     return [
-      m('p', { className: 'helpText' }, tx('linkrobins-support.admin.appeal_bans.intro')),
+      m('p', { className: 'helpText' }, app.translator.trans('linkrobins-support.admin.appeal_bans.intro')),
       m(
         Button,
         {
@@ -384,7 +398,7 @@ export default class SupportAdminPage extends ExtensionPage {
             if (app.modal) app.modal.show(AppealBannedUsersModal);
           },
         },
-        tx('linkrobins-support.admin.appeal_bans.view_banned_button')
+        app.translator.trans('linkrobins-support.admin.appeal_bans.view_banned_button')
       ),
     ];
   }

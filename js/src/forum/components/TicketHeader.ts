@@ -1,9 +1,10 @@
+import app from 'flarum/forum/app';
 import Component from 'flarum/common/Component';
 import Button from 'flarum/common/components/Button';
 import Dropdown from 'flarum/common/components/Dropdown';
 import Avatar from 'flarum/common/components/Avatar';
 import ItemList from 'flarum/common/utils/ItemList';
-import { tr, trText } from '../utils/translate';
+import extractText from 'flarum/common/utils/extractText';
 import { statusChip, statusClass, statusLabel, decisionLabel, priorityChip } from '../utils/status';
 import AssignTicketModal from './AssignTicketModal';
 import { ticketTypes } from '../../common/ticketTypes';
@@ -34,7 +35,7 @@ export default class TicketHeader extends Component {
       m('div', { className: 'LinkRobinsSupport-ticket-meta' }, this.metaItems(ticket, isDeleted).toArray()),
       ticket.decision()
         ? m('div', { className: 'LinkRobinsSupport-decision' }, [
-            tr('show.decision', 'Decision:'),
+            app.translator.trans('linkrobins-support.forum.show.decision'),
             ' ',
             isStaff && !isDeleted && this.decisionItems(ticket).toArray().length
               ? this.decisionControl(ticket)
@@ -66,7 +67,7 @@ export default class TicketHeader extends Component {
         m('span', { className: 'LinkRobinsSupport-reply-deletedBadge' }, [
           m('i', { className: 'fas fa-trash' }),
           ' ',
-          tr('show.deleted_badge', 'Deleted'),
+          app.translator.trans('linkrobins-support.forum.show.deleted_badge'),
         ]),
         80
       );
@@ -109,7 +110,7 @@ export default class TicketHeader extends Component {
         buttonClassName: 'LinkRobinsSupport-chip LinkRobinsSupport-chip--status ' + statusClass(current),
         label: [m('span', { className: 'LinkRobinsSupport-chip-dot' }), statusLabel(current)],
         caretIcon: 'fas fa-caret-down',
-        accessibleToggleLabel: trText('staff.change_status', 'Change status'),
+        accessibleToggleLabel: extractText(app.translator.trans('linkrobins-support.forum.staff.change_status')),
       },
       STATUSES.map((s) =>
         m(
@@ -136,7 +137,7 @@ export default class TicketHeader extends Component {
         buttonClassName: 'Button Button--text LinkRobinsSupport-decisionToggle LinkRobinsSupport-decision-' + current,
         label: decisionLabel(current),
         caretIcon: 'fas fa-caret-down',
-        accessibleToggleLabel: trText('staff.change_decision', 'Change decision'),
+        accessibleToggleLabel: extractText(app.translator.trans('linkrobins-support.forum.staff.change_decision')),
       },
       items.toArray()
     );
@@ -186,13 +187,15 @@ export default class TicketHeader extends Component {
           'span',
           {
             className: 'LinkRobinsSupport-chip LinkRobinsSupport-chip--assignee',
-            title: trText('show.assigned_to_name', 'Assigned to {name}', { name: assigned.displayName() || assigned.username() }),
+            title: extractText(
+              app.translator.trans('linkrobins-support.forum.show.assigned_to_name', { name: assigned.displayName() || assigned.username() })
+            ),
           },
           [m(Avatar, { user: assigned }), assigned.displayName() || assigned.username()]
         )
       : m('span', { className: 'LinkRobinsSupport-chip LinkRobinsSupport-chip--assignee is-unassigned' }, [
           m('i', { className: 'fas fa-user-slash', 'aria-hidden': 'true' }),
-          tr('show.unassigned', 'Unassigned'),
+          app.translator.trans('linkrobins-support.forum.show.unassigned'),
         ]);
   }
 
@@ -210,7 +213,7 @@ export default class TicketHeader extends Component {
           menuClassName: 'Dropdown-menu--right',
           buttonClassName: 'Button Button--icon Button--flat LinkRobinsSupport-reply-actionsToggle',
           icon: 'fas fa-ellipsis-h',
-          accessibleToggleLabel: tr('ticket.mod_actions', 'Ticket moderation actions'),
+          accessibleToggleLabel: extractText(app.translator.trans('linkrobins-support.forum.ticket.mod_actions')),
         },
         items.toArray()
       )
@@ -249,7 +252,7 @@ export default class TicketHeader extends Component {
                   onAssign: (member: any) => onAssign(member),
                 }),
             },
-            tr('ticket.assign', 'Assign…')
+            app.translator.trans('linkrobins-support.forum.ticket.assign')
           ),
           100
         );
@@ -257,9 +260,9 @@ export default class TicketHeader extends Component {
         // Priority: offer the two levels it is not on.
         const current = (ticket.priority && ticket.priority()) || 'normal';
         const levels: Array<[string, string, any]> = [
-          ['urgent', 'fas fa-exclamation', tr('ticket.priority_urgent', 'Mark as urgent')],
-          ['normal', 'fas fa-minus', tr('ticket.priority_normal', 'Normal priority')],
-          ['low', 'fas fa-arrow-down', tr('ticket.priority_low', 'Mark as low priority')],
+          ['urgent', 'fas fa-exclamation', app.translator.trans('linkrobins-support.forum.ticket.priority_urgent')],
+          ['normal', 'fas fa-minus', app.translator.trans('linkrobins-support.forum.ticket.priority_normal')],
+          ['low', 'fas fa-arrow-down', app.translator.trans('linkrobins-support.forum.ticket.priority_low')],
         ];
         levels
           .filter(([level]) => level !== current)
@@ -278,7 +281,7 @@ export default class TicketHeader extends Component {
               disabled: busy,
               onclick: () => onSoftDelete(),
             },
-            tr('ticket.delete', 'Delete ticket')
+            app.translator.trans('linkrobins-support.forum.ticket.delete')
           ),
           -10
         );
@@ -287,7 +290,11 @@ export default class TicketHeader extends Component {
       if (canUpdate && isStaff) {
         items.add(
           'restore',
-          m(Button, { icon: 'fas fa-undo', disabled: busy, onclick: () => onRestore() }, tr('ticket.restore', 'Restore ticket')),
+          m(
+            Button,
+            { icon: 'fas fa-undo', disabled: busy, onclick: () => onRestore() },
+            app.translator.trans('linkrobins-support.forum.ticket.restore')
+          ),
           -10
         );
       }
@@ -302,7 +309,7 @@ export default class TicketHeader extends Component {
               disabled: busy,
               onclick: () => onForceDelete(),
             },
-            tr('action.delete_forever', 'Delete forever')
+            app.translator.trans('linkrobins-support.forum.action.delete_forever')
           ),
           -100
         );

@@ -1,6 +1,7 @@
+import app from 'flarum/forum/app';
 import Link from 'flarum/common/components/Link';
 import type User from 'flarum/common/models/User';
-import { trText } from './translate';
+import extractText from 'flarum/common/utils/extractText';
 
 export const BASE_PATH = '/support';
 
@@ -65,7 +66,7 @@ export function formatDate(value: Date | string | null | undefined): string {
     // double-comma run when embedded in a sentence.
     const datePart = d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
     const timePart = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-    return trText('common.date_at_time', '{date} at {time}', { date: datePart, time: timePart });
+    return extractText(app.translator.trans('linkrobins-support.forum.common.date_at_time', { date: datePart, time: timePart }));
   } catch (e) {
     return '';
   }
@@ -129,7 +130,7 @@ export function pushSupportHistory(name: string, title: string): void {
     const front = 'linkrobins-support.index';
     if (!history.canGoBack()) {
       if (name === front) return;
-      history.push(front, trText('nav', 'Support'), app.route(front));
+      history.push(front, extractText(app.translator.trans('linkrobins-support.forum.nav')), app.route(front));
     }
     history.push(name, title, m.route.get());
   } catch (e) {

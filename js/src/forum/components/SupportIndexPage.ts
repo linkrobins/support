@@ -1,11 +1,12 @@
+import app from 'flarum/forum/app';
 import Page from 'flarum/common/components/Page';
 import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
 import Button from 'flarum/common/components/Button';
 import PageStructure from 'flarum/forum/components/PageStructure';
+import extractText from 'flarum/common/utils/extractText';
 import SupportIndexSidebar from './SupportIndexSidebar';
 import SupportGuestPrompt from './SupportGuestPrompt';
 import SupportTicketRow from './SupportTicketRow';
-import { tr, trText } from '../utils/translate';
 import { showError, pushSupportHistory, isGuest } from '../utils/helpers';
 import { canCreateSupportTicket, canHandleSupportTickets } from '../utils/permissions';
 import { FILTER_OPTIONS, filterLabel, emptyLabel } from '../utils/status';
@@ -39,7 +40,7 @@ export default class SupportIndexPage extends Page {
     this.tickets = [];
     this.filter = this._filterFromAttrs(this.attrs);
     try {
-      app.setTitle(tr('nav', 'Support'));
+      app.setTitle(extractText(app.translator.trans('linkrobins-support.forum.nav')));
     } catch (e) {}
     this._pushHistory(this.attrs);
     this._lastLoadedFilter = this.filter;
@@ -79,7 +80,7 @@ export default class SupportIndexPage extends Page {
   }
 
   _pushHistory(attrs: any) {
-    pushSupportHistory((attrs && attrs.routeName) || 'linkrobins-support.index', trText('nav', 'Support'));
+    pushSupportHistory((attrs && attrs.routeName) || 'linkrobins-support.index', extractText(app.translator.trans('linkrobins-support.forum.nav')));
   }
 
   _filterFromAttrs(attrs: any): string {
@@ -144,7 +145,7 @@ export default class SupportIndexPage extends Page {
       .catch((err: any) => {
         this.loadingMore = false;
         console.error('[linkrobins/support] load more tickets failed:', err);
-        showError(tr('errors.load_more_tickets', 'Could not load more tickets.'));
+        showError(app.translator.trans('linkrobins-support.forum.errors.load_more_tickets'));
         m.redraw();
       });
   }
@@ -178,7 +179,11 @@ export default class SupportIndexPage extends Page {
           m(
             'header',
             { className: 'LinkRobinsSupport-header' },
-            m('h1', { className: 'LinkRobinsSupport-title' }, [m('i', { className: 'fas fa-life-ring' }), ' ', tr('nav', 'Support')])
+            m('h1', { className: 'LinkRobinsSupport-title' }, [
+              m('i', { className: 'fas fa-life-ring' }),
+              ' ',
+              app.translator.trans('linkrobins-support.forum.nav'),
+            ])
           ),
           m(SupportGuestPrompt),
         ])
@@ -225,8 +230,8 @@ export default class SupportIndexPage extends Page {
         className: 'FormControl LinkRobinsSupport-search-input',
         type: 'search',
         value: this.query,
-        placeholder: trText('index.search_placeholder', 'Search tickets'),
-        'aria-label': trText('index.search_placeholder', 'Search tickets'),
+        placeholder: extractText(app.translator.trans('linkrobins-support.forum.index.search_placeholder')),
+        'aria-label': extractText(app.translator.trans('linkrobins-support.forum.index.search_placeholder')),
         oninput: (e: any) => {
           this.query = e.target.value;
           clearTimeout(this._searchTimer);
@@ -237,11 +242,11 @@ export default class SupportIndexPage extends Page {
   }
 
   _headingFor(filter: string | null) {
-    if (!filter || filter === 'mine') return tr('nav', 'Support');
+    if (!filter || filter === 'mine') return app.translator.trans('linkrobins-support.forum.nav');
     for (let i = 0; i < FILTER_OPTIONS.length; i++) {
       if (FILTER_OPTIONS[i].id === filter) return filterLabel(FILTER_OPTIONS[i]);
     }
-    return tr('nav', 'Support');
+    return app.translator.trans('linkrobins-support.forum.nav');
   }
 
   _renderList() {
@@ -249,10 +254,10 @@ export default class SupportIndexPage extends Page {
       return m(LoadingIndicator);
     }
     if (this.error) {
-      return m('div', { className: 'LinkRobinsSupport-empty' }, tr('errors.load_tickets', 'Could not load tickets.'));
+      return m('div', { className: 'LinkRobinsSupport-empty' }, app.translator.trans('linkrobins-support.forum.errors.load_tickets'));
     }
     if (!this.tickets.length && this.query.trim()) {
-      return m('div', { className: 'LinkRobinsSupport-empty' }, tr('index.no_results', 'No tickets match your search.'));
+      return m('div', { className: 'LinkRobinsSupport-empty' }, app.translator.trans('linkrobins-support.forum.index.no_results'));
     }
     if (!this.tickets.length) {
       return m('div', { className: 'LinkRobinsSupport-empty' }, emptyLabel(this.filter, canCreateSupportTicket()));

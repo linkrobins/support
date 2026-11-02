@@ -2,7 +2,7 @@ import app from 'flarum/forum/app';
 import Component from 'flarum/common/Component';
 import Dropdown from 'flarum/common/components/Dropdown';
 import Button from 'flarum/common/components/Button';
-import { tr, trText } from '../utils/translate';
+import extractText from 'flarum/common/utils/extractText';
 
 // Loaded once per page visit and shared by every composer that opens.
 let cache: any[] | null = null;
@@ -49,8 +49,8 @@ export default class SavedRepliesMenu extends Component {
         className: 'LinkRobinsSupport-savedReplies',
         buttonClassName: 'Button Button--flat LinkRobinsSupport-savedRepliesToggle',
         icon: 'fas fa-comment-dots',
-        label: tr('reply.saved_replies', 'Saved replies'),
-        accessibleToggleLabel: trText('reply.saved_replies', 'Saved replies'),
+        label: app.translator.trans('linkrobins-support.forum.reply.saved_replies'),
+        accessibleToggleLabel: extractText(app.translator.trans('linkrobins-support.forum.reply.saved_replies')),
       },
       cache.map((reply: any) =>
         m(
