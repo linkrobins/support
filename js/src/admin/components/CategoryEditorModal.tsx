@@ -292,12 +292,7 @@ export default class CategoryEditorModal extends FormModal<any> {
     items.add(
       'submit',
       <div className="Form-group Form-controls">
-        <Button
-          type="submit"
-          className="Button Button--primary"
-          loading={this.saving}
-          disabled={!this.name.trim()}
-        >
+        <Button type="submit" className="Button Button--primary" loading={this.saving} disabled={!this.name.trim()}>
           {this.editId
             ? app.translator.trans('linkrobins-support.admin.category_editor.submit_update')
             : app.translator.trans('linkrobins-support.admin.category_editor.submit_create')}

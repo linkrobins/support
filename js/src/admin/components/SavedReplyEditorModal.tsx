@@ -85,12 +85,7 @@ export default class SavedReplyEditorModal extends FormModal<any> {
             <div className="helpText">{app.translator.trans('linkrobins-support.admin.saved_replies.field_position_help')}</div>
           </div>
           <div className="Form-group Form-controls">
-            <Button
-              type="submit"
-              className="Button Button--primary"
-              loading={this.saving}
-              disabled={!canSave}
-            >
+            <Button type="submit" className="Button Button--primary" loading={this.saving} disabled={!canSave}>
               {this.reply
                 ? app.translator.trans('linkrobins-support.admin.saved_replies.submit_update')
                 : app.translator.trans('linkrobins-support.admin.saved_replies.submit_create')}

@@ -132,12 +132,7 @@ export default class ReplyItem extends Component {
       if (canDelete) {
         items.add(
           'delete',
-          <Button
-            icon="fas fa-trash"
-            className="LinkRobinsSupport-reply-action--danger"
-            disabled={busy}
-            onclick={() => onSoftDelete(reply)}
-          >
+          <Button icon="fas fa-trash" className="LinkRobinsSupport-reply-action--danger" disabled={busy} onclick={() => onSoftDelete(reply)}>
             {app.translator.trans('linkrobins-support.forum.action.delete')}
           </Button>,
           -10
@@ -153,12 +148,7 @@ export default class ReplyItem extends Component {
       );
       items.add(
         'forceDelete',
-        <Button
-          icon="fas fa-times"
-          className="LinkRobinsSupport-reply-action--danger"
-          disabled={busy}
-          onclick={() => onForceDelete(reply)}
-        >
+        <Button icon="fas fa-times" className="LinkRobinsSupport-reply-action--danger" disabled={busy} onclick={() => onForceDelete(reply)}>
           {app.translator.trans('linkrobins-support.forum.action.delete_forever')}
         </Button>,
         -100
@@ -194,19 +184,10 @@ export default class ReplyItem extends Component {
           }}
         />
         <div className="LinkRobinsSupport-reply-editor-actions">
-          <Button
-            className="Button Button--default"
-            disabled={state.busy}
-            onclick={() => onCancelEdit(reply)}
-          >
+          <Button className="Button Button--default" disabled={state.busy} onclick={() => onCancelEdit(reply)}>
             {app.translator.trans('linkrobins-support.forum.action.cancel')}
           </Button>
-          <Button
-            className="Button Button--primary"
-            disabled={!canSave}
-            loading={state.busy}
-            onclick={() => onSaveEditInline(reply)}
-          >
+          <Button className="Button Button--primary" disabled={!canSave} loading={state.busy} onclick={() => onSaveEditInline(reply)}>
             {state.busy
               ? app.translator.trans('linkrobins-support.forum.action.saving')
               : app.translator.trans('linkrobins-support.forum.action.save_changes')}

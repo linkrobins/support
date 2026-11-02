@@ -39,9 +39,7 @@ export default class SupportTicketRow extends Component<ISupportTicketRowAttrs> 
             )}
             {ticket.subject() || app.translator.trans('linkrobins-support.forum.index.untitled')}
             {isDeleted && (
-              <span className="LinkRobinsSupport-row-deletedBadge">
-                {app.translator.trans('linkrobins-support.forum.index.deleted_badge')}
-              </span>
+              <span className="LinkRobinsSupport-row-deletedBadge">{app.translator.trans('linkrobins-support.forum.index.deleted_badge')}</span>
             )}
           </div>
           <div className="LinkRobinsSupport-row-meta">
@@ -51,14 +49,8 @@ export default class SupportTicketRow extends Component<ISupportTicketRowAttrs> 
                 {cat.name()}
               </span>
             )}
-            {user && (
-              <span className="LinkRobinsSupport-row-user">
-                {user.displayName() || user.username()}
-              </span>
-            )}
-            <span className="LinkRobinsSupport-row-date">
-              {formatDate(ticket.lastReplyAt() || ticket.createdAt())}
-            </span>
+            {user && <span className="LinkRobinsSupport-row-user">{user.displayName() || user.username()}</span>}
+            <span className="LinkRobinsSupport-row-date">{formatDate(ticket.lastReplyAt() || ticket.createdAt())}</span>
           </div>
         </div>
         <div className="LinkRobinsSupport-row-side">

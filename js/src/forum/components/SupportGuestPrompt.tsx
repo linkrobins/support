@@ -13,21 +13,13 @@ export default class SupportGuestPrompt extends Component<{ message?: string }> 
 
     return (
       <div className="LinkRobinsSupport-empty LinkRobinsSupport-guest">
-        <p className="LinkRobinsSupport-guestText">
-          {this.attrs.message || app.translator.trans('linkrobins-support.forum.guest.message')}
-        </p>
+        <p className="LinkRobinsSupport-guestText">{this.attrs.message || app.translator.trans('linkrobins-support.forum.guest.message')}</p>
         <div className="LinkRobinsSupport-guestActions">
-          <Button
-            className="Button Button--primary"
-            onclick={() => app.modal.show(() => import('flarum/forum/components/LogInModal'))}
-          >
+          <Button className="Button Button--primary" onclick={() => app.modal.show(() => import('flarum/forum/components/LogInModal'))}>
             {app.translator.trans('linkrobins-support.forum.guest.log_in')}
           </Button>
           {canSignUp && (
-            <Button
-              className="Button"
-              onclick={() => app.modal.show(() => import('flarum/forum/components/SignUpModal'))}
-            >
+            <Button className="Button" onclick={() => app.modal.show(() => import('flarum/forum/components/SignUpModal'))}>
               {app.translator.trans('linkrobins-support.forum.guest.sign_up')}
             </Button>
           )}

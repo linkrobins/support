@@ -41,9 +41,7 @@ export default class TicketHeader extends Component {
             {isStaff && !isDeleted && this.decisionItems(ticket).toArray().length ? (
               this.decisionControl(ticket)
             ) : (
-              <span className={`LinkRobinsSupport-decision-${ticket.decision()}`}>
-                {decisionLabel(ticket.decision())}
-              </span>
+              <span className={`LinkRobinsSupport-decision-${ticket.decision()}`}>{decisionLabel(ticket.decision())}</span>
             )}
           </div>
         )}
@@ -116,11 +114,7 @@ export default class TicketHeader extends Component {
         accessibleToggleLabel={extractText(app.translator.trans('linkrobins-support.forum.staff.change_status'))}
       >
         {STATUSES.map((s) => (
-          <Button
-            icon={s === current ? 'fas fa-check' : 'fas fa-fw'}
-            disabled={!!updating || s === current}
-            onclick={() => onSetStatus(s)}
-          >
+          <Button icon={s === current ? 'fas fa-check' : 'fas fa-fw'} disabled={!!updating || s === current} onclick={() => onSetStatus(s)}>
             {statusLabel(s)}
           </Button>
         ))}
@@ -160,11 +154,7 @@ export default class TicketHeader extends Component {
     decisions.forEach((d) => {
       items.add(
         d,
-        <Button
-          icon={d === current ? 'fas fa-check' : 'fas fa-fw'}
-          disabled={!!updating || d === current}
-          onclick={() => onSetDecision(d)}
-        >
+        <Button icon={d === current ? 'fas fa-check' : 'fas fa-fw'} disabled={!!updating || d === current} onclick={() => onSetDecision(d)}>
           {decisionLabel(d)}
         </Button>
       );
@@ -277,12 +267,7 @@ export default class TicketHeader extends Component {
       if (canUpdate && isStaff) {
         items.add(
           'delete',
-          <Button
-            icon="fas fa-trash"
-            className="LinkRobinsSupport-reply-action--danger"
-            disabled={busy}
-            onclick={() => onSoftDelete()}
-          >
+          <Button icon="fas fa-trash" className="LinkRobinsSupport-reply-action--danger" disabled={busy} onclick={() => onSoftDelete()}>
             {app.translator.trans('linkrobins-support.forum.ticket.delete')}
           </Button>,
           -10
@@ -301,12 +286,7 @@ export default class TicketHeader extends Component {
       if (canDelete) {
         items.add(
           'forceDelete',
-          <Button
-            icon="fas fa-times"
-            className="LinkRobinsSupport-reply-action--danger"
-            disabled={busy}
-            onclick={() => onForceDelete()}
-          >
+          <Button icon="fas fa-times" className="LinkRobinsSupport-reply-action--danger" disabled={busy} onclick={() => onForceDelete()}>
             {app.translator.trans('linkrobins-support.forum.action.delete_forever')}
           </Button>,
           -100

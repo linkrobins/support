@@ -113,12 +113,7 @@ export default class ReplyComposer extends Component {
               {app.translator.trans('linkrobins-support.forum.reply.internal_note')}
             </label>
           )}
-          <Button
-            className="Button Button--primary"
-            disabled={!canSubmit}
-            loading={a.posting}
-            onclick={() => a.onSubmit()}
-          >
+          <Button className="Button Button--primary" disabled={!canSubmit} loading={a.posting} onclick={() => a.onSubmit()}>
             {a.posting
               ? app.translator.trans('linkrobins-support.forum.reply.posting')
               : app.translator.trans('linkrobins-support.forum.reply.post_reply')}

@@ -107,21 +107,13 @@ export default class SupportAdminPage extends ExtensionPage {
       <div className="ExtensionPage-settings LinkRobinsSupportAdmin">
         <div className="container">
           <FormSectionGroup>
-            <FormSection label={app.translator.trans('linkrobins-support.admin.categories.heading')}>
-              {this._renderCategoriesSection()}
-            </FormSection>
+            <FormSection label={app.translator.trans('linkrobins-support.admin.categories.heading')}>{this._renderCategoriesSection()}</FormSection>
             <FormSection label={app.translator.trans('linkrobins-support.admin.saved_replies.heading')}>
               {this._renderSavedRepliesSection()}
             </FormSection>
-            <FormSection label={app.translator.trans('linkrobins-support.admin.navigation.heading')}>
-              {this._renderNavigationSection()}
-            </FormSection>
-            <FormSection label={app.translator.trans('linkrobins-support.admin.auto_close.heading')}>
-              {this._renderAutoCloseSection()}
-            </FormSection>
-            <FormSection label={app.translator.trans('linkrobins-support.admin.rate_limits.heading')}>
-              {this._renderSettingsSection()}
-            </FormSection>
+            <FormSection label={app.translator.trans('linkrobins-support.admin.navigation.heading')}>{this._renderNavigationSection()}</FormSection>
+            <FormSection label={app.translator.trans('linkrobins-support.admin.auto_close.heading')}>{this._renderAutoCloseSection()}</FormSection>
+            <FormSection label={app.translator.trans('linkrobins-support.admin.rate_limits.heading')}>{this._renderSettingsSection()}</FormSection>
             <FormSection label={app.translator.trans('linkrobins-support.admin.appeal_bans.heading_alt')}>
               {this._renderAppealBansSection()}
             </FormSection>
@@ -134,9 +126,7 @@ export default class SupportAdminPage extends ExtensionPage {
   _renderCategoriesSection() {
     return [
       <p className="helpText">{app.translator.trans('linkrobins-support.admin.categories.intro')}</p>,
-      this.catError ? (
-        <div className="Alert Alert--danger">{app.translator.trans('linkrobins-support.admin.category_editor.error_load')}</div>
-      ) : null,
+      this.catError ? <div className="Alert Alert--danger">{app.translator.trans('linkrobins-support.admin.category_editor.error_load')}</div> : null,
       this.loadingCats ? (
         <LoadingIndicator />
       ) : this.categories.length === 0 ? (
@@ -157,8 +147,7 @@ export default class SupportAdminPage extends ExtensionPage {
               {this.categories.map((c: any) => (
                 <tr key={'cat-' + c.id()}>
                   <td>
-                    {c.icon() ? <Icon name={c.icon()} style={c.color() ? { color: c.color() } : undefined} /> : null}{' '}
-                    <strong>{c.name()}</strong>
+                    {c.icon() ? <Icon name={c.icon()} style={c.color() ? { color: c.color() } : undefined} /> : null} <strong>{c.name()}</strong>
                   </td>
                   <td>{this._typeLabel(c)}</td>
                   <td>{this._assigneeLabel(c)}</td>
@@ -193,9 +182,7 @@ export default class SupportAdminPage extends ExtensionPage {
     const user = category.defaultAssignee && category.defaultAssignee();
     if (!user) {
       return (
-        <span className="LinkRobinsSupportAdmin-noAssignee">
-          {app.translator.trans('linkrobins-support.admin.categories.assignee_all_staff')}
-        </span>
+        <span className="LinkRobinsSupportAdmin-noAssignee">{app.translator.trans('linkrobins-support.admin.categories.assignee_all_staff')}</span>
       );
     }
     return user.displayName() || user.username();

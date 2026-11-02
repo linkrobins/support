@@ -238,11 +238,7 @@ export default class SupportShowPage extends Page<any> {
 
         <div className="LinkRobinsSupport-replies">
           {this._timeline().map((entry: any) =>
-            entry.kind === 'event' ? (
-              <TicketEventItem key={'event-' + entry.item.id()} event={entry.item} />
-            ) : (
-              this._renderReply(entry.item)
-            )
+            entry.kind === 'event' ? <TicketEventItem key={'event-' + entry.item.id()} event={entry.item} /> : this._renderReply(entry.item)
           )}
         </div>
 
@@ -286,11 +282,7 @@ export default class SupportShowPage extends Page<any> {
                 status bar above instead). canReopen is false for appeals. */}
             {ticket.status() === 'closed' && ticket.canReopen() && !canHandleSupportTickets() ? (
               <div className="LinkRobinsSupport-reopenRow">
-                <Button
-                  className="Button Button--primary"
-                  disabled={this.updating}
-                  onclick={() => this._reopen()}
-                >
+                <Button className="Button Button--primary" disabled={this.updating} onclick={() => this._reopen()}>
                   {app.translator.trans('linkrobins-support.forum.action.reopen')}
                 </Button>
               </div>
@@ -332,22 +324,13 @@ export default class SupportShowPage extends Page<any> {
     return (
       <div className="LinkRobinsSupport-confirmSolved">
         <div className="LinkRobinsSupport-confirmSolved-text">
-          <Icon name="fas fa-check-circle" aria-hidden="true" />{' '}
-          {app.translator.trans('linkrobins-support.forum.show.confirm_solved_prompt')}
+          <Icon name="fas fa-check-circle" aria-hidden="true" /> {app.translator.trans('linkrobins-support.forum.show.confirm_solved_prompt')}
         </div>
         <div className="LinkRobinsSupport-confirmSolved-actions">
-          <Button
-            className="Button Button--primary"
-            disabled={this.updating}
-            onclick={() => this._confirmSolved()}
-          >
+          <Button className="Button Button--primary" disabled={this.updating} onclick={() => this._confirmSolved()}>
             {app.translator.trans('linkrobins-support.forum.show.confirm_solved_yes')}
           </Button>
-          <Button
-            className="Button"
-            disabled={this.updating}
-            onclick={() => this._openReplyComposer(false)}
-          >
+          <Button className="Button" disabled={this.updating} onclick={() => this._openReplyComposer(false)}>
             {app.translator.trans('linkrobins-support.forum.show.confirm_solved_no')}
           </Button>
         </div>

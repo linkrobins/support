@@ -63,17 +63,11 @@ export default class AssignTicketModal extends Modal<any> {
         ) : this.failed ? (
           <p className="LinkRobinsSupport-empty">{app.translator.trans('linkrobins-support.forum.assign.load_failed')}</p>
         ) : (
-          <ul className="LinkRobinsSupport-assignList">
-            {this.staff.map((user: any) => this._renderOption(user, current))}
-          </ul>
+          <ul className="LinkRobinsSupport-assignList">{this.staff.map((user: any) => this._renderOption(user, current))}</ul>
         )}
         {current && (
           <div className="LinkRobinsSupport-assignFooter">
-            <Button
-              className="Button Button--link"
-              icon="fas fa-user-slash"
-              onclick={() => this.pick(null)}
-            >
+            <Button className="Button Button--link" icon="fas fa-user-slash" onclick={() => this.pick(null)}>
               {app.translator.trans('linkrobins-support.forum.assign.unassign')}
             </Button>
           </div>
@@ -96,11 +90,7 @@ export default class AssignTicketModal extends Modal<any> {
         >
           <Avatar user={user} className="LinkRobinsSupport-assignAvatar" />
           <span className="LinkRobinsSupport-assignName">{user.displayName() || user.username()}</span>
-          {id === me && (
-            <span className="LinkRobinsSupport-assignYou">
-              {app.translator.trans('linkrobins-support.forum.assign.you')}
-            </span>
-          )}
+          {id === me && <span className="LinkRobinsSupport-assignYou">{app.translator.trans('linkrobins-support.forum.assign.you')}</span>}
           {isCurrent && <Icon name="fas fa-check" className="LinkRobinsSupport-assignCheck" />}
         </Button>
       </li>

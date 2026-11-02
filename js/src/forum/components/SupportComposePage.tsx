@@ -421,13 +421,7 @@ export default class SupportComposePage extends Page {
     const color = c.color() || null;
     return (
       <div className="LinkRobinsSupport-chosenCategory">
-        {c.icon() && (
-          <Icon
-            name={c.icon()}
-            className="LinkRobinsSupport-chosenCategory-icon"
-            style={color ? { color } : undefined}
-          />
-        )}
+        {c.icon() && <Icon name={c.icon()} className="LinkRobinsSupport-chosenCategory-icon" style={color ? { color } : undefined} />}
         <span className="LinkRobinsSupport-chosenCategory-name">{c.name() || ''}</span>
       </div>
     );

@@ -47,9 +47,7 @@ export default class AppealBannedUsersModal extends Modal {
             {this._renderLoadMore()}
           </>
         ) : (
-          <div className="LinkRobinsSupportAdmin-empty">
-            {app.translator.trans('linkrobins-support.admin.appeal_bans.banned_empty')}
-          </div>
+          <div className="LinkRobinsSupportAdmin-empty">{app.translator.trans('linkrobins-support.admin.appeal_bans.banned_empty')}</div>
         )}
       </div>
     );
@@ -87,11 +85,7 @@ export default class AppealBannedUsersModal extends Modal {
     if (!this.hasMore) return null;
     return (
       <div className="LinkRobinsSupportAdmin-loadMore" style={{ marginTop: '10px' }}>
-        <Button
-          className="Button"
-          disabled={this.loadingUsers}
-          onclick={() => this._load(true)}
-        >
+        <Button className="Button" disabled={this.loadingUsers} onclick={() => this._load(true)}>
           {this.loadingUsers
             ? app.translator.trans('linkrobins-support.admin.common.loading')
             : app.translator.trans('linkrobins-support.admin.appeal_bans.load_more')}

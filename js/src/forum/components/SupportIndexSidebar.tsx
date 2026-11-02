@@ -121,11 +121,7 @@ export default class SupportIndexSidebar extends IndexSidebar<any> {
       if (opt.staffOnly && !canHandle) return;
       items.add(
         'support-filter-' + opt.id,
-        <LinkButton
-          href={filterHrefFor(opt.id)}
-          icon={opt.icon}
-          active={currentFilter === opt.id}
-        >
+        <LinkButton href={filterHrefFor(opt.id)} icon={opt.icon} active={currentFilter === opt.id}>
           {filterLabel(opt)}
           {this._count(opt.id)}
         </LinkButton>,
@@ -138,11 +134,7 @@ export default class SupportIndexSidebar extends IndexSidebar<any> {
     if (canHandle) {
       items.add(
         'support-stats',
-        <Button
-          icon="fas fa-chart-bar"
-          className="LinkButton LinkRobinsSupport-statsLink"
-          onclick={() => app.modal.show(SupportStatsModal)}
-        >
+        <Button icon="fas fa-chart-bar" className="LinkButton LinkRobinsSupport-statsLink" onclick={() => app.modal.show(SupportStatsModal)}>
           {app.translator.trans('linkrobins-support.forum.stats.title')}
         </Button>,
         -21 - FILTER_OPTIONS.length
@@ -165,11 +157,7 @@ export default class SupportIndexSidebar extends IndexSidebar<any> {
     const key = COUNT_FOR_FILTER[filterId];
     const n = key ? supportCount(key) : 0;
     if (!n) return null;
-    return (
-      <span className={`LinkRobinsSupport-navCount${filterId === 'mine' ? ' is-unread' : ''}`}>
-        {n > 99 ? '99+' : String(n)}
-      </span>
-    );
+    return <span className={`LinkRobinsSupport-navCount${filterId === 'mine' ? ' is-unread' : ''}`}>{n > 99 ? '99+' : String(n)}</span>;
   }
 
   /**

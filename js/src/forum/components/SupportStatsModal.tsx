@@ -90,11 +90,7 @@ export default class SupportStatsModal extends Modal<any> {
       <>
         <div className="SupportStats-header">
           <span />
-          <div
-            className="SupportStats-ranges"
-            role="group"
-            aria-label={extractText(app.translator.trans('linkrobins-support.forum.stats.range'))}
-          >
+          <div className="SupportStats-ranges" role="group" aria-label={extractText(app.translator.trans('linkrobins-support.forum.stats.range'))}>
             {WINDOWS.map((n) => (
               <Button
                 className={`Button--size-sm${this.days === n ? ' Button--primary' : ''}`}
@@ -240,13 +236,7 @@ export default class SupportStatsModal extends Modal<any> {
               })
             );
             return (
-              <div
-                key={v.start}
-                className="SupportStats-chartCol"
-                tabIndex={0}
-                data-label={summary}
-                aria-label={summary}
-              >
+              <div key={v.start} className="SupportStats-chartCol" tabIndex={0} data-label={summary} aria-label={summary}>
                 <div className="SupportStats-chartPair">
                   <div className="SupportStats-chartBar is-opened" style={{ height: (v.opened / max) * 100 + '%' }} />
                   <div className="SupportStats-chartBar is-closed" style={{ height: (v.closed / max) * 100 + '%' }} />

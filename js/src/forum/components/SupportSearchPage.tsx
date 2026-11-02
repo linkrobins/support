@@ -157,10 +157,7 @@ export default class SupportSearchPage extends Page {
     );
 
     return (
-      <PageStructure
-        className="IndexPage LinkRobinsSupport-page LinkRobinsSupport-searchPage"
-        sidebar={() => this._renderSidebar()}
-      >
+      <PageStructure className="IndexPage LinkRobinsSupport-page LinkRobinsSupport-searchPage" sidebar={() => this._renderSidebar()}>
         {content}
       </PageStructure>
     );
@@ -168,12 +165,7 @@ export default class SupportSearchPage extends Page {
 
   _renderSidebar() {
     try {
-      return (
-        <SupportIndexSidebar
-          className="LinkRobinsSupport-sidebar"
-          activeFilter={null}
-        />
-      );
+      return <SupportIndexSidebar className="LinkRobinsSupport-sidebar" activeFilter={null} />;
     } catch (e) {
       console.error('[linkrobins/support] sidebar render failed:', e);
     }
