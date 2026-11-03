@@ -1,5 +1,6 @@
 import app from 'flarum/forum/app';
 import Component from 'flarum/common/Component';
+import Icon from 'flarum/common/components/Icon';
 import extractText from 'flarum/common/utils/extractText';
 import { formatDate } from '../utils/helpers';
 import { statusLabel } from '../utils/status';
@@ -24,11 +25,13 @@ export default class TicketEventItem extends Component {
     const type = event.type();
     const icon = type === 'assignment' ? 'fas fa-user-tag' : 'fas fa-exchange-alt';
 
-    return m('div', { className: 'LinkRobinsSupport-event LinkRobinsSupport-event--' + type }, [
-      m('i', { className: icon + ' LinkRobinsSupport-event-icon', 'aria-hidden': 'true' }),
-      m('span', { className: 'LinkRobinsSupport-event-text' }, this._text(event, type)),
-      m('span', { className: 'LinkRobinsSupport-event-date' }, formatDate(event.createdAt())),
-    ]);
+    return (
+      <div className={`LinkRobinsSupport-event LinkRobinsSupport-event--${type}`}>
+        <Icon name={icon} className="LinkRobinsSupport-event-icon" />
+        <span className="LinkRobinsSupport-event-text">{this._text(event, type)}</span>
+        <span className="LinkRobinsSupport-event-date">{formatDate(event.createdAt())}</span>
+      </div>
+    );
   }
 
   _text(event: any, type: string) {

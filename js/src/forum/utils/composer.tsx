@@ -152,25 +152,33 @@ export function supportComposerPreview(opts: { composing?: boolean; placeholder:
   const user = app.session && app.session.user;
 
   if (opts.composing) {
-    return m(
-      'article',
-      { className: 'Post CommentPost editing', 'aria-busy': 'true' },
-      m('div', { className: 'Post-container' }, [
-        m('div', { className: 'Post-side' }, user ? m(Avatar, { user, className: 'Post-avatar' }) : null),
-        m('div', { className: 'Post-main' }, [
-          m('header', { className: 'Post-header' }, m('div', { className: 'PostUser' }, m('h3', { className: 'PostUser-name' }, username(user)))),
-          m('div', { className: 'Post-body' }, m(ComposerPostPreview, { className: 'Post-body', composer: app.composer })),
-        ]),
-      ])
+    return (
+      <article className="Post CommentPost editing" aria-busy="true">
+        <div className="Post-container">
+          <div className="Post-side">{user ? <Avatar user={user} className="Post-avatar" /> : null}</div>
+          <div className="Post-main">
+            <header className="Post-header">
+              <div className="PostUser">
+                <h3 className="PostUser-name">{username(user)}</h3>
+              </div>
+            </header>
+            <div className="Post-body">
+              <ComposerPostPreview className="Post-body" composer={app.composer} />
+            </div>
+          </div>
+        </div>
+      </article>
     );
   }
 
-  return m(
-    'button',
-    { type: 'button', className: 'Post ReplyPlaceholder', onclick: opts.onclick },
-    m('div', { className: 'Post-container' }, [
-      m('div', { className: 'Post-side' }, user ? m(Avatar, { user, className: 'Post-avatar' }) : null),
-      m('div', { className: 'Post-main' }, m('span', { className: 'Post-header' }, opts.placeholder)),
-    ])
+  return (
+    <button type="button" className="Post ReplyPlaceholder" onclick={opts.onclick}>
+      <div className="Post-container">
+        <div className="Post-side">{user ? <Avatar user={user} className="Post-avatar" /> : null}</div>
+        <div className="Post-main">
+          <span className="Post-header">{opts.placeholder}</span>
+        </div>
+      </div>
+    </button>
   );
 }

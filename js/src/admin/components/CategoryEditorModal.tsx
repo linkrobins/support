@@ -92,191 +92,194 @@ export default class CategoryEditorModal extends FormModal<any> {
   }
 
   fields(): ItemList<any> {
-    const colorField = m(ColorPreviewInput, {
-      className: 'FormControl',
-      placeholder: '#07adcc',
-      value: this.color,
-      disabled: this.saving,
-      oninput: (e: any) => {
-        this.color = e.target.value;
-      },
-      onchange: (e: any) => {
-        this.color = e.target.value;
-      },
-    });
+    const colorField = (
+      <ColorPreviewInput
+        className="FormControl"
+        placeholder="#07adcc"
+        value={this.color}
+        disabled={this.saving}
+        oninput={(e: any) => {
+          this.color = e.target.value;
+        }}
+        onchange={(e: any) => {
+          this.color = e.target.value;
+        }}
+      />
+    );
 
     const items = new ItemList<any>();
 
     items.add(
       'name',
-      m('div', { className: 'Form-group' }, [
-        m('label', null, app.translator.trans('linkrobins-support.admin.category_editor.field_name')),
-        m('input', {
-          type: 'text',
-          className: 'FormControl',
-          value: this.name,
-          disabled: this.saving,
-          oninput: (e: any) => {
+      <div className="Form-group">
+        <label>{app.translator.trans('linkrobins-support.admin.category_editor.field_name')}</label>
+        <input
+          type="text"
+          className="FormControl"
+          value={this.name}
+          disabled={this.saving}
+          oninput={(e: any) => {
             this.name = e.target.value;
-          },
-        }),
-      ]),
+          }}
+        />
+      </div>,
       100
     );
 
     items.add(
       'slug',
-      m('div', { className: 'Form-group' }, [
-        m('label', null, app.translator.trans('linkrobins-support.admin.category_editor.field_slug')),
-        m('input', {
-          type: 'text',
-          className: 'FormControl',
-          value: this.slug,
-          placeholder: extractText(app.translator.trans('linkrobins-support.admin.category_editor.field_slug_placeholder')),
-          disabled: this.saving,
-          oninput: (e: any) => {
+      <div className="Form-group">
+        <label>{app.translator.trans('linkrobins-support.admin.category_editor.field_slug')}</label>
+        <input
+          type="text"
+          className="FormControl"
+          value={this.slug}
+          placeholder={extractText(app.translator.trans('linkrobins-support.admin.category_editor.field_slug_placeholder'))}
+          disabled={this.saving}
+          oninput={(e: any) => {
             this.slug = e.target.value;
-          },
-        }),
-        m('div', { className: 'helpText' }, app.translator.trans('linkrobins-support.admin.category_editor.field_slug_help')),
-      ]),
+          }}
+        />
+        <div className="helpText">{app.translator.trans('linkrobins-support.admin.category_editor.field_slug_help')}</div>
+      </div>,
       90
     );
 
     items.add(
       'description',
-      m('div', { className: 'Form-group' }, [
-        m('label', null, app.translator.trans('linkrobins-support.admin.category_editor.field_description')),
-        m('textarea', {
-          className: 'FormControl',
-          rows: 3,
-          value: this.description,
-          disabled: this.saving,
-          oninput: (e: any) => {
+      <div className="Form-group">
+        <label>{app.translator.trans('linkrobins-support.admin.category_editor.field_description')}</label>
+        <textarea
+          className="FormControl"
+          rows={3}
+          value={this.description}
+          disabled={this.saving}
+          oninput={(e: any) => {
             this.description = e.target.value;
-          },
-        }),
-      ]),
+          }}
+        />
+      </div>,
       80
     );
 
     items.add(
       'color',
-      m('div', { className: 'Form-group' }, [
-        m('label', null, app.translator.trans('linkrobins-support.admin.category_editor.field_color')),
-        colorField,
-        m('div', { className: 'helpText' }, app.translator.trans('linkrobins-support.admin.category_editor.field_color_help')),
-      ]),
+      <div className="Form-group">
+        <label>{app.translator.trans('linkrobins-support.admin.category_editor.field_color')}</label>
+        {colorField}
+        <div className="helpText">{app.translator.trans('linkrobins-support.admin.category_editor.field_color_help')}</div>
+      </div>,
       70
     );
 
     items.add(
       'icon',
-      m('div', { className: 'Form-group' }, [
-        m('label', null, app.translator.trans('linkrobins-support.admin.category_editor.field_icon')),
-        m('input', {
-          type: 'text',
-          className: 'FormControl',
-          value: this.icon,
-          disabled: this.saving,
-          placeholder: 'fas fa-folder',
-          oninput: (e: any) => {
+      <div className="Form-group">
+        <label>{app.translator.trans('linkrobins-support.admin.category_editor.field_icon')}</label>
+        <input
+          type="text"
+          className="FormControl"
+          value={this.icon}
+          disabled={this.saving}
+          placeholder="fas fa-folder"
+          oninput={(e: any) => {
             this.icon = e.target.value;
-          },
-        }),
-        m('div', { className: 'helpText' }, app.translator.trans('linkrobins-support.admin.category_editor.field_icon_help')),
-      ]),
+          }}
+        />
+        <div className="helpText">{app.translator.trans('linkrobins-support.admin.category_editor.field_icon_help')}</div>
+      </div>,
       60
     );
 
     items.add(
       'position',
-      m('div', { className: 'Form-group' }, [
-        m('label', null, app.translator.trans('linkrobins-support.admin.category_editor.field_position')),
-        m('input', {
-          type: 'number',
-          className: 'FormControl',
-          value: this.position,
-          disabled: this.saving,
-          oninput: (e: any) => {
+      <div className="Form-group">
+        <label>{app.translator.trans('linkrobins-support.admin.category_editor.field_position')}</label>
+        <input
+          type="number"
+          className="FormControl"
+          value={this.position}
+          disabled={this.saving}
+          oninput={(e: any) => {
             this.position = parseInt(e.target.value, 10) || 0;
-          },
-        }),
-        m('div', { className: 'helpText' }, app.translator.trans('linkrobins-support.admin.category_editor.field_position_help')),
-      ]),
+          }}
+        />
+        <div className="helpText">{app.translator.trans('linkrobins-support.admin.category_editor.field_position_help')}</div>
+      </div>,
       50
     );
 
     items.add(
       'ticketType',
-      m('div', { className: 'Form-group' }, [
-        m('label', null, app.translator.trans('linkrobins-support.admin.category_editor.field_ticket_type')),
-        m(Select, {
-          value: this.ticketType,
-          disabled: this.saving,
-          options: this._ticketTypeOptions(),
-          onchange: (value: string) => {
+      <div className="Form-group">
+        <label>{app.translator.trans('linkrobins-support.admin.category_editor.field_ticket_type')}</label>
+        <Select
+          value={this.ticketType}
+          disabled={this.saving}
+          options={this._ticketTypeOptions()}
+          onchange={(value: string) => {
             this.ticketType = value;
-          },
-        }),
-        m('div', { className: 'helpText' }, app.translator.trans('linkrobins-support.admin.category_editor.field_ticket_type_help')),
-      ]),
+          }}
+        />
+        <div className="helpText">{app.translator.trans('linkrobins-support.admin.category_editor.field_ticket_type_help')}</div>
+      </div>,
       40
     );
 
     items.add(
       'defaultAssignee',
-      m('div', { className: 'Form-group' }, [
-        m('label', null, app.translator.trans('linkrobins-support.admin.category_editor.field_default_assignee')),
-        m(Select, {
-          value: optionKey(this.defaultAssigneeId),
-          disabled: this.saving || this.loadingStaff,
-          options: this._assigneeOptions(),
-          onchange: (value: string) => {
+      <div className="Form-group">
+        <label>{app.translator.trans('linkrobins-support.admin.category_editor.field_default_assignee')}</label>
+        <Select
+          value={optionKey(this.defaultAssigneeId)}
+          disabled={this.saving || this.loadingStaff}
+          options={this._assigneeOptions()}
+          onchange={(value: string) => {
             this.defaultAssigneeId = value ? String(value).replace(/^u/, '') : '';
-          },
-        }),
-        this.staffError
-          ? m('div', { className: 'helpText' }, app.translator.trans('linkrobins-support.admin.category_editor.field_default_assignee_error'))
-          : m('div', { className: 'helpText' }, app.translator.trans('linkrobins-support.admin.category_editor.field_default_assignee_help')),
-      ]),
+          }}
+        />
+        {this.staffError ? (
+          <div className="helpText">{app.translator.trans('linkrobins-support.admin.category_editor.field_default_assignee_error')}</div>
+        ) : (
+          <div className="helpText">{app.translator.trans('linkrobins-support.admin.category_editor.field_default_assignee_help')}</div>
+        )}
+      </div>,
       30
     );
 
     items.add(
       'allowedGroups',
-      m('div', { className: 'Form-group' }, [
-        m('label', null, app.translator.trans('linkrobins-support.admin.category_editor.field_allowed_groups')),
-        m('div', { className: 'helpText' }, app.translator.trans('linkrobins-support.admin.category_editor.field_allowed_groups_help')),
-        m(
-          'div',
-          { className: 'LinkRobinsSupport-groupCheckboxes' },
-          ((app.store && app.store.all('groups')) || [])
+      <div className="Form-group">
+        <label>{app.translator.trans('linkrobins-support.admin.category_editor.field_allowed_groups')}</label>
+        <div className="helpText">{app.translator.trans('linkrobins-support.admin.category_editor.field_allowed_groups_help')}</div>
+        <div className="LinkRobinsSupport-groupCheckboxes">
+          {((app.store && app.store.all('groups')) || [])
             .filter((g: any) => g.id() !== '2') // Exclude Guest group
             .map((group: any) => {
               const id = String(group.id());
               const checked = this.allowedGroupIds.includes(id);
-              return m('label.checkbox', [
-                m('input', {
-                  type: 'checkbox',
-                  checked,
-                  disabled: this.saving,
-                  onchange: (e: any) => {
-                    if (e.target.checked) {
-                      if (!this.allowedGroupIds.includes(id)) {
-                        this.allowedGroupIds.push(id);
+              return (
+                <label className="checkbox" key={id}>
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    disabled={this.saving}
+                    onchange={(e: any) => {
+                      if (e.target.checked) {
+                        if (!this.allowedGroupIds.includes(id)) {
+                          this.allowedGroupIds.push(id);
+                        }
+                      } else {
+                        this.allowedGroupIds = this.allowedGroupIds.filter((gid) => gid !== id);
                       }
-                    } else {
-                      this.allowedGroupIds = this.allowedGroupIds.filter((gid) => gid !== id);
-                    }
-                  },
-                }),
-                ' ',
-                group.namePlural() || group.nameSingular() || id,
-              ]);
-            })
-        ),
-      ]),
+                    }}
+                  />{' '}
+                  {group.namePlural() || group.nameSingular() || id}
+                </label>
+              );
+            })}
+        </div>
+      </div>,
       20
     );
 
@@ -288,35 +291,26 @@ export default class CategoryEditorModal extends FormModal<any> {
 
     items.add(
       'submit',
-      m('div', { className: 'Form-group Form-controls' }, [
-        m(
-          Button,
-          {
-            type: 'submit',
-            className: 'Button Button--primary',
-            loading: this.saving,
-            disabled: !this.name.trim(),
-          },
-          this.editId
+      <div className="Form-group Form-controls">
+        <Button type="submit" className="Button Button--primary" loading={this.saving} disabled={!this.name.trim()}>
+          {this.editId
             ? app.translator.trans('linkrobins-support.admin.category_editor.submit_update')
-            : app.translator.trans('linkrobins-support.admin.category_editor.submit_create')
-        ),
+            : app.translator.trans('linkrobins-support.admin.category_editor.submit_create')}
+        </Button>
 
-        this.editId
-          ? m(
-              'button',
-              {
-                type: 'button',
-                className: 'Button LinkRobinsSupportCategoryEditorModal-delete',
-                disabled: this.saving,
-                onclick: () => {
-                  this._delete();
-                },
-              },
-              app.translator.trans('linkrobins-support.admin.categories.delete_button')
-            )
-          : null,
-      ]),
+        {this.editId && (
+          <Button
+            type="button"
+            className="Button LinkRobinsSupportCategoryEditorModal-delete"
+            disabled={this.saving}
+            onclick={() => {
+              this._delete();
+            }}
+          >
+            {app.translator.trans('linkrobins-support.admin.categories.delete_button')}
+          </Button>
+        )}
+      </div>,
       -100
     );
 
@@ -324,10 +318,12 @@ export default class CategoryEditorModal extends FormModal<any> {
   }
 
   content() {
-    return m('div', { className: 'Modal-body' }, [
-      this.error ? m('div', { className: 'Alert Alert--danger' }, this._errorMessage()) : null,
-      m(Form, null, this.fields().toArray()),
-    ]);
+    return (
+      <div className="Modal-body">
+        {this.error && <div className="Alert Alert--danger">{this._errorMessage()}</div>}
+        <Form>{this.fields().toArray()}</Form>
+      </div>
+    );
   }
 
   _ticketTypeOptions(): Record<string, string> {

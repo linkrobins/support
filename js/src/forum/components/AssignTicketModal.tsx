@@ -3,6 +3,7 @@ import Modal from 'flarum/common/components/Modal';
 import Button from 'flarum/common/components/Button';
 import LoadingIndicator from 'flarum/common/components/LoadingIndicator';
 import Avatar from 'flarum/common/components/Avatar';
+import Icon from 'flarum/common/components/Icon';
 import { loadStaff, type StaffMember } from '../utils/api';
 
 /** A staff record from the endpoint, as a store user (reusing one if loaded). */
@@ -55,28 +56,24 @@ export default class AssignTicketModal extends Modal<any> {
   content() {
     const current = (this.attrs as any).currentId ? String((this.attrs as any).currentId) : null;
 
-    return m('div', { className: 'Modal-body' }, [
-      this.loadingStaff
-        ? m(LoadingIndicator)
-        : this.failed
-          ? m('p', { className: 'LinkRobinsSupport-empty' }, app.translator.trans('linkrobins-support.forum.assign.load_failed'))
-          : m(
-              'ul',
-              { className: 'LinkRobinsSupport-assignList' },
-              this.staff.map((user: any) => this._renderOption(user, current))
-            ),
-      current
-        ? m(
-            'div',
-            { className: 'LinkRobinsSupport-assignFooter' },
-            m(
-              Button,
-              { className: 'Button Button--link', icon: 'fas fa-user-slash', onclick: () => this.pick(null) },
-              app.translator.trans('linkrobins-support.forum.assign.unassign')
-            )
-          )
-        : null,
-    ]);
+    return (
+      <div className="Modal-body">
+        {this.loadingStaff ? (
+          <LoadingIndicator />
+        ) : this.failed ? (
+          <p className="LinkRobinsSupport-empty">{app.translator.trans('linkrobins-support.forum.assign.load_failed')}</p>
+        ) : (
+          <ul className="LinkRobinsSupport-assignList">{this.staff.map((user: any) => this._renderOption(user, current))}</ul>
+        )}
+        {current && (
+          <div className="LinkRobinsSupport-assignFooter">
+            <Button className="Button Button--link" icon="fas fa-user-slash" onclick={() => this.pick(null)}>
+              {app.translator.trans('linkrobins-support.forum.assign.unassign')}
+            </Button>
+          </div>
+        )}
+      </div>
+    );
   }
 
   _renderOption(user: any, current: string | null) {
@@ -84,23 +81,19 @@ export default class AssignTicketModal extends Modal<any> {
     const isCurrent = id === current;
     const me = app.session && app.session.user ? String(app.session.user.id()) : null;
 
-    return m(
-      'li',
-      { key: id },
-      m(
-        Button,
-        {
-          className: 'Button LinkRobinsSupport-assignOption' + (isCurrent ? ' is-current' : ''),
-          disabled: isCurrent,
-          onclick: () => this.pick(user),
-        },
-        [
-          m(Avatar, { user, className: 'LinkRobinsSupport-assignAvatar' }),
-          m('span', { className: 'LinkRobinsSupport-assignName' }, user.displayName() || user.username()),
-          id === me ? m('span', { className: 'LinkRobinsSupport-assignYou' }, app.translator.trans('linkrobins-support.forum.assign.you')) : null,
-          isCurrent ? m('i', { className: 'fas fa-check LinkRobinsSupport-assignCheck', 'aria-hidden': 'true' }) : null,
-        ]
-      )
+    return (
+      <li key={id}>
+        <Button
+          className={`Button LinkRobinsSupport-assignOption${isCurrent ? ' is-current' : ''}`}
+          disabled={isCurrent}
+          onclick={() => this.pick(user)}
+        >
+          <Avatar user={user} className="LinkRobinsSupport-assignAvatar" />
+          <span className="LinkRobinsSupport-assignName">{user.displayName() || user.username()}</span>
+          {id === me && <span className="LinkRobinsSupport-assignYou">{app.translator.trans('linkrobins-support.forum.assign.you')}</span>}
+          {isCurrent && <Icon name="fas fa-check" className="LinkRobinsSupport-assignCheck" />}
+        </Button>
+      </li>
     );
   }
 

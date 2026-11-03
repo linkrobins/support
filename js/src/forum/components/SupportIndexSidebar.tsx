@@ -58,25 +58,23 @@ export default class SupportIndexSidebar extends IndexSidebar<any> {
       const newHref = basePath() + BASE_PATH + '/new';
       items.add(
         'newTicket',
-        m(
-          Button,
-          {
-            icon: 'fas fa-plus',
-            className: 'Button Button--primary LinkRobinsSupport-newTicketButton',
-            itemClassName: 'App-primaryControl',
-            'aria-label': extractText(app.translator.trans('linkrobins-support.forum.index.new_ticket')),
-            title: extractText(app.translator.trans('linkrobins-support.forum.index.new_ticket_tooltip')),
-            onclick: (e: any) => {
-              if (isGuest()) {
-                if (e && e.preventDefault) e.preventDefault();
-                promptLogIn(BASE_PATH + '/new');
-                return;
-              }
-              safeNavigate(newHref, e);
-            },
-          },
-          app.translator.trans('linkrobins-support.forum.index.new_ticket')
-        ),
+        <Button
+          icon="fas fa-plus"
+          className="Button Button--primary LinkRobinsSupport-newTicketButton"
+          itemClassName="App-primaryControl"
+          aria-label={extractText(app.translator.trans('linkrobins-support.forum.index.new_ticket'))}
+          title={extractText(app.translator.trans('linkrobins-support.forum.index.new_ticket_tooltip'))}
+          onclick={(e: any) => {
+            if (isGuest()) {
+              if (e && e.preventDefault) e.preventDefault();
+              promptLogIn(BASE_PATH + '/new');
+              return;
+            }
+            safeNavigate(newHref, e);
+          }}
+        >
+          {app.translator.trans('linkrobins-support.forum.index.new_ticket')}
+        </Button>,
         110
       );
     }
@@ -85,15 +83,13 @@ export default class SupportIndexSidebar extends IndexSidebar<any> {
 
     items.add(
       'nav',
-      m(
-        SupportViewsDropdown,
-        {
-          buttonClassName: 'Button',
-          className: 'App-titleControl',
-          defaultLabel: active ? filterLabel(active) : extractText(app.translator.trans('linkrobins-support.forum.nav')),
-        },
-        this.navItems().toArray()
-      ),
+      <SupportViewsDropdown
+        buttonClassName="Button"
+        className="App-titleControl"
+        defaultLabel={active ? filterLabel(active) : extractText(app.translator.trans('linkrobins-support.forum.nav'))}
+      >
+        {this.navItems().toArray()}
+      </SupportViewsDropdown>,
       90
     );
 
@@ -118,22 +114,17 @@ export default class SupportIndexSidebar extends IndexSidebar<any> {
 
     // Only worth a divider when there is something above to divide from.
     if (showForumNavOnSupportPages()) {
-      items.add('linkrobinsSupportSeparator', m(Separator), -20);
+      items.add('linkrobinsSupportSeparator', <Separator />, -20);
     }
 
     FILTER_OPTIONS.forEach((opt, i) => {
       if (opt.staffOnly && !canHandle) return;
       items.add(
         'support-filter-' + opt.id,
-        m(
-          LinkButton,
-          {
-            href: filterHrefFor(opt.id),
-            icon: opt.icon,
-            active: currentFilter === opt.id,
-          },
-          [filterLabel(opt), this._count(opt.id)]
-        ),
+        <LinkButton href={filterHrefFor(opt.id)} icon={opt.icon} active={currentFilter === opt.id}>
+          {filterLabel(opt)}
+          {this._count(opt.id)}
+        </LinkButton>,
         -21 - i
       );
     });
@@ -143,11 +134,9 @@ export default class SupportIndexSidebar extends IndexSidebar<any> {
     if (canHandle) {
       items.add(
         'support-stats',
-        m(
-          Button,
-          { icon: 'fas fa-chart-bar', className: 'LinkButton LinkRobinsSupport-statsLink', onclick: () => app.modal.show(SupportStatsModal) },
-          app.translator.trans('linkrobins-support.forum.stats.title')
-        ),
+        <Button icon="fas fa-chart-bar" className="LinkButton LinkRobinsSupport-statsLink" onclick={() => app.modal.show(SupportStatsModal)}>
+          {app.translator.trans('linkrobins-support.forum.stats.title')}
+        </Button>,
         -21 - FILTER_OPTIONS.length
       );
     }
@@ -168,7 +157,7 @@ export default class SupportIndexSidebar extends IndexSidebar<any> {
     const key = COUNT_FOR_FILTER[filterId];
     const n = key ? supportCount(key) : 0;
     if (!n) return null;
-    return m('span', { className: 'LinkRobinsSupport-navCount' + (filterId === 'mine' ? ' is-unread' : '') }, n > 99 ? '99+' : String(n));
+    return <span className={`LinkRobinsSupport-navCount${filterId === 'mine' ? ' is-unread' : ''}`}>{n > 99 ? '99+' : String(n)}</span>;
   }
 
   /**

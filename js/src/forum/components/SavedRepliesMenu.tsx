@@ -43,29 +43,27 @@ export default class SavedRepliesMenu extends Component {
   view() {
     if (!cache || cache.length === 0) return null;
 
-    return m(
-      Dropdown,
-      {
-        className: 'LinkRobinsSupport-savedReplies',
-        buttonClassName: 'Button Button--flat LinkRobinsSupport-savedRepliesToggle',
-        icon: 'fas fa-comment-dots',
-        label: app.translator.trans('linkrobins-support.forum.reply.saved_replies'),
-        accessibleToggleLabel: extractText(app.translator.trans('linkrobins-support.forum.reply.saved_replies')),
-      },
-      cache.map((reply: any) =>
-        m(
-          Button,
-          {
-            onclick: () => {
+    return (
+      <Dropdown
+        className="LinkRobinsSupport-savedReplies"
+        buttonClassName="Button Button--flat LinkRobinsSupport-savedRepliesToggle"
+        icon="fas fa-comment-dots"
+        label={app.translator.trans('linkrobins-support.forum.reply.saved_replies')}
+        accessibleToggleLabel={extractText(app.translator.trans('linkrobins-support.forum.reply.saved_replies'))}
+      >
+        {cache.map((reply: any) => (
+          <Button
+            onclick={() => {
               const editor = app.composer && (app.composer as any).editor;
               if (editor && typeof editor.insertAtCursor === 'function') {
                 editor.insertAtCursor(reply.content());
               }
-            },
-          },
-          reply.title()
-        )
-      )
+            }}
+          >
+            {reply.title()}
+          </Button>
+        ))}
+      </Dropdown>
     );
   }
 }

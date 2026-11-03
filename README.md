@@ -450,11 +450,11 @@ return [
 ];
 ```
 
-### Frontend Driver (TypeScript / Mithril)
+### Frontend Driver (TypeScript / JSX)
 
 Register a client-side driver in your forum and admin initializers:
 
-```typescript
+```tsx
 app.initializers.add('vendor-example-support', () => {
   if (app.support?.ticketTypes) {
     app.support.ticketTypes.register({
@@ -462,10 +462,16 @@ app.initializers.add('vendor-example-support', () => {
 
       // Add custom fields to the composer
       fields(items, context) {
-        items.add('id-code', m('input.FormControl', {
-          placeholder: 'Verification Code',
-          oninput: (e: any) => { context.verificationCode = e.target.value; },
-        }));
+        items.add(
+          'id-code',
+          <input
+            className="FormControl"
+            placeholder="Verification Code"
+            oninput={(e: any) => {
+              context.verificationCode = e.target.value;
+            }}
+          />
+        );
       },
 
       // Client-side pre-submit validation (return an error message string to halt submission)
@@ -482,23 +488,29 @@ app.initializers.add('vendor-example-support', () => {
 
       // Add custom panels or cards above the ticket replies
       contentItems(items, ticket) {
-        items.add('id-badge', m('div.VerificationBadge', 'ID Verification Pending'));
+        items.add('id-badge', <div className="VerificationBadge">ID Verification Pending</div>);
       },
 
       // Display custom badges or chips in the ticket list/queue row
       badgeItems(items, ticket) {
-        items.add('id-chip', m('span.LinkRobinsSupport-chip', 'Verified ID'));
+        items.add('id-chip', <span className="LinkRobinsSupport-chip">Verified ID</span>);
       },
 
       // Add custom category settings to the admin CategoryEditorModal
       categoryFields(items, modal) {
-        items.add('target-group', m('.Form-group', [
-          m('label', 'Target User Group'),
-          m('input.FormControl', {
-            value: modal.targetGroup,
-            oninput: (e: any) => { modal.targetGroup = e.target.value; },
-          }),
-        ]));
+        items.add(
+          'target-group',
+          <div className="Form-group">
+            <label>Target User Group</label>
+            <input
+              className="FormControl"
+              value={modal.targetGroup}
+              oninput={(e: any) => {
+                modal.targetGroup = e.target.value;
+              }}
+            />
+          </div>
+        );
       },
 
       // Append custom category settings to the save payload
