@@ -14,7 +14,7 @@ import TicketEventItem from './TicketEventItem';
 import SavedRepliesMenu from './SavedRepliesMenu';
 import ReplyComposer from './ReplyComposer';
 import SupportGuestPrompt from './SupportGuestPrompt';
-import { basePath, BASE_PATH, safeNavigate, showError, pushSupportHistory, isGuest } from '../utils/helpers';
+import { showError, pushSupportHistory, isGuest } from '../utils/helpers';
 import { canHandleSupportTickets } from '../utils/permissions';
 import { loadTicket, loadReplies, loadEvents, markTicketRead, postReply, uploadFilesToBody } from '../utils/api';
 import { onLive } from '../utils/live';
@@ -203,7 +203,7 @@ export default class SupportShowPage extends Page<any> {
           <header className="LinkRobinsSupport-header">
             {/* Back link first: the header is a column, so this reads as a
                 breadcrumb above the title instead of a second column beside it. */}
-            <Link href={basePath() + BASE_PATH} className="Button Button--text LinkRobinsSupport-backBtn">
+            <Link href={app.route('linkrobins-support.index')} className="Button Button--text LinkRobinsSupport-backBtn">
               <Icon name="fas fa-arrow-left" /> {app.translator.trans('linkrobins-support.forum.action.back')}
             </Link>
             <h1 className="LinkRobinsSupport-title">{app.translator.trans('linkrobins-support.forum.show.title')}</h1>
