@@ -93,7 +93,7 @@ export default class SupportStatsModal extends Modal<any> {
           <div className="SupportStats-ranges" role="group" aria-label={extractText(app.translator.trans('linkrobins-support.forum.stats.range'))}>
             {WINDOWS.map((n) => (
               <Button
-                className={`Button--size-sm${this.days === n ? ' Button--primary' : ''}`}
+                className={`Button Button--size-sm${this.days === n ? ' Button--primary' : ''}`}
                 aria-pressed={this.days === n ? 'true' : 'false'}
                 onclick={() => {
                   if (this.days === n) return;
