@@ -251,6 +251,21 @@ class TicketDomainEventsTest extends TestCase
         $this->assertCount(1, $unassignedEvents);
         $this->assertNull($unassignedEvents[0]->assignee);
         $this->assertEquals(3, $unassignedEvents[0]->oldAssignee?->id);
+
+        // The unassign must reach the database, not only dispatch an event.
+        $this->assertNull($this->database()->table('linkrobins_support_tickets')->where('id', $ticketId)->value('assigned_staff_id'));
+
+        // An empty PATCH (what Model.save() sent for a null relationship before
+        // the forum fix) changes nothing, so the assignee below must survive it.
+        $this->database()->table('linkrobins_support_tickets')->where('id', $ticketId)->update(['assigned_staff_id' => 3]);
+        $response = $this->send(
+            $this->request('PATCH', "/api/linkrobins-support-tickets/$ticketId", [
+                'authenticatedAs' => 3,
+                'json' => ['data' => ['type' => 'linkrobins-support-tickets', 'id' => (string) $ticketId, 'attributes' => [], 'relationships' => []]],
+            ])
+        );
+        $this->assertEquals(200, $response->getStatusCode());
+        $this->assertEquals(3, $this->database()->table('linkrobins_support_tickets')->where('id', $ticketId)->value('assigned_staff_id'));
     }
 
     #[Test]

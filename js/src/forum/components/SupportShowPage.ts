@@ -516,8 +516,19 @@ export default class SupportShowPage extends Page<any> {
   _setAssignment(user: any) {
     this.updating = true;
     m.redraw();
-    this.ticket
-      .save({ relationships: { assignedStaff: user } })
+    // Model.save() skips a null relationship (`if (model === null) continue`),
+    // so unassigning that way sent an empty PATCH and nothing changed on the
+    // server. Send the explicit `{ data: null }` ourselves instead.
+    const saved = user
+      ? this.ticket.save({ relationships: { assignedStaff: user } })
+      : app
+          .request({
+            method: 'PATCH',
+            url: app.forum.attribute('apiUrl') + this.ticket.apiEndpoint(),
+            body: { data: { type: 'linkrobins-support-tickets', id: this.ticket.id(), relationships: { assignedStaff: { data: null } } } },
+          })
+          .then((payload: any) => app.store.pushPayload(payload));
+    saved
       .then(() => {
         // The PATCH response omits a now-null ToOne relationship (the server
         // doesn't echo it back, even when included), so the local model would
