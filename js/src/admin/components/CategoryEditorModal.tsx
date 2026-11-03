@@ -4,7 +4,6 @@ import Form from 'flarum/common/components/Form';
 import Button from 'flarum/common/components/Button';
 import ColorPreviewInput from 'flarum/common/components/ColorPreviewInput';
 import Select from 'flarum/common/components/Select';
-import Checkbox from 'flarum/common/components/Checkbox';
 import ItemList from 'flarum/common/utils/ItemList';
 import extractText from 'flarum/common/utils/extractText';
 import { saveCategory, deleteCategory, loadStaffUsers } from '../utils';
@@ -260,22 +259,23 @@ export default class CategoryEditorModal extends FormModal<any> {
               const id = String(group.id());
               const checked = this.allowedGroupIds.includes(id);
               return (
-                <Checkbox
-                  key={id}
-                  state={checked}
-                  disabled={this.saving}
-                  onchange={(val: boolean) => {
-                    if (val) {
-                      if (!this.allowedGroupIds.includes(id)) {
-                        this.allowedGroupIds.push(id);
+                <label className="checkbox" key={id}>
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    disabled={this.saving}
+                    onchange={(e: any) => {
+                      if (e.target.checked) {
+                        if (!this.allowedGroupIds.includes(id)) {
+                          this.allowedGroupIds.push(id);
+                        }
+                      } else {
+                        this.allowedGroupIds = this.allowedGroupIds.filter((gid) => gid !== id);
                       }
-                    } else {
-                      this.allowedGroupIds = this.allowedGroupIds.filter((gid) => gid !== id);
-                    }
-                  }}
-                >
+                    }}
+                  />{' '}
                   {group.namePlural() || group.nameSingular() || id}
-                </Checkbox>
+                </label>
               );
             })}
         </div>
