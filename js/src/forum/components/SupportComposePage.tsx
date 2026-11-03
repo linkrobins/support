@@ -392,7 +392,8 @@ export default class SupportComposePage extends Page {
             const color = c.color() || null;
             return (
               <li className="LinkRobinsSupport-categoryCards-item" key={c.id()}>
-                <Button
+                <button
+                  type="button"
                   className="LinkRobinsSupport-categoryCard"
                   onclick={() => {
                     this._chooseCategory(String(c.id()));
@@ -405,7 +406,7 @@ export default class SupportComposePage extends Page {
                     <span className="LinkRobinsSupport-categoryCard-name">{c.name() || ''}</span>
                     {c.description() && <span className="LinkRobinsSupport-categoryCard-desc">{c.description()}</span>}
                   </span>
-                </Button>
+                </button>
               </li>
             );
           })}
