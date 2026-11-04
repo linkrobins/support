@@ -71,6 +71,12 @@ forum-wide moderation actions (suspensions, bans) honest.
   needs the Flarum scheduler.
 - **Search.** A search box beside the list title finds tickets by
   subject, by the text of a reply, or by ticket number, as you type.
+  Flarum's own search (the magnifying glass) also searches tickets while
+  you are on a support page, with filters you can type: `status:`,
+  `assigned:` (`me` or `none`), `unassigned`, `mine`, `priority:`
+  (`urgent`, `normal` or `low`), `category:` (the category's slug),
+  `type:` (`standard` or `appeal`) and `author:` (a username). "View all
+  tickets matching ..." opens a full results page at `/support/search`.
   Members search only their own tickets and never match the text of a
   staff internal note.
 - **Unread markers.** Tickets with a reply you have not seen yet show a
@@ -96,13 +102,24 @@ forum-wide moderation actions (suspensions, bans) honest.
   new tickets in the staff lists, without reloading. Each person only
   ever receives what they could already see: never another member's
   ticket, never an internal note.
-- **Notifications.** In-app and email. The ticket owner is notified
+- **Notifications.** In-app and email (status changes are in-app only
+  by default, to keep inboxes quiet; anyone can switch the email on). The ticket owner is notified
   when staff replies or changes the ticket's status; staff are notified
   when a new ticket is opened, when the owner replies, reopens a ticket
   or confirms it solved, and when a ticket is assigned to them. A
   category can route its new tickets to one staff member. Internal notes
   never produce notifications. Users can toggle each of these per driver
   in their notification preferences.
+- **Fast to load.** The support pages and the stats view are loaded
+  only when someone opens them, so the desk adds nothing to the weight
+  of ordinary forum pages.
+- **Made for phones.** Every support page except the front page shows
+  the header's back button on phones, returning to the previous page (or
+  to `/support` if the page was the first one opened).
+- **Guests get a sign-in prompt.** A signed-out visitor who opens a
+  support page, or taps "New ticket", sees Log In and Sign Up buttons
+  (the New ticket button opens the log-in window directly) rather than
+  an error. Guests still cannot see or open tickets.
 - **Decisions on appeals.** Resolved appeal tickets record a
   `decision` field (approved / rejected / null).
 - **File attachments.** Optional integration with `fof/upload`. When
@@ -120,11 +137,17 @@ forum-wide moderation actions (suspensions, bans) honest.
 
 ```bash
 composer require linkrobins/support
+```
+
+Then toggle the extension on in the admin panel's Extensions page.
+
+### Updating
+
+```bash
+composer update linkrobins/support
 php flarum migrate
 php flarum cache:clear
 ```
-
-Then enable the extension in admin → Extensions.
 
 ## Permissions
 
@@ -172,6 +195,8 @@ Users see:
 
 - `/support` -- their tickets list, with a search box and unread
   markers.
+- `/support/status/:status` -- the list filtered to one status.
+- `/support/search` -- full search results (see Search above).
 - `/support/new` -- compose form. Banned-from-appeals users see only
   general categories; suspended users see only appeal categories.
 - `/support/:id` -- the ticket page, with reply form and reply thread.
@@ -189,7 +214,7 @@ Staff additionally see:
 
 ## Data model
 
-Seven tables:
+Six tables:
 
 - `linkrobins_support_categories` -- name, slug, description, color,
   icon, position, ticket_type, default_assignee_id,
