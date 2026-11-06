@@ -109,7 +109,7 @@ export default class ReplyComposer extends Component {
                 onchange={(e: any) => {
                   a.onToggleInternal(!!e.target.checked);
                 }}
-              />{' '}
+              />
               {app.translator.trans('linkrobins-support.forum.reply.internal_note')}
             </label>
           )}

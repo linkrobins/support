@@ -860,7 +860,7 @@ export default class SupportShowPage extends Page<any> {
                     onchange={(e: any) => {
                       body._supportInternal = !!e.target.checked;
                     }}
-                  />{' '}
+                  />
                   {app.translator.trans('linkrobins-support.forum.reply.internal_note')}
                 </label>
                 <SavedRepliesMenu />

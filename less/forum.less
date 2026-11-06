@@ -31,6 +31,12 @@
 }
 
 .LinkRobinsSupport-searchHeader {
+    .LinkRobinsSupport-title {
+        .icon, i {
+            margin-inline-end: 4px;
+        }
+    }
+
     .LinkRobinsSupport-backButton {
         align-self: flex-start;
         padding-left: 0;
@@ -64,8 +70,9 @@
     text-overflow: ellipsis;
     white-space: nowrap;
 
-    i {
+    .icon, i {
         color: var(--primary-color, #07adcc);
+        margin-inline-end: 4px;
     }
 }
 
@@ -408,6 +415,9 @@
 }
 
 .LinkRobinsSupport-decision {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
     font-size: 0.9rem;
     margin-top: 4px;
 

@@ -184,7 +184,7 @@ export default class SupportSearchPage extends Page {
           <Icon name="fas fa-arrow-left" /> {app.translator.trans('linkrobins-support.forum.index.back_to_desk')}
         </Link>
         <h1 className="LinkRobinsSupport-title">
-          <Icon name="fas fa-search" />{' '}
+          <Icon name="fas fa-search" />
           {this.query
             ? app.translator.trans('linkrobins-support.forum.index.search_results_title', { query: this.query })
             : app.translator.trans('linkrobins-support.forum.index.search_tickets_title')}

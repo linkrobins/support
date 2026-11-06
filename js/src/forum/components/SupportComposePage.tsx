@@ -357,7 +357,7 @@ export default class SupportComposePage extends Page {
           name: 'title',
           content: (
             <h3 className="LinkRobinsSupport-composerTitle">
-              <Icon name={(cat && cat.icon()) || 'fas fa-life-ring'} />{' '}
+              <Icon name={(cat && cat.icon()) || 'fas fa-life-ring'} />
               {this.subject || app.translator.trans('linkrobins-support.forum.compose.title')}
               {cat && cat.name() && <span className="LinkRobinsSupport-composerTitle-cat">{' · ' + cat.name()}</span>}
             </h3>
