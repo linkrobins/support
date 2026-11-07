@@ -11,11 +11,13 @@ import { showNavInSidebar, showNavInAccountMenu, readForumAttribute, showError }
 import { clearTargetOnModalClose } from './utils/guestAction';
 import { ticketTypes } from '../common/ticketTypes';
 import addSupportSearch from './addSupportSearch';
+import { installComposerControls } from './utils/composer';
 
 export { default as extend } from './extend';
 
 app.initializers.add('linkrobins-support', () => {
   app.support = { ticketTypes };
+  installComposerControls();
   addSupportSearch();
 
   // A guest sent to the log-in modal by a support action carries a target

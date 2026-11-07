@@ -11,7 +11,6 @@ import SupportIndexSidebar from './SupportIndexSidebar';
 import TicketHeader from './TicketHeader';
 import ReplyItem from './ReplyItem';
 import TicketEventItem from './TicketEventItem';
-import SavedRepliesMenu from './SavedRepliesMenu';
 import ReplyComposer from './ReplyComposer';
 import SupportGuestPrompt from './SupportGuestPrompt';
 import { showError, pushSupportHistory, isGuest } from '../utils/helpers';
@@ -828,6 +827,7 @@ export default class SupportShowPage extends Page<any> {
     const subject = ticket.subject() || '';
     openSupportComposer({
       supportContext: 'reply:' + ticket.id(),
+      canPostInternal,
       className: 'LinkRobinsSupport-replyComposer',
       placeholder: extractText(app.translator.trans('linkrobins-support.forum.reply.placeholder')),
       submitLabel: extractText(app.translator.trans('linkrobins-support.forum.reply.post_reply')),
@@ -846,24 +846,40 @@ export default class SupportShowPage extends Page<any> {
           },
         ];
         if (canPostInternal) {
-          // One row for the staff controls, on every screen size: on a phone
-          // core gives each header item its own bordered row, so two items
-          // would stack.
+          const isInternal = !!(
+            body._supportInternal ||
+            (body.attrs && body.attrs._supportInternal) ||
+            (body.composer && body.composer.body && body.composer.body._supportInternal)
+          );
+          const setInternal = (next: boolean) => {
+            body._supportInternal = next;
+            if (body.attrs) body.attrs._supportInternal = next;
+            if (body.composer && body.composer.body) body.composer.body._supportInternal = next;
+            m.redraw();
+          };
           rows.push({
-            name: 'staffTools',
+            name: 'modeSegment',
+            priority: 5,
             content: (
-              <div className="LinkRobinsSupport-composerTools">
-                <label className="LinkRobinsSupport-internalToggle">
-                  <input
-                    type="checkbox"
-                    checked={!!body._supportInternal}
-                    onchange={(e: any) => {
-                      body._supportInternal = !!e.target.checked;
-                    }}
-                  />{' '}
-                  {app.translator.trans('linkrobins-support.forum.reply.internal_note')}
-                </label>
-                <SavedRepliesMenu />
+              <div className="LinkRobinsSupport-modeSegmentWrap">
+                <div className="LinkRobinsSupport-modeSegment">
+                  <button
+                    type="button"
+                    className={'LinkRobinsSupport-modeSegment-item' + (!isInternal ? ' active' : '')}
+                    onclick={() => setInternal(false)}
+                  >
+                    <Icon name="fas fa-paper-plane" />
+                    <span>{app.translator.trans('linkrobins-support.forum.reply.post_reply')}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={'LinkRobinsSupport-modeSegment-item LinkRobinsSupport-modeSegment-item--internal' + (isInternal ? ' active' : '')}
+                    onclick={() => setInternal(true)}
+                  >
+                    <Icon name="fas fa-lock" />
+                    <span>{app.translator.trans('linkrobins-support.forum.reply.internal_note')}</span>
+                  </button>
+                </div>
               </div>
             ),
           });
@@ -871,7 +887,14 @@ export default class SupportShowPage extends Page<any> {
         return rows;
       },
       onSupportSubmit: (content: string, body: any) => {
-        this._postReply(content, !!body._supportInternal, body);
+        const isInternal = !!(
+          (body && body._supportInternal) ||
+          (body && body.attrs && body.attrs._supportInternal) ||
+          (app.composer &&
+            app.composer.body &&
+            (app.composer.body._supportInternal || (app.composer.body.attrs && app.composer.body.attrs._supportInternal)))
+        );
+        this._postReply(content, isInternal, body);
       },
     });
   }

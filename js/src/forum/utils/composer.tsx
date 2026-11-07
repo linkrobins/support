@@ -1,8 +1,97 @@
 import app from 'flarum/forum/app';
+import { extend } from 'flarum/common/extend';
 import Avatar from 'flarum/common/components/Avatar';
 import username from 'flarum/common/helpers/username';
 import ComposerPostPreview from 'flarum/forum/components/ComposerPostPreview';
+import SplitDropdown from 'flarum/common/components/SplitDropdown';
+import Button from 'flarum/common/components/Button';
+import extractText from 'flarum/common/utils/extractText';
+import SavedRepliesMenu from '../components/SavedRepliesMenu';
 import { showError } from './helpers';
+
+let textEditorControlsInstalled = false;
+
+export function installComposerControls(): void {
+  if (textEditorControlsInstalled) return;
+  textEditorControlsInstalled = true;
+
+  extend('flarum/common/components/TextEditor' as any, 'controlItems', function (items: any) {
+    const composer = this.attrs.composer || app.composer;
+    const bodyInstance = composer && composer._supportComposerBody;
+    const bodyState = composer && composer.body;
+    const bodyAttrs = (bodyInstance && bodyInstance.attrs) || (bodyState && bodyState.attrs);
+    if (!bodyAttrs || !bodyAttrs.canPostInternal) return;
+
+    const isInternal = !!(
+      (bodyInstance && bodyInstance._supportInternal) ||
+      (bodyState && bodyState._supportInternal) ||
+      (bodyAttrs && bodyAttrs._supportInternal)
+    );
+    const onsubmit = this.onsubmit.bind(this);
+    const submitLabel = isInternal
+      ? app.translator.trans('linkrobins-support.forum.reply.internal_note')
+      : this.attrs.submitLabel || app.translator.trans('linkrobins-support.forum.reply.post_reply');
+
+    const setInternal = (next: boolean) => {
+      if (bodyInstance) bodyInstance._supportInternal = next;
+      if (bodyState) bodyState._supportInternal = next;
+      if (bodyAttrs) bodyAttrs._supportInternal = next;
+      m.redraw();
+    };
+
+    const splitControl = (
+      <SplitDropdown
+        className="App-primaryControl LinkRobinsSupport-composerSplit"
+        buttonClassName={'Button Button--primary' + (isInternal ? ' LinkRobinsSupport-btn--internal' : '')}
+        menuClassName="Dropdown-menu--top Dropdown-menu--right"
+        accessibleToggleLabel={extractText(app.translator.trans('linkrobins-support.forum.reply.internal_note'))}
+        mainAction={
+          <Button
+            className={'Button Button--primary' + (isInternal ? ' LinkRobinsSupport-btn--internal' : '')}
+            icon="fas fa-paper-plane"
+            disabled={this.disabled}
+            onclick={onsubmit}
+          >
+            {submitLabel}
+          </Button>
+        }
+      >
+        <Button
+          key="mode-public"
+          icon="fas fa-paper-plane"
+          className={'Dropdown-item' + (!isInternal ? ' active' : '')}
+          onclick={() => setInternal(false)}
+        >
+          {app.translator.trans('linkrobins-support.forum.reply.post_reply')}
+        </Button>
+        <Button
+          key="mode-internal"
+          icon="fas fa-lock"
+          className={'Dropdown-item LinkRobinsSupport-item--internal' + (isInternal ? ' active' : '')}
+          onclick={() => setInternal(true)}
+        >
+          {app.translator.trans('linkrobins-support.forum.reply.internal_note')}
+        </Button>
+      </SplitDropdown>
+    );
+
+    if (items.has('submit')) {
+      items.setContent('submit', splitControl);
+    } else {
+      items.add('submit', splitControl, 0);
+    }
+  });
+
+  extend('flarum/common/components/TextEditor' as any, 'toolbarItems', function (items: any) {
+    const composer = this.attrs.composer || app.composer;
+    const bodyInstance = composer && composer._supportComposerBody;
+    const bodyState = composer && composer.body;
+    const bodyAttrs = (bodyInstance && bodyInstance.attrs) || (bodyState && bodyState.attrs);
+    if (!bodyAttrs || !bodyAttrs.canPostInternal) return;
+
+    items.add('linkrobinsSavedReplies', <SavedRepliesMenu />, -10);
+  });
+}
 
 // Resolved on first use. We drive Flarum's real docked composer (app.composer)
 // instead of embedding TextEditor inline -- that's the environment FoF Rich
@@ -21,6 +110,23 @@ let SupportComposerClass: any = null;
  */
 function makeSupportComposer(ComposerBody: any): any {
   return class SupportComposer extends ComposerBody {
+    oninit(vnode: any) {
+      super.oninit(vnode);
+      this._supportInternal = false;
+      if (this.composer) {
+        this.composer._supportComposerBody = this;
+      }
+    }
+
+    onremove(vnode: any) {
+      if (this.composer && this.composer._supportComposerBody === this) {
+        this.composer._supportComposerBody = null;
+      }
+      if (super.onremove) {
+        super.onremove(vnode);
+      }
+    }
+
     headerItems() {
       const items = super.headerItems();
       const defs = typeof this.attrs.supportHeaderItems === 'function' ? this.attrs.supportHeaderItems(this) : null;
@@ -105,6 +211,7 @@ export function supportComposerSupported(): boolean {
  */
 export function openSupportComposer(attrs: any): boolean {
   if (!supportComposerSupported()) return false;
+  installComposerControls();
   if (!attrs.user) attrs.user = app.session && app.session.user;
   ensureSupportComposer().then((Cls: any) => {
     if (!Cls) {

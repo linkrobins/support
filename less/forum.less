@@ -93,39 +93,292 @@
     }
 }
 
-// Our composer header rows (ticket title + internal-note toggle) should each
-// sit on their own line. Core lays header <li>s out `inline-block` with a
-// negative right margin (designed for the discussion title input + tag chips),
-// which makes our wider ticket title overlap the internal-note checkbox on
-// desktop. Scope the override to our composers so core's stays intact.
-.LinkRobinsSupport-replyComposer,
-.LinkRobinsSupport-ticketComposer {
-    .ComposerBody-header > li {
+// Internal note submit button styling (amber highlight when posting internal note).
+
+.LinkRobinsSupport-btn--internal {
+    background: #d68910 !important;
+    border-color: #b9770e !important;
+    color: #fff !important;
+
+    &:hover, &:focus {
+        background: #b9770e !important;
+    }
+}
+
+// In the docked composer footer for tickets and inline reply form, the submit
+// split-dropdown menu must pop up above the button without being clipped by
+// TextEditor-controls' default overflow-x: auto, stacking menu items vertically.
+.LinkRobinsSupport-replyComposer {
+    .TextEditor-controls {
+        overflow: visible !important;
+
+        .Dropdown--split .Dropdown-menu {
+            left: 0 !important;
+            right: auto !important;
+            inset-inline-start: 0 !important;
+            inset-inline-end: auto !important;
+        }
+    }
+}
+
+.LinkRobinsSupport-replyComposer .TextEditor-controls .Dropdown--split .Dropdown-menu,
+.LinkRobinsSupport-replyForm-actions .Dropdown--split .Dropdown-menu,
+.LinkRobinsSupport-composerSplit.Dropdown--split .Dropdown-menu,
+.LinkRobinsSupport-replySplit.Dropdown--split .Dropdown-menu {
+        top: auto !important;
+        bottom: 100% !important;
+        margin-bottom: 6px !important;
+        margin-top: 0 !important;
+        min-width: 220px !important;
+        padding: 6px 0 !important;
+        border: 1px solid var(--control-bg, rgba(0, 0, 0, 0.08)) !important;
+        border-radius: var(--border-radius, 6px);
+        background: var(--body-bg, #fff) !important;
+        box-shadow: 0 10px 28px rgba(0, 0, 0, 0.16) !important;
+        z-index: 1050 !important;
+
+        // Reset TextEditor-controls' inline-block so items stack vertically
+        > li, li {
+            display: block !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
+        }
+
+        .Button {
+            display: flex !important;
+            align-items: center !important;
+            gap: 10px !important;
+            width: 100% !important;
+            padding: 9px 16px !important;
+            border: 0 !important;
+            border-radius: 0 !important;
+            background: transparent !important;
+            text-align: left !important;
+            font-size: 0.9rem !important;
+            color: var(--text-color) !important;
+            box-sizing: border-box !important;
+            line-height: 1.4 !important;
+            cursor: pointer !important;
+            transition: background 0.15s ease, color 0.15s ease;
+
+            .Button-icon {
+                margin: 0 !important;
+                font-size: 0.95rem !important;
+                width: 18px !important;
+                text-align: center !important;
+                color: var(--muted-color);
+                flex-shrink: 0 !important;
+                transition: color 0.15s ease;
+            }
+
+            .Button-label {
+                font-weight: 500;
+            }
+
+            &:hover, &:focus {
+                background: var(--control-bg, rgba(0, 0, 0, 0.05)) !important;
+                color: var(--heading-color) !important;
+
+                .Button-icon {
+                    color: var(--primary-color) !important;
+                }
+            }
+
+            &.active {
+                background: var(--control-bg, rgba(0, 0, 0, 0.06)) !important;
+                color: var(--primary-color) !important;
+                font-weight: 600 !important;
+
+                .Button-icon {
+                    color: var(--primary-color) !important;
+                }
+            }
+
+            &.LinkRobinsSupport-item--internal {
+                &:hover, &:focus {
+                    .Button-icon {
+                        color: #d68910 !important;
+                    }
+                }
+
+                &.active {
+                    background: rgba(214, 137, 16, 0.08) !important;
+                    color: #d68910 !important;
+                    font-weight: 600 !important;
+
+                    .Button-icon {
+                        color: #d68910 !important;
+                    }
+                }
+            }
+        }
+    }
+
+// Staff mode segmented control (switching between Public Reply and Internal Note)
+.LinkRobinsSupport-modeSegmentWrap {
+    display: none; // Hidden on desktop where split submit dropdown in bottom toolbar is used
+}
+
+@media @phone {
+    .LinkRobinsSupport-modeSegmentWrap {
         display: block;
-        margin-right: 0;
+        padding: 8px 12px;
+        background: var(--body-bg);
+        border-bottom: 1px solid var(--control-bg, rgba(0, 0, 0, 0.08));
     }
 
-}
-
-// Internal note and Saved replies, side by side in one header row.
-.LinkRobinsSupport-composerTools {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 4px 16px;
-
-    .LinkRobinsSupport-internalToggle {
-        margin-right: 0;
+    .LinkRobinsSupport-modeSegment {
+        display: flex;
+        background: var(--control-bg, rgba(0, 0, 0, 0.06));
+        border-radius: 8px;
+        padding: 3px;
+        gap: 3px;
     }
 
-    .LinkRobinsSupport-savedRepliesToggle {
-        padding-top: 4px;
-        padding-bottom: 4px;
-    }
-}
+    .LinkRobinsSupport-modeSegment-item {
+        flex: 1 1 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        height: 34px;
+        padding: 0 10px;
+        border: 0;
+        border-radius: 6px;
+        background: transparent;
+        color: var(--muted-color, #777);
+        font-size: 0.85rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
 
-.ComposerBody-header .LinkRobinsSupport-internalToggle {
-    margin: 0;
+        .icon, i {
+            font-size: 0.9em;
+            transition: color 0.15s ease;
+        }
+
+        &.active {
+            background: var(--body-bg, #fff);
+            color: var(--heading-color, #222);
+            font-weight: 600;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+
+            .icon, i {
+                color: var(--primary-color);
+            }
+        }
+
+        &.LinkRobinsSupport-modeSegment-item--internal {
+            &.active {
+                background: #d68910 !important;
+                color: #fff !important;
+                box-shadow: 0 1px 4px rgba(214, 137, 16, 0.35);
+
+                .icon, i {
+                    color: #fff !important;
+                }
+            }
+        }
+    }
+
+    // Single reactive submit button in the mobile composer header [ ✈ ] or [ 🔒 ]
+    .Composer {
+        // Mode segment li directly below header bar
+        .ComposerBody-header > li.item-modeSegment {
+            padding: 0 !important;
+            border-bottom: 0 !important;
+            margin: 0 !important;
+        }
+
+        // Suppress mobile dropdown backdrop blur inside composer
+        .dropdown-backdrop {
+            display: none !important;
+        }
+
+        .App-primaryControl.Dropdown--split,
+        .LinkRobinsSupport-composerSplit {
+            display: inline-flex !important;
+            align-items: center !important;
+            height: var(--header-height-phone) !important;
+            position: fixed !important;
+            top: 0 !important;
+            right: 0 !important;
+            z-index: calc(~"var(--zindex-header) + 1") !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            float: none !important;
+
+            // Dropdown menu is not used on mobile (mode is selected via the segmented bar)
+            .Dropdown-menu {
+                display: none !important;
+            }
+
+            // The main submit button in the mobile header: safe 48px touch target
+            > .Button:not(.Dropdown-toggle),
+            > .SplitDropdown-button:not(.Dropdown-toggle) {
+                display: inline-flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                height: var(--header-height-phone) !important;
+                min-width: 44px !important;
+                padding: 0 14px !important;
+                background: transparent !important;
+                box-shadow: none !important;
+                border: 0 !important;
+                border-radius: 0 !important;
+                margin: 0 !important;
+                color: var(--header-control-color) !important;
+
+                &:active {
+                    opacity: 0.5;
+                }
+
+                // Hide label text in the mobile header bar
+                .Button-label {
+                    display: none !important;
+                }
+
+                // Show button icon cleanly
+                .Button-icon {
+                    display: inline-block !important;
+                    font-size: 18px !important;
+                    margin: 0 !important;
+                    color: var(--header-control-color) !important;
+                }
+
+                &.LinkRobinsSupport-btn--internal {
+                    background: transparent !important;
+                    border: 0 !important;
+                    color: #d68910 !important;
+
+                    .Button-icon {
+                        color: #d68910 !important;
+                    }
+                }
+            }
+
+            // Hide the tiny caret button on mobile to eliminate misclick risks
+            > .Dropdown-toggle,
+            .Dropdown-toggle {
+                display: none !important;
+                width: 0 !important;
+                height: 0 !important;
+                min-width: 0 !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                border: 0 !important;
+                pointer-events: none !important;
+            }
+        }
+    }
+
+    // Keep standard clearance for the single submit button in the mobile header
+    .Composer .ComposerBody.LinkRobinsSupport-replyComposer .ComposerBody-header > li:first-child {
+        margin-inline-end: 55px !important;
+    }
 }
 
 // "Write a reply" prompt button at the foot of a ticket.
@@ -672,18 +925,11 @@
     display: flex;
     align-items: center;
     gap: 16px;
-}
 
-.LinkRobinsSupport-internalToggle {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 0.85rem;
-    color: var(--muted-color, #888);
-    cursor: pointer;
-    user-select: none;
-    margin-right: auto;
-    margin-bottom: 0;
+    .Button--primary,
+    .Dropdown--split {
+        margin-left: auto;
+    }
 }
 
 // --- File attachments -----------------------------------------------

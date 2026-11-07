@@ -1,6 +1,7 @@
 import app from 'flarum/forum/app';
 import Component from 'flarum/common/Component';
 import Button from 'flarum/common/components/Button';
+import SplitDropdown from 'flarum/common/components/SplitDropdown';
 import extractText from 'flarum/common/utils/extractText';
 import { supportComposerSupported, supportComposerOpenFor, supportComposerPreview } from '../utils/composer';
 
@@ -100,24 +101,60 @@ export default class ReplyComposer extends Component {
               />
             </span>
           )}
-          {canPostInternal && (
-            <label className="LinkRobinsSupport-internalToggle">
-              <input
-                type="checkbox"
-                checked={a.replyIsInternal}
+          {canPostInternal ? (
+            <SplitDropdown
+              className="LinkRobinsSupport-replySplit"
+              buttonClassName={'Button Button--primary' + (a.replyIsInternal ? ' LinkRobinsSupport-btn--internal' : '')}
+              menuClassName="Dropdown-menu--top Dropdown-menu--right"
+              accessibleToggleLabel={extractText(app.translator.trans('linkrobins-support.forum.reply.internal_note'))}
+              mainAction={
+                <Button
+                  className={'Button Button--primary' + (a.replyIsInternal ? ' LinkRobinsSupport-btn--internal' : '')}
+                  disabled={!canSubmit}
+                  loading={a.posting}
+                  icon="fas fa-paper-plane"
+                  onclick={() => a.onSubmit()}
+                >
+                  {a.posting
+                    ? app.translator.trans('linkrobins-support.forum.reply.posting')
+                    : a.replyIsInternal
+                      ? app.translator.trans('linkrobins-support.forum.reply.internal_note')
+                      : app.translator.trans('linkrobins-support.forum.reply.post_reply')}
+                </Button>
+              }
+            >
+              <Button
+                key="mode-public"
+                icon="fas fa-paper-plane"
+                className={'Dropdown-item' + (!a.replyIsInternal ? ' active' : '')}
                 disabled={a.posting}
-                onchange={(e: any) => {
-                  a.onToggleInternal(!!e.target.checked);
-                }}
-              />{' '}
-              {app.translator.trans('linkrobins-support.forum.reply.internal_note')}
-            </label>
+                onclick={() => a.onToggleInternal(false)}
+              >
+                {app.translator.trans('linkrobins-support.forum.reply.post_reply')}
+              </Button>
+              <Button
+                key="mode-internal"
+                icon="fas fa-lock"
+                className={'Dropdown-item LinkRobinsSupport-item--internal' + (a.replyIsInternal ? ' active' : '')}
+                disabled={a.posting}
+                onclick={() => a.onToggleInternal(true)}
+              >
+                {app.translator.trans('linkrobins-support.forum.reply.internal_note')}
+              </Button>
+            </SplitDropdown>
+          ) : (
+            <Button
+              className="Button Button--primary"
+              disabled={!canSubmit}
+              loading={a.posting}
+              icon="fas fa-paper-plane"
+              onclick={() => a.onSubmit()}
+            >
+              {a.posting
+                ? app.translator.trans('linkrobins-support.forum.reply.posting')
+                : app.translator.trans('linkrobins-support.forum.reply.post_reply')}
+            </Button>
           )}
-          <Button className="Button Button--primary" disabled={!canSubmit} loading={a.posting} onclick={() => a.onSubmit()}>
-            {a.posting
-              ? app.translator.trans('linkrobins-support.forum.reply.posting')
-              : app.translator.trans('linkrobins-support.forum.reply.post_reply')}
-          </Button>
         </div>
       </div>
     );
