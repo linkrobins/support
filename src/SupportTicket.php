@@ -130,6 +130,31 @@ class SupportTicket extends AbstractModel
         self::DECISION_REJECTED,
     ];
 
+    /**
+     * Change the ticket status with actor and automatic attribution.
+     */
+    public function changeStatus(string $status, ?User $actor = null, bool $isAutomatic = false): static
+    {
+        $this->status = $status;
+        $this->eventActor = $actor;
+        $this->eventActorId = $actor ? (int) $actor->id : null;
+        $this->eventAutomatic = $isAutomatic;
+
+        return $this;
+    }
+
+    /**
+     * Assign the ticket to a staff member with actor attribution.
+     */
+    public function assignTo(?User $assignee, ?User $actor = null): static
+    {
+        $this->assigned_staff_id = $assignee ? (int) $assignee->id : null;
+        $this->eventActor = $actor;
+        $this->eventActorId = $actor ? (int) $actor->id : null;
+
+        return $this;
+    }
+
     // user_id (the creator), assigned_staff_id, and category_id are set
     // by the resource controller, never by mass-assignment from the
     // client. subject is the only attribute the client controls

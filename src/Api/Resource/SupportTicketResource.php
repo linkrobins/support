@@ -660,7 +660,7 @@ class SupportTicketResource extends AbstractDatabaseResource
         }
 
         // Credit status and assignment changes in the ticket timeline to the
-        // person making this request (see SupportEvent::recordChanges).
+        // person making this request (passed to lifecycle domain events).
         $model->eventActor = $actor->isGuest() ? null : $actor;
         $model->eventActorId = $actor->isGuest() ? null : (int) $actor->id;
 

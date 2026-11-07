@@ -62,47 +62,46 @@ class SupportEvent extends AbstractModel
     }
 
     /**
-     * Record what changed in a ticket save that has just happened.
-     *
-     * Called from the ticket's `updated` model event, where Eloquent still
-     * holds the previous values as originals and the new ones as changes. That
-     * is the one place every status change passes through: a staff member
-     * picking a status, a reply moving it, and the auto-close command.
+     * Record a status change in the ticket timeline.
      */
-    public static function recordChanges(SupportTicket $ticket): void
-    {
-        $changes = $ticket->getChanges();
-        $now = Carbon::now();
-        $actorId = $ticket->eventActorId;
+    public static function recordStatusChange(
+        SupportTicket $ticket,
+        ?User $actor,
+        ?string $fromStatus,
+        string $toStatus,
+        bool $isAutomatic = false
+    ): static {
+        $event = new static();
+        $event->ticket_id = (int) $ticket->id;
+        $event->user_id = $actor ? (int) $actor->id : null;
+        $event->type = self::TYPE_STATUS;
+        $event->from_status = $fromStatus;
+        $event->to_status = $toStatus;
+        $event->is_automatic = $isAutomatic;
+        $event->created_at = Carbon::now();
+        $event->save();
 
-        if (array_key_exists('status', $changes) && $ticket->getOriginal('status') !== $changes['status']) {
-            $event = new static();
-            $event->ticket_id = $ticket->id;
-            $event->user_id = $actorId;
-            $event->type = self::TYPE_STATUS;
-            $event->from_status = $ticket->getOriginal('status');
-            $event->to_status = $changes['status'];
-            $event->is_automatic = $ticket->eventAutomatic;
-            $event->created_at = $now;
-            $event->save();
-        }
+        return $event;
+    }
 
-        if (array_key_exists('assigned_staff_id', $changes)) {
-            $from = $ticket->getOriginal('assigned_staff_id');
-            $to = $changes['assigned_staff_id'];
-            $from = $from === null ? null : (int) $from;
-            $to = $to === null ? null : (int) $to;
+    /**
+     * Record an assignment change in the ticket timeline.
+     */
+    public static function recordAssignment(
+        SupportTicket $ticket,
+        ?User $actor,
+        ?User $fromUser,
+        ?User $toUser
+    ): static {
+        $event = new static();
+        $event->ticket_id = (int) $ticket->id;
+        $event->user_id = $actor ? (int) $actor->id : null;
+        $event->type = self::TYPE_ASSIGNMENT;
+        $event->from_user_id = $fromUser ? (int) $fromUser->id : null;
+        $event->to_user_id = $toUser ? (int) $toUser->id : null;
+        $event->created_at = Carbon::now();
+        $event->save();
 
-            if ($from !== $to) {
-                $event = new static();
-                $event->ticket_id = $ticket->id;
-                $event->user_id = $actorId;
-                $event->type = self::TYPE_ASSIGNMENT;
-                $event->from_user_id = $from;
-                $event->to_user_id = $to;
-                $event->created_at = $now;
-                $event->save();
-            }
-        }
+        return $event;
     }
 }

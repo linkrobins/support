@@ -67,10 +67,7 @@ class CloseResolvedTicketsCommand extends Command
                     if ($ticket->fresh()?->status !== SupportTicket::STATUS_RESOLVED) {
                         continue;
                     }
-                    $ticket->status = SupportTicket::STATUS_CLOSED;
-                    $ticket->eventActorId = null;
-                    $ticket->eventAutomatic = true;
-                    $ticket->save();
+                    $ticket->changeStatus(SupportTicket::STATUS_CLOSED, actor: null, isAutomatic: true)->save();
                     $closed++;
                 }
             });

@@ -65,6 +65,9 @@ class TicketHistoryTest extends TestCase
             'linkrobins_support_tickets' => [
                 ['id' => 1, 'category_id' => 1, 'user_id' => 2, 'subject' => 'Mine', 'status' => 'open', 'last_reply_at' => Carbon::now(), 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()],
             ],
+            'linkrobins_support_replies' => [
+                ['id' => 1, 'ticket_id' => 1, 'user_id' => 2, 'content' => '<t>Opening message</t>', 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()],
+            ],
         ]);
     }
 

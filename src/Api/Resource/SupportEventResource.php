@@ -13,7 +13,7 @@ use Tobyz\JsonApiServer\Context;
 
 /**
  * Read-only ticket history: status and assignment changes, shown inline in
- * the ticket timeline. Rows are written by SupportEvent::recordChanges, never
+ * the ticket timeline. Rows are written by domain event listeners, never
  * through the API.
  */
 class SupportEventResource extends AbstractDatabaseResource

@@ -155,19 +155,12 @@ class SupportServiceProvider extends AbstractServiceProvider
             }
         });
 
-        // Record status and assignment changes for the ticket timeline, then
-        // tell anyone listening (flarum/realtime) that the ticket moved. This
-        // is a model event rather than an API hook on purpose: replies and the
-        // auto-close command change status without going through the API,
-        // and their changes belong in the history too. A failure here is
-        // logged rather than thrown, so the save itself always stands.
+        // Tell anyone listening (notifications, flarum/realtime, timeline logger)
+        // that the ticket moved. This is a model event rather than an API hook on
+        // purpose: replies and the auto-close command change status without going
+        // through the API, and their changes belong in the history too. A failure
+        // here is logged rather than thrown, so the save itself always stands.
         SupportTicket::updated(function (SupportTicket $ticket) use ($events, $log) {
-            try {
-                SupportEvent::recordChanges($ticket);
-            } catch (\Throwable $e) {
-                $log->warning('[linkrobins/support] could not record ticket history', ['exception' => $e]);
-            }
-
             try {
                 $actor = $ticket->eventActor;
                 if (! $actor && $ticket->eventActorId) {
@@ -225,7 +218,8 @@ class SupportServiceProvider extends AbstractServiceProvider
         if (array_key_exists('status', $changes) && $ticket->getOriginal('status') !== $changes['status']) {
             $oldStatus = $ticket->getOriginal('status');
             $newStatus = (string) $changes['status'];
-            $events[] = new TicketStatusChanged($ticket, $actor, $oldStatus, $newStatus);
+            $isAutomatic = (bool) $ticket->eventAutomatic;
+            $events[] = new TicketStatusChanged($ticket, $actor, $oldStatus, $newStatus, $isAutomatic);
 
             $category = $ticket->currentCategory();
             if ($category) {

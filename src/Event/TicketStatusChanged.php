@@ -17,6 +17,7 @@ class TicketStatusChanged
         public readonly ?User $actor,
         public readonly ?string $oldStatus,
         public readonly string $newStatus,
+        public readonly bool $isAutomatic = false,
     ) {
     }
 }

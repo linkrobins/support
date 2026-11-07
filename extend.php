@@ -22,6 +22,8 @@ use LinkRobins\Support\Search\EventSearcher;
 use LinkRobins\Support\Search\ReplySearcher;
 use LinkRobins\Support\Search\TicketSearcher;
 use LinkRobins\Support\Extend as SupportExtend;
+use LinkRobins\Support\Listener\RecordAssignmentTimeline;
+use LinkRobins\Support\Listener\RecordStatusChangeTimeline;
 use LinkRobins\Support\SupportCategory;
 use LinkRobins\Support\SupportEvent;
 use LinkRobins\Support\SupportReply;
@@ -264,7 +266,9 @@ return [
             ], true)) {
                 $event->value = $event->value === '' || $event->value === '0' ? '0' : '1';
             }
-        }),
+        })
+        ->listen(\LinkRobins\Support\Event\TicketStatusChanged::class, RecordStatusChangeTimeline::class)
+        ->listen(\LinkRobins\Support\Event\TicketAssigned::class, RecordAssignmentTimeline::class),
 
     (new Extend\Settings())
         ->default('linkrobins-support.nav_in_sidebar',             '1')
