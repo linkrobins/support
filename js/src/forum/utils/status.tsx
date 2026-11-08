@@ -155,7 +155,7 @@ export function priorityChip(priority: string | null | undefined): any {
   if (priority !== 'urgent' && priority !== 'low') return null;
   return (
     <span className={'LinkRobinsSupport-chip LinkRobinsSupport-chip--priority is-' + priority}>
-      <Icon name={priority === 'urgent' ? 'fas fa-exclamation' : 'fas fa-arrow-down'} aria-hidden="true" />{' '}
+      <Icon name={priority === 'urgent' ? 'fas fa-exclamation' : 'fas fa-arrow-down'} aria-hidden="true" />
       {priority === 'urgent'
         ? app.translator.trans('linkrobins-support.forum.priority.urgent')
         : app.translator.trans('linkrobins-support.forum.priority.low')}

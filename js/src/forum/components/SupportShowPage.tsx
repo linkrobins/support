@@ -624,7 +624,8 @@ export default class SupportShowPage extends Page<any> {
             name: 'title',
             content: (
               <h3 className="LinkRobinsSupport-composerTitle">
-                <Icon name="fas fa-pencil-alt" /> {app.translator.trans('linkrobins-support.forum.action.edit_reply')}
+                <Icon name="fas fa-pencil-alt" />
+                {app.translator.trans('linkrobins-support.forum.action.edit_reply')}
               </h3>
             ),
           },
@@ -840,7 +841,8 @@ export default class SupportShowPage extends Page<any> {
             priority: 10,
             content: (
               <h3 className="LinkRobinsSupport-composerTitle">
-                <Icon name="fas fa-reply" /> {subject}
+                <Icon name="fas fa-reply" />
+                {subject}
               </h3>
             ),
           },
@@ -860,7 +862,7 @@ export default class SupportShowPage extends Page<any> {
                     onchange={(e: any) => {
                       body._supportInternal = !!e.target.checked;
                     }}
-                  />{' '}
+                  />
                   {app.translator.trans('linkrobins-support.forum.reply.internal_note')}
                 </label>
                 <SavedRepliesMenu />

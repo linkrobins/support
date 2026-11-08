@@ -255,7 +255,7 @@ export default class SupportAdminPage extends ExtensionPage {
                   onchange={(e: any) => {
                     value(e.target.checked ? '1' : '0');
                   }}
-                />{' '}
+                />
                 {app.translator.trans(sw.labelKey)}
               </label>
               <div className="helpText">{app.translator.trans(sw.helpKey)}</div>

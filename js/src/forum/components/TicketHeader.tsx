@@ -37,7 +37,7 @@ export default class TicketHeader extends Component {
         <div className="LinkRobinsSupport-ticket-meta">{this.metaItems(ticket, isDeleted).toArray()}</div>
         {ticket.decision() && (
           <div className="LinkRobinsSupport-decision">
-            {app.translator.trans('linkrobins-support.forum.show.decision')}{' '}
+            {app.translator.trans('linkrobins-support.forum.show.decision')}
             {isStaff && !isDeleted && this.decisionItems(ticket).toArray().length ? (
               this.decisionControl(ticket)
             ) : (

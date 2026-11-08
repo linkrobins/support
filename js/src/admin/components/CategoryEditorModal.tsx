@@ -273,7 +273,7 @@ export default class CategoryEditorModal extends FormModal<any> {
                         this.allowedGroupIds = this.allowedGroupIds.filter((gid) => gid !== id);
                       }
                     }}
-                  />{' '}
+                  />
                   {group.namePlural() || group.nameSingular() || id}
                 </label>
               );
