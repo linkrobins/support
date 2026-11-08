@@ -11,11 +11,8 @@ use Illuminate\Contracts\Events\Dispatcher as Events;
 use LinkRobins\Support\Access\SupportAbilities;
 use LinkRobins\Support\Event\ReplyCreated;
 use LinkRobins\Support\Event\ReplyPosted;
-use LinkRobins\Support\Event\TicketAssigned;
 use LinkRobins\Support\Event\TicketChanged;
 use LinkRobins\Support\Event\TicketCreated;
-use LinkRobins\Support\Event\TicketDecided;
-use LinkRobins\Support\Event\TicketStatusChanged;
 use LinkRobins\Support\Job\NotifyNewReply;
 use LinkRobins\Support\Job\NotifyNewTicket;
 use LinkRobins\Support\TicketType\TicketTypeManager;
@@ -64,11 +61,11 @@ class SupportServiceProvider extends AbstractServiceProvider
 
                 if (! $reply->is_internal_note) {
                     if ($ticket->status === SupportTicket::STATUS_RESOLVED) {
-                        $ticket->status = SupportTicket::STATUS_IN_PROGRESS;
+                        $ticket->changeStatus(SupportTicket::STATUS_IN_PROGRESS, $reply->user, isAutomatic: true);
                     } elseif ($isStaff && $ticket->status === SupportTicket::STATUS_OPEN) {
-                        $ticket->status = SupportTicket::STATUS_IN_PROGRESS;
+                        $ticket->changeStatus(SupportTicket::STATUS_IN_PROGRESS, $reply->user, isAutomatic: true);
                     } elseif (! $isStaff && $ticket->status === SupportTicket::STATUS_AWAITING_USER) {
-                        $ticket->status = SupportTicket::STATUS_IN_PROGRESS;
+                        $ticket->changeStatus(SupportTicket::STATUS_IN_PROGRESS, $reply->user, isAutomatic: true);
                     }
                 }
 
@@ -89,27 +86,22 @@ class SupportServiceProvider extends AbstractServiceProvider
                 // the status reflects the user-visible state of the
                 // conversation, while assignment is staff routing.)
                 if ($isStaff && $reply->user_id && ! $ticket->assigned_staff_id) {
-                    $ticket->assigned_staff_id = $reply->user_id;
+                    $ticket->assignTo($reply->user, $reply->user);
                 }
 
-                // The reply's author is who moved the status or claimed the
-                // ticket, as far as the ticket timeline is concerned.
-                $ticket->eventActor = $reply->relationLoaded('user') ? $reply->user : null;
-                $ticket->eventActorId = $reply->user_id ? (int) $reply->user_id : null;
-                // Any status move here comes from the rules above, not a
-                // choice the author made, so the timeline says it happened
-                // automatically.
-                $ticket->eventAutomatic = true;
-                $ticket->savingOpeningMessage = $isOpening;
                 $ticket->save();
-                $ticket->savingOpeningMessage = false;
-                $ticket->eventAutomatic = false;
 
-                static::afterCommit(fn () => $events->dispatch(new ReplyPosted($reply, $reply->user)));
+                foreach ($ticket->releaseEvents() as $event) {
+                    static::afterCommit(fn () => static::dispatchIsolated($events, $event, $log));
+                }
+
+                static::afterCommit(fn () => static::dispatchIsolated($events, new TicketChanged($ticket, $reply->user), $log));
+
+                static::afterCommit(fn () => static::dispatchIsolated($events, new ReplyPosted($reply, $reply->user), $log));
 
                 // The opening message is announced by TicketCreated.
                 if (! $isOpening) {
-                    static::afterCommit(fn () => $events->dispatch(new ReplyCreated($reply, $reply->user)));
+                    static::afterCommit(fn () => static::dispatchIsolated($events, new ReplyCreated($reply, $reply->user), $log));
                 }
 
                 // Notifications: dispatched only for user-facing replies.
@@ -138,10 +130,10 @@ class SupportServiceProvider extends AbstractServiceProvider
         SupportTicket::created(function (SupportTicket $ticket) use ($bus, $events, $log) {
             try {
                 $bus->dispatch(new NotifyNewTicket($ticket->id));
-                static::afterCommit(fn () => $events->dispatch(new TicketChanged($ticket, $ticket->user)));
+                static::afterCommit(fn () => static::dispatchIsolated($events, new TicketChanged($ticket, $ticket->user), $log));
                 // After the commit, which on the API's create path is after
                 // the opening message is saved too.
-                static::afterCommit(fn () => $events->dispatch(new TicketCreated($ticket, $ticket->user)));
+                static::afterCommit(fn () => static::dispatchIsolated($events, new TicketCreated($ticket, $ticket->user), $log));
             } catch (\Throwable $e) {
                 $log->warning('[linkrobins/support] ticket post-save hook failed', ['exception' => $e]);
             }
@@ -154,41 +146,38 @@ class SupportServiceProvider extends AbstractServiceProvider
                 $ticket->status_changed_at = Carbon::now();
             }
         });
+    }
 
-        // Record status and assignment changes for the ticket timeline, then
-        // tell anyone listening (flarum/realtime) that the ticket moved. This
-        // is a model event rather than an API hook on purpose: replies and the
-        // auto-close command change status without going through the API,
-        // and their changes belong in the history too. A failure here is
-        // logged rather than thrown, so the save itself always stands.
-        SupportTicket::updated(function (SupportTicket $ticket) use ($events, $log) {
-            try {
-                SupportEvent::recordChanges($ticket);
-            } catch (\Throwable $e) {
-                $log->warning('[linkrobins/support] could not record ticket history', ['exception' => $e]);
-            }
+    /**
+     * Dispatch an event to its listeners in isolation, logging any failure so
+     * that one failing listener cannot block other listeners or crash the
+     * after-commit callback.
+     */
+    protected static function dispatchIsolated(Events $events, object $event, LoggerInterface $log): void
+    {
+        $eventName = get_class($event);
 
-            try {
-                $actor = $ticket->eventActor;
-                if (! $actor && $ticket->eventActorId) {
-                    if ($ticket->relationLoaded('user') && $ticket->user && (int) $ticket->user->id === (int) $ticket->eventActorId) {
-                        $actor = $ticket->user;
-                    } elseif ($ticket->relationLoaded('assignedStaff') && $ticket->assignedStaff && (int) $ticket->assignedStaff->id === (int) $ticket->eventActorId) {
-                        $actor = $ticket->assignedStaff;
-                    } else {
-                        $actor = User::query()->find($ticket->eventActorId);
-                    }
+        if (method_exists($events, 'getListeners')) {
+            foreach ($events->getListeners($eventName) as $listener) {
+                try {
+                    $listener($eventName, [$event]);
+                } catch (\Throwable $e) {
+                    $log->warning('[linkrobins/support] event listener failed', [
+                        'event' => $eventName,
+                        'exception' => $e,
+                    ]);
                 }
-
-                foreach (static::lifecycleEvents($ticket, $actor, $log) as $event) {
-                    static::afterCommit(fn () => $events->dispatch($event));
-                }
-
-                static::afterCommit(fn () => $events->dispatch(new TicketChanged($ticket, $actor)));
-            } catch (\Throwable $e) {
-                $log->warning('[linkrobins/support] ticket change event failed', ['exception' => $e]);
             }
-        });
+        } else {
+            try {
+                $events->dispatch($event);
+            } catch (\Throwable $e) {
+                $log->warning('[linkrobins/support] event dispatch failed', [
+                    'event' => $eventName,
+                    'exception' => $e,
+                ]);
+            }
+        }
     }
 
     /**
@@ -202,85 +191,6 @@ class SupportServiceProvider extends AbstractServiceProvider
      * candidate that predates that, where dispatching straight away is the
      * old behaviour.
      */
-    /**
-     * The specific events for what this save changed, for other extensions to
-     * listen to (webhooks, bots, audit logs). Built here, from the model, so
-     * every route that changes a ticket is covered: the API, a reply moving
-     * the status on or claiming the ticket, and the auto-close command.
-     *
-     * Called from the updated hook, where getOriginal() still holds the values
-     * from before the save.
-     *
-     * @return list<object>
-     */
-    protected static function lifecycleEvents(SupportTicket $ticket, ?User $actor, LoggerInterface $log): array
-    {
-        if ($ticket->savingOpeningMessage) {
-            return [];
-        }
-
-        $changes = $ticket->getChanges();
-        $events = [];
-
-        if (array_key_exists('status', $changes) && $ticket->getOriginal('status') !== $changes['status']) {
-            $oldStatus = $ticket->getOriginal('status');
-            $newStatus = (string) $changes['status'];
-            $events[] = new TicketStatusChanged($ticket, $actor, $oldStatus, $newStatus);
-
-            $category = $ticket->currentCategory();
-            if ($category) {
-                static::afterCommit(function () use ($category, $ticket, $newStatus, $oldStatus, $actor, $log) {
-                    try {
-                        $category->ticketType()->onStatusChanged($ticket, $newStatus, $oldStatus, $actor);
-                    } catch (\Throwable $e) {
-                        $log->error('[linkrobins/support] ticket type onStatusChanged failed', ['exception' => $e]);
-                    }
-                });
-            }
-        }
-
-        if (array_key_exists('decision', $changes) && $ticket->getOriginal('decision') !== $changes['decision']) {
-            $oldDecision = $ticket->getOriginal('decision');
-            $newDecision = (string) $changes['decision'];
-            $events[] = new TicketDecided($ticket, $actor, $oldDecision, $newDecision);
-
-            $category = $ticket->currentCategory();
-            if ($category) {
-                static::afterCommit(function () use ($category, $ticket, $newDecision, $oldDecision, $actor, $log) {
-                    try {
-                        $category->ticketType()->onDecided($ticket, $newDecision, $oldDecision, $actor);
-                    } catch (\Throwable $e) {
-                        $log->error('[linkrobins/support] ticket type onDecided failed', ['exception' => $e]);
-                    }
-                });
-            }
-        }
-
-        if (array_key_exists('assigned_staff_id', $changes)) {
-            $from = $ticket->getOriginal('assigned_staff_id');
-            $to = $changes['assigned_staff_id'];
-            $from = $from === null ? null : (int) $from;
-            $to = $to === null ? null : (int) $to;
-
-            if ($from !== $to) {
-                // The actor is usually one of the two (claiming, or handing
-                // over); reuse it rather than look them up again.
-                $user = fn (?int $id) => $id === null ? null : (
-                    $actor && (int) $actor->id === $id
-                        ? $actor
-                        : ($ticket->relationLoaded('user') && $ticket->user && (int) $ticket->user->id === $id
-                            ? $ticket->user
-                            : ($ticket->relationLoaded('assignedStaff') && $ticket->assignedStaff && (int) $ticket->assignedStaff->id === $id
-                                ? $ticket->assignedStaff
-                                : User::query()->find($id)))
-                );
-                $events[] = new TicketAssigned($ticket, $actor, $user($to), $user($from));
-            }
-        }
-
-        return $events;
-    }
-
     protected static function afterCommit(callable $callback): void
     {
         try {

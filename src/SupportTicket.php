@@ -3,11 +3,15 @@
 namespace LinkRobins\Support;
 
 use Flarum\Database\AbstractModel;
+use Flarum\Foundation\EventGeneratorTrait;
 use Flarum\User\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use LinkRobins\Support\Event\TicketAssigned;
+use LinkRobins\Support\Event\TicketDecided;
+use LinkRobins\Support\Event\TicketStatusChanged;
 
 /**
  * @property int $id
@@ -34,44 +38,12 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  */
 class SupportTicket extends AbstractModel
 {
+    use EventGeneratorTrait;
     use SoftDeletes;
 
     protected $table = 'linkrobins_support_tickets';
 
     public $timestamps = true;
-
-    /**
-     * Who is making the change being saved, for the ticket timeline.
-     *
-     * Not a column. Model events cannot see the request, so each place that
-     * changes a ticket says who is doing it before saving: the API resource
-     * sets the acting user, a reply sets its author, and the auto-close
-     * command leaves it null so the change reads as the forum's own.
-     */
-    public ?int $eventActorId = null;
-
-    /**
-     * The User model instance of who is making the change, if available.
-     * Reused during model event hooks to avoid querying the users table.
-     */
-    public ?User $eventActor = null;
-
-    /**
-     * Set when the forum, not a person, is moving the status: a reply's
-     * status rules or the auto-close command. Not a column. The timeline
-     * words those changes as automatic.
-     */
-    public bool $eventAutomatic = false;
-
-    /**
-     * Set while the ticket's opening message is being saved. Not a column.
-     *
-     * A staff member's own opening message moves their ticket to in progress
-     * and assigns it to them, through the same reply hook as any other reply.
-     * TicketCreated already announces that ticket, so the status and
-     * assignment events stay quiet for it.
-     */
-    public bool $savingOpeningMessage = false;
 
     public const STATUS_OPEN          = 'open';
     public const STATUS_IN_PROGRESS   = 'in_progress';
@@ -129,6 +101,69 @@ class SupportTicket extends AbstractModel
         self::DECISION_ACCEPTED,
         self::DECISION_REJECTED,
     ];
+
+    /**
+     * Change the ticket status and raise a domain event.
+     */
+    public function changeStatus(string $status, ?User $actor = null, bool $isAutomatic = false): static
+    {
+        if ($this->status !== $status) {
+            $oldStatus = $this->status;
+            $this->status = $status;
+
+            $this->raise(new TicketStatusChanged($this, $actor, $oldStatus, $status, $isAutomatic));
+        }
+
+        return $this;
+    }
+
+    /**
+     * Assign the ticket to a staff member (or null to unassign) and raise a domain event.
+     */
+    public function assignTo(?User $assignee, ?User $actor = null): static
+    {
+        $newId = $assignee ? (int) $assignee->id : null;
+        $oldId = $this->assigned_staff_id === null ? null : (int) $this->assigned_staff_id;
+
+        if ($newId !== $oldId) {
+            $oldAssignee = $this->relationLoaded('assignedStaff')
+                ? $this->assignedStaff
+                : ($oldId ? User::query()->find($oldId) : null);
+
+            $this->assigned_staff_id = $newId;
+            if ($assignee) {
+                $this->setRelation('assignedStaff', $assignee);
+            } else {
+                $this->unsetRelation('assignedStaff');
+            }
+
+            $this->raise(new TicketAssigned(
+                ticket: $this,
+                actor: $actor,
+                assignee: $assignee,
+                oldAssignee: $oldAssignee,
+                assigneeId: $newId,
+                oldAssigneeId: $oldId,
+            ));
+        }
+
+        return $this;
+    }
+
+    /**
+     * Change the ticket decision and raise a domain event.
+     */
+    public function changeDecision(?string $decision, ?User $actor = null): static
+    {
+        if ($this->decision !== $decision) {
+            $oldDecision = $this->decision;
+            $this->decision = $decision;
+
+            $this->raise(new TicketDecided($this, $actor, $oldDecision, $decision));
+        }
+
+        return $this;
+    }
 
     // user_id (the creator), assigned_staff_id, and category_id are set
     // by the resource controller, never by mass-assignment from the

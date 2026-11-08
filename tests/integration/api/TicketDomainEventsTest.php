@@ -381,11 +381,11 @@ class TicketDomainEventsTest extends TestCase
     }
 
     #[Test]
-    public function a_staff_members_own_ticket_is_announced_once(): void
+    public function a_staff_members_own_ticket_dispatches_created_status_and_assignment_events(): void
     {
-        // A staff member's opening message moves their ticket to in progress
-        // and assigns it to them. TicketCreated covers that; the status and
-        // assignment events must not also fire for it.
+        // When a staff member files a ticket, their opening message moves the ticket
+        // to in_progress and auto-claims it. TicketCreated announces the new ticket,
+        // while TicketStatusChanged and TicketAssigned record the claim and status advance.
         $response = $this->send(
             $this->request('POST', '/api/linkrobins-support-tickets', [
                 'authenticatedAs' => 3,
@@ -405,8 +405,24 @@ class TicketDomainEventsTest extends TestCase
 
         $this->assertEquals(201, $response->getStatusCode());
 
-        $classes = array_map(fn ($e) => get_class($e), self::$dispatchedEvents);
-        $this->assertSame([TicketCreated::class], $classes);
-        $this->assertEquals(3, self::$dispatchedEvents[0]->actor?->id);
+        $createdEvents = array_values(array_filter(self::$dispatchedEvents, fn ($e) => $e instanceof TicketCreated));
+        $this->assertCount(1, $createdEvents);
+        $this->assertEquals(3, $createdEvents[0]->actor?->id);
+
+        $statusEvents = array_values(array_filter(self::$dispatchedEvents, fn ($e) => $e instanceof TicketStatusChanged));
+        $this->assertCount(1, $statusEvents);
+        $this->assertEquals(SupportTicket::STATUS_OPEN, $statusEvents[0]->oldStatus);
+        $this->assertEquals(SupportTicket::STATUS_IN_PROGRESS, $statusEvents[0]->newStatus);
+        $this->assertEquals(3, $statusEvents[0]->actor?->id);
+
+        $assignedEvents = array_values(array_filter(self::$dispatchedEvents, fn ($e) => $e instanceof TicketAssigned));
+        $this->assertCount(1, $assignedEvents);
+        $this->assertEquals(3, $assignedEvents[0]->assignee?->id);
+        $this->assertNull($assignedEvents[0]->oldAssignee);
+        $this->assertEquals(3, $assignedEvents[0]->actor?->id);
+
+        // The opening message must not dispatch ReplyCreated (announced by TicketCreated)
+        $replyEvents = array_filter(self::$dispatchedEvents, fn ($e) => $e instanceof ReplyCreated);
+        $this->assertCount(0, $replyEvents, 'Opening message must not dispatch ReplyCreated');
     }
 }

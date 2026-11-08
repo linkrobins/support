@@ -229,4 +229,49 @@ class TicketHistoryTest extends TestCase
 
         $this->assertEquals(0, $this->database()->table('linkrobins_support_events')->count());
     }
+
+    #[Test]
+    public function a_staff_filed_ticket_records_opening_message_claim_and_status_advance(): void
+    {
+        $response = $this->send(
+            $this->request('POST', '/api/linkrobins-support-tickets', [
+                'authenticatedAs' => 3,
+                'json' => [
+                    'data' => [
+                        'type' => 'linkrobins-support-tickets',
+                        'attributes' => [
+                            'subject' => 'Staff filed ticket',
+                            'firstPost' => 'Opening reply from staff.',
+                        ],
+                        'relationships' => [
+                            'category' => [
+                                'data' => ['type' => 'linkrobins-support-categories', 'id' => '1'],
+                            ],
+                        ],
+                    ],
+                ],
+            ])
+        );
+
+        $this->assertEquals(201, $response->getStatusCode(), (string) $response->getBody());
+        $ticketId = (int) json_decode((string) $response->getBody(), true)['data']['id'];
+
+        $events = $this->database()->table('linkrobins_support_events')
+            ->where('ticket_id', $ticketId)
+            ->orderBy('id')
+            ->get();
+
+        $statusEvent = $events->firstWhere('type', 'status');
+        $this->assertNotNull($statusEvent, 'Expected a status change event to be recorded for the opening message');
+        $this->assertEquals('open', $statusEvent->from_status);
+        $this->assertEquals('in_progress', $statusEvent->to_status);
+        $this->assertEquals(3, (int) $statusEvent->user_id);
+        $this->assertTrue((bool) $statusEvent->is_automatic);
+
+        $assignmentEvent = $events->firstWhere('type', 'assignment');
+        $this->assertNotNull($assignmentEvent, 'Expected an assignment event to be recorded for the opening message');
+        $this->assertNull($assignmentEvent->from_user_id);
+        $this->assertEquals(3, (int) $assignmentEvent->to_user_id);
+        $this->assertEquals(3, (int) $assignmentEvent->user_id);
+    }
 }

@@ -5,6 +5,7 @@ namespace LinkRobins\Support\Console;
 use Carbon\Carbon;
 use Flarum\Settings\SettingsRepositoryInterface;
 use Illuminate\Console\Command;
+use Illuminate\Contracts\Events\Dispatcher;
 use LinkRobins\Support\SupportTicket;
 
 /**
@@ -41,7 +42,7 @@ class CloseResolvedTicketsCommand extends Command
         return max(0, (int) $value);
     }
 
-    public function handle(SettingsRepositoryInterface $settings): int
+    public function handle(SettingsRepositoryInterface $settings, Dispatcher $events): int
     {
         $days = self::days($settings->get(self::SETTING));
 
@@ -59,7 +60,7 @@ class CloseResolvedTicketsCommand extends Command
             ->whereNotNull('status_changed_at')
             ->where('status_changed_at', '<=', $cutoff)
             ->where(fn ($q) => $q->whereNull('last_reply_at')->orWhere('last_reply_at', '<=', $cutoff))
-            ->chunkById(100, function ($tickets) use (&$closed) {
+            ->chunkById(100, function ($tickets) use (&$closed, $events) {
                 foreach ($tickets as $ticket) {
                     /** @var SupportTicket $ticket */
                     // Re-check on the row itself: a reply may have reopened
@@ -67,10 +68,10 @@ class CloseResolvedTicketsCommand extends Command
                     if ($ticket->fresh()?->status !== SupportTicket::STATUS_RESOLVED) {
                         continue;
                     }
-                    $ticket->status = SupportTicket::STATUS_CLOSED;
-                    $ticket->eventActorId = null;
-                    $ticket->eventAutomatic = true;
-                    $ticket->save();
+                    $ticket->changeStatus(SupportTicket::STATUS_CLOSED, actor: null, isAutomatic: true)->save();
+                    foreach ($ticket->releaseEvents() as $event) {
+                        $events->dispatch($event);
+                    }
                     $closed++;
                 }
             });

@@ -171,7 +171,7 @@ class SupportTicketResource extends AbstractDatabaseResource
                     }
                     $actor = $context->getActor();
                     if (SupportAbilities::isStaff($actor)) {
-                        $ticket->status = $value;
+                        $ticket->changeStatus($value, $actor);
                         return;
                     }
                     // Non-staff: the owner of a non-appeal ticket may make two
@@ -184,12 +184,12 @@ class SupportTicketResource extends AbstractDatabaseResource
                         $this->ownerMayReopen($ticket, $actor)
                         && $value === SupportTicket::STATUS_OPEN
                     ) {
-                        $ticket->status = $value;
+                        $ticket->changeStatus($value, $actor);
                     } elseif (
                         $this->ownerMayConfirmSolved($ticket, $actor)
                         && $value === SupportTicket::STATUS_CLOSED
                     ) {
-                        $ticket->status = $value;
+                        $ticket->changeStatus($value, $actor);
                     }
                 }),
 
@@ -221,7 +221,7 @@ class SupportTicketResource extends AbstractDatabaseResource
                     if (! $isStaff) {
                         return;
                     }
-                    $ticket->decision = $value;
+                    $ticket->changeDecision($value, $actor);
                 }),
 
             Schema\DateTime::make('createdAt')
@@ -375,7 +375,7 @@ class SupportTicketResource extends AbstractDatabaseResource
                         return;
                     }
                     if ($value === null) {
-                        $ticket->assigned_staff_id = null;
+                        $ticket->assignTo(null, $actor);
                         return;
                     }
                     $targetId = null;
@@ -396,7 +396,7 @@ class SupportTicketResource extends AbstractDatabaseResource
                     if (! $target || ! SupportAbilities::isStaff($target)) {
                         throw new BadRequestException($this->translator->trans('linkrobins-support.api.assign_staff_only'));
                     }
-                    $ticket->assigned_staff_id = $targetId;
+                    $ticket->assignTo($target, $actor);
                 }),
 
             Schema\Relationship\ToOne::make('category')
@@ -658,11 +658,6 @@ class SupportTicketResource extends AbstractDatabaseResource
                 throw new BadRequestException($this->translator->trans('linkrobins-support.api.decision_not_allowed'));
             }
         }
-
-        // Credit status and assignment changes in the ticket timeline to the
-        // person making this request (see SupportEvent::recordChanges).
-        $model->eventActor = $actor->isGuest() ? null : $actor;
-        $model->eventActorId = $actor->isGuest() ? null : (int) $actor->id;
 
         $this->before[(int) $model->id] = [
             'status' => $model->getOriginal('status'),
