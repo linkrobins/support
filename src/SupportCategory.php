@@ -22,6 +22,7 @@ use LinkRobins\Support\TicketType\TicketTypeManager;
  * @property int $position
  * @property string|null $ticket_type
  * @property int|null $default_assignee_id
+ * @property bool $is_silent
  * @property array<int>|null $allowed_group_ids
  * @property \Carbon\Carbon|null $created_at
  * @property \Carbon\Carbon|null $updated_at
@@ -43,11 +44,13 @@ class SupportCategory extends AbstractModel
         'position',
         'ticket_type',
         'default_assignee_id',
+        'is_silent',
         'allowed_group_ids',
     ];
 
     protected $casts = [
         'position'  => 'integer',
+        'is_silent' => 'boolean',
         'allowed_group_ids' => 'array',
     ];
 

@@ -23,6 +23,7 @@ linkrobins-support:
       column_type: Type
       column_assignee: 'Assigned to'
       assignee_all_staff: 'All staff'
+      assignee_silent: 'Silent (No notifications)'
       column_tickets: Tickets
       general_badge: General
       appeal_badge: Appeal
@@ -53,6 +54,8 @@ linkrobins-support:
       field_default_assignee_error: "Couldn't load the list of staff. The current setting is unchanged."
       field_allowed_groups: 'Allowed user groups'
       field_allowed_groups_help: 'Leave empty to allow all registered users permitted by the ticket type. Select specific groups to restrict who can create tickets in this category.'
+      field_is_silent: 'Silent queue'
+      field_is_silent_help: 'Staff will not receive notification alerts for tickets in this category unless a ticket is explicitly assigned.'
       submit_create: 'Create category'
       submit_update: 'Save changes'
       error_load: "Couldn't load this category."
