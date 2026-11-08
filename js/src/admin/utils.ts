@@ -3,12 +3,13 @@ import app from 'flarum/admin/app';
 // --- Category CRUD via the store ----------------------------------------
 
 export function loadCategoriesList(): Promise<any> {
-  // defaultAssignee is not a server-side default include (the forum's public
-  // category list has no business carrying it), so the admin page asks for it.
+  // defaultAssignee and defaultAssignedGroup are not server-side default includes
+  // (the forum's public category list has no business carrying them), so the
+  // admin page asks for them.
   return app.store.find('linkrobins-support-categories', {
     sort: 'position',
     page: { limit: 100 },
-    include: 'defaultAssignee',
+    include: 'defaultAssignee,defaultAssignedGroup',
   });
 }
 

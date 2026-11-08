@@ -174,17 +174,40 @@ export default class SupportAdminPage extends ExtensionPage {
   }
 
   /**
-   * Who a category routes to, or a muted "all staff" when it routes to nobody
+   * Who a category routes to, or a muted "all staff" / "silent" when it routes to nobody
    * -- an empty cell would read as missing data rather than as the default.
    */
   _assigneeLabel(category: any) {
+    if (category.isSilent && category.isSilent()) {
+      return (
+        <span className="LinkRobinsSupportAdmin-noAssignee">
+          <i className="fas fa-bell-slash" style={{ marginRight: '4px' }} />
+          {app.translator.trans('linkrobins-support.admin.categories.assignee_silent')}
+        </span>
+      );
+    }
+    const group = category.defaultAssignedGroup && category.defaultAssignedGroup();
+    if (group) {
+      const gName = group.namePlural() || group.nameSingular() || '#' + group.id();
+      return (
+        <span>
+          <i className="fas fa-users" style={{ marginRight: '4px' }} />
+          {gName}
+        </span>
+      );
+    }
     const user = category.defaultAssignee && category.defaultAssignee();
     if (!user) {
       return (
         <span className="LinkRobinsSupportAdmin-noAssignee">{app.translator.trans('linkrobins-support.admin.categories.assignee_all_staff')}</span>
       );
     }
-    return user.displayName() || user.username();
+    return (
+      <span>
+        <i className="fas fa-user" style={{ marginRight: '4px' }} />
+        {user.displayName() || user.username()}
+      </span>
+    );
   }
 
   _typeLabel(category: any) {

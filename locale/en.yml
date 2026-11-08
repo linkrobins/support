@@ -23,6 +23,7 @@ linkrobins-support:
       column_type: Type
       column_assignee: 'Assigned to'
       assignee_all_staff: 'All staff'
+      assignee_silent: 'Silent (No notifications)'
       column_tickets: Tickets
       general_badge: General
       appeal_badge: Appeal
@@ -45,11 +46,19 @@ linkrobins-support:
       field_position_help: 'Categories are ordered by this value, lowest first.'
       field_ticket_type: 'Ticket type'
       field_ticket_type_help: 'Determines the workflow, decision options, and rate limits for tickets in this category.'
-      field_default_assignee: 'Assign new tickets to'
-      field_default_assignee_none: 'Nobody -- notify all staff'
-      field_default_assignee_help: 'New tickets in this category are assigned to this person, and only they are notified about them. Leave it on "Nobody" to notify every staff member instead and let whoever replies first pick the ticket up.'
+      field_routing_mode: 'Default routing policy'
+      routing_mode_all: 'All staff (Default)'
+      routing_mode_group: 'Route to a group'
+      routing_mode_user: 'Assign to a staff member'
+      routing_mode_silent: 'Silent (No notifications)'
+      field_target_group: 'Target staff group'
+      field_target_user: 'Target staff member'
+      routing_mode_help_all: 'New tickets arrive unassigned, and notification alerts are sent to all support staff.'
+      routing_mode_help_group: 'New tickets arrive unassigned, and alerts are routed exclusively to members of the selected group.'
+      routing_mode_help_user: 'New tickets are automatically assigned to this staff member, and only they receive alerts.'
+      routing_mode_help_silent: 'New tickets arrive unassigned, and staff will not receive notifications for new tickets or customer replies in this category.'
       field_default_assignee_loading: 'Loading staff...'
-      field_default_assignee_unavailable: '{name} (no longer support staff)'
+      field_default_assignee_unavailable: '{name} (unavailable)'
       field_default_assignee_error: "Couldn't load the list of staff. The current setting is unchanged."
       field_allowed_groups: 'Allowed user groups'
       field_allowed_groups_help: 'Leave empty to allow all registered users permitted by the ticket type. Select specific groups to restrict who can create tickets in this category.'
@@ -433,6 +442,7 @@ linkrobins-support:
     decision_not_allowed: 'Tickets in this category do not take that decision.'
     assign_staff_only: 'Tickets can only be assigned to support staff.'
     default_assignee_staff_only: 'A category can only be assigned to support staff.'
+    default_assigned_group_invalid: 'The selected routed group does not exist.'
     category_required: 'A category is required.'
     subject_required: 'A subject is required.'
     ticket_soft_delete_first: 'A ticket must be soft-deleted before it can be permanently removed.'
