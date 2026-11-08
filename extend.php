@@ -30,6 +30,7 @@ use LinkRobins\Support\SupportTicket;
 use LinkRobins\Support\TicketType\AppealTicketType;
 use LinkRobins\Support\TicketType\StandardTicketType;
 use LinkRobins\Support\TicketType\TicketTypeManager;
+use LinkRobins\Support\Throttler\TicketCreationThrottler;
 
 return [
     (new Extend\Frontend('forum'))
@@ -285,4 +286,7 @@ return [
         // Note: these settings are consumed server-side by RateLimiter; they
         // are intentionally NOT serialized to the forum frontend (the JS never
         // reads them).
+
+    (new Extend\ThrottleApi())
+        ->set('linkrobinsSupportTicketTimeout', TicketCreationThrottler::class),
 ];

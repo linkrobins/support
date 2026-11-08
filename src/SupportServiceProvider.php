@@ -30,8 +30,13 @@ class SupportServiceProvider extends AbstractServiceProvider
         });
     }
 
-    public function boot(Formatter $formatter, Dispatcher $bus, Events $events, LoggerInterface $log): void
-    {
+    public function boot(
+        Formatter $formatter,
+        Dispatcher $bus,
+        Events $events,
+        LoggerInterface $log,
+        RateLimiter $rateLimiter
+    ): void {
         // Plug Flarum's formatter into the reply model so calling
         // setContentAttribute() runs Markdown/BBCode through the same
         // pipeline discussions use. The parsed source ends up in
@@ -161,7 +166,7 @@ class SupportServiceProvider extends AbstractServiceProvider
         // auto-close command change status without going through the API,
         // and their changes belong in the history too. A failure here is
         // logged rather than thrown, so the save itself always stands.
-        SupportTicket::updated(function (SupportTicket $ticket) use ($events, $log) {
+        SupportTicket::updated(function (SupportTicket $ticket) use ($events, $log, $rateLimiter) {
             try {
                 SupportEvent::recordChanges($ticket);
             } catch (\Throwable $e) {
@@ -180,7 +185,7 @@ class SupportServiceProvider extends AbstractServiceProvider
                     }
                 }
 
-                foreach (static::lifecycleEvents($ticket, $actor, $log) as $event) {
+                foreach (static::lifecycleEvents($ticket, $actor, $log, $rateLimiter) as $event) {
                     static::afterCommit(fn () => $events->dispatch($event));
                 }
 
@@ -213,8 +218,12 @@ class SupportServiceProvider extends AbstractServiceProvider
      *
      * @return list<object>
      */
-    protected static function lifecycleEvents(SupportTicket $ticket, ?User $actor, LoggerInterface $log): array
-    {
+    protected static function lifecycleEvents(
+        SupportTicket $ticket,
+        ?User $actor,
+        LoggerInterface $log,
+        RateLimiter $rateLimiter
+    ): array {
         if ($ticket->savingOpeningMessage) {
             return [];
         }
@@ -226,6 +235,10 @@ class SupportServiceProvider extends AbstractServiceProvider
             $oldStatus = $ticket->getOriginal('status');
             $newStatus = (string) $changes['status'];
             $events[] = new TicketStatusChanged($ticket, $actor, $oldStatus, $newStatus);
+
+            if ($ticket->user_id) {
+                static::afterCommit(fn () => $rateLimiter->clearUserQuotaCache((int) $ticket->user_id));
+            }
 
             $category = $ticket->currentCategory();
             if ($category) {

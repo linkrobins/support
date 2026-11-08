@@ -583,6 +583,9 @@ class SupportTicketResource extends AbstractDatabaseResource
             // body rolls the whole thing back -- no body-less tickets.
             $this->createFirstReply($ticket, $context);
 
+            // Invalidate the creator's cached rate-limit quota counts immediately.
+            $this->rateLimiter->clearUserQuotaCache($actor);
+
             $rawBody = (array) $context->request->getParsedBody();
             $data = (array) ($rawBody['data'] ?? []);
             if ($category) {
