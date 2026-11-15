@@ -555,6 +555,35 @@ class TicketTypeDriverTest extends TestCase
     }
 
     #[Test]
+    public function clearing_decision_to_null_does_not_fail_decision_listener(): void
+    {
+        CustomTestTicketType::resetState();
+
+        $ticketId = $this->insertTicket(3, 'accepted');
+        $response = $this->patchTicket($ticketId, ['decision' => null]);
+
+        $this->assertEquals(200, $response->getStatusCode(), (string) $response->getBody());
+        $this->assertNull($this->database()->table('linkrobins_support_tickets')->where('id', $ticketId)->value('decision'));
+        $this->assertNull(CustomTestTicketType::$decidedTo);
+    }
+
+    #[Test]
+    public function driver_exception_in_on_decided_hook_does_not_break_request(): void
+    {
+        CustomTestTicketType::resetState();
+        CustomTestTicketType::$throwOnDecided = true;
+
+        $ticketId = $this->insertTicket(3, 'pending');
+        $response = $this->patchTicket($ticketId, ['decision' => 'accepted']);
+
+        $this->assertEquals(200, $response->getStatusCode(), (string) $response->getBody());
+        $this->assertEquals(
+            'accepted',
+            $this->database()->table('linkrobins_support_tickets')->where('id', $ticketId)->value('decision')
+        );
+    }
+
+    #[Test]
     public function guests_cannot_create_tickets_in_any_category(): void
     {
         $response = $this->send(
@@ -741,6 +770,7 @@ class CustomTestTicketType extends AbstractTicketType
     public static ?string $statusChangedTo = null;
     public static ?string $statusChangedFrom = null;
     public static bool $throwOnStatusChange = false;
+    public static bool $throwOnDecided = false;
 
     public static function resetState(): void
     {
@@ -752,6 +782,7 @@ class CustomTestTicketType extends AbstractTicketType
         self::$statusChangedTo = null;
         self::$statusChangedFrom = null;
         self::$throwOnStatusChange = false;
+        self::$throwOnDecided = false;
     }
 
     public function id(): string
@@ -809,6 +840,10 @@ class CustomTestTicketType extends AbstractTicketType
 
     public function onDecided(SupportTicket $ticket, string $newDecision, ?string $oldDecision, ?User $actor): void
     {
+        if (self::$throwOnDecided) {
+            throw new \RuntimeException('Simulated third-party onDecided hook failure');
+        }
+
         self::$decidedTo = $newDecision;
     }
 

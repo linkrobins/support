@@ -14,6 +14,7 @@ use Flarum\Extend;
 use Flarum\Testing\integration\RetrievesAuthorizedUsers;
 use Flarum\Testing\integration\TestCase;
 use LinkRobins\Support\Event\ReplyCreated;
+use LinkRobins\Support\Event\ReplyPosted;
 use LinkRobins\Support\Event\TicketAssigned;
 use LinkRobins\Support\Event\TicketChanged;
 use LinkRobins\Support\Event\TicketCreated;
@@ -36,6 +37,8 @@ class TicketDomainEventsTest extends TestCase
 
     public static bool $throwOnStatusChange = false;
 
+    public static bool $throwOnTicketCreated = false;
+
     /**
      * Flarum's notification mailer and auth pipeline repeatedly look up users by ID.
      * Upstream whitelists this shape in StatusNotificationTest and CategoryDefaultAssigneeTest.
@@ -56,6 +59,7 @@ class TicketDomainEventsTest extends TestCase
 
         self::$dispatchedEvents = [];
         self::$throwOnStatusChange = false;
+        self::$throwOnTicketCreated = false;
 
         $this->extension('linkrobins-support');
 
@@ -66,24 +70,32 @@ class TicketDomainEventsTest extends TestCase
                         throw new \RuntimeException('Simulated listener failure');
                     }
                 })
+                ->listen(TicketCreated::class, function () {
+                    if (self::$throwOnTicketCreated) {
+                        throw new \RuntimeException('Simulated created listener failure');
+                    }
+                })
                 ->listen(TicketCreated::class, fn ($e) => self::$dispatchedEvents[] = $e)
                 ->listen(TicketChanged::class, fn ($e) => self::$dispatchedEvents[] = $e)
                 ->listen(TicketStatusChanged::class, fn ($e) => self::$dispatchedEvents[] = $e)
                 ->listen(TicketDecided::class, fn ($e) => self::$dispatchedEvents[] = $e)
                 ->listen(TicketAssigned::class, fn ($e) => self::$dispatchedEvents[] = $e)
                 ->listen(ReplyCreated::class, fn ($e) => self::$dispatchedEvents[] = $e)
+                ->listen(ReplyPosted::class, fn ($e) => self::$dispatchedEvents[] = $e)
         );
 
         $this->prepareDatabase([
             'users' => [
                 $this->normalUser(), // id 2
                 ['id' => 3, 'username' => 'staff1', 'email' => 'staff1@machine.local', 'is_email_confirmed' => 1, 'password' => 'password'],
+                ['id' => 4, 'username' => 'staff2', 'email' => 'staff2@machine.local', 'is_email_confirmed' => 1, 'password' => 'password'],
             ],
             'groups' => [
                 ['id' => 100, 'name_singular' => 'Staff', 'name_plural' => 'Staff', 'is_hidden' => 0],
             ],
             'group_user' => [
                 ['user_id' => 3, 'group_id' => 100],
+                ['user_id' => 4, 'group_id' => 100],
             ],
             'group_permission' => [
                 ['group_id' => 100, 'permission' => 'lr-support.handle_tickets'],
@@ -525,5 +537,262 @@ class TicketDomainEventsTest extends TestCase
 
         $changedEvents = array_values(array_filter(self::$dispatchedEvents, fn ($e) => $e instanceof TicketChanged));
         $this->assertCount(1, $changedEvents);
+    }
+
+    #[Test]
+    public function owner_confirm_solved_and_reopen_dispatch_status_and_changed_events_with_owner_actor(): void
+    {
+        $ticketId = $this->database()->table('linkrobins_support_tickets')->insertGetId([
+            'category_id' => 1,
+            'user_id' => 2,
+            'subject' => 'Owner transitions',
+            'status' => SupportTicket::STATUS_RESOLVED,
+            'created_at' => Carbon::now(),
+            'updated_at' => Carbon::now(),
+        ]);
+
+        // 1. Owner confirms solved (resolved -> closed)
+        self::$dispatchedEvents = [];
+        $closeResponse = $this->send(
+            $this->request('PATCH', "/api/linkrobins-support-tickets/$ticketId", [
+                'authenticatedAs' => 2,
+                'json' => [
+                    'data' => [
+                        'type' => 'linkrobins-support-tickets',
+                        'id' => (string) $ticketId,
+                        'attributes' => ['status' => SupportTicket::STATUS_CLOSED],
+                    ],
+                ],
+            ])
+        );
+        $this->assertEquals(200, $closeResponse->getStatusCode(), (string) $closeResponse->getBody());
+
+        $statusEvents = array_values(array_filter(self::$dispatchedEvents, fn ($e) => $e instanceof TicketStatusChanged));
+        $this->assertCount(1, $statusEvents);
+        $this->assertEquals(SupportTicket::STATUS_RESOLVED, $statusEvents[0]->oldStatus);
+        $this->assertEquals(SupportTicket::STATUS_CLOSED, $statusEvents[0]->newStatus);
+        $this->assertEquals(2, $statusEvents[0]->actor?->id);
+        $this->assertFalse($statusEvents[0]->isAutomatic);
+
+        $changedEvents = array_values(array_filter(self::$dispatchedEvents, fn ($e) => $e instanceof TicketChanged));
+        $this->assertCount(1, $changedEvents);
+        $this->assertEquals(2, $changedEvents[0]->actor?->id);
+
+        // 2. Owner reopens closed ticket (closed -> open)
+        self::$dispatchedEvents = [];
+        $reopenResponse = $this->send(
+            $this->request('PATCH', "/api/linkrobins-support-tickets/$ticketId", [
+                'authenticatedAs' => 2,
+                'json' => [
+                    'data' => [
+                        'type' => 'linkrobins-support-tickets',
+                        'id' => (string) $ticketId,
+                        'attributes' => ['status' => SupportTicket::STATUS_OPEN],
+                    ],
+                ],
+            ])
+        );
+        $this->assertEquals(200, $reopenResponse->getStatusCode(), (string) $reopenResponse->getBody());
+
+        $reopenStatusEvents = array_values(array_filter(self::$dispatchedEvents, fn ($e) => $e instanceof TicketStatusChanged));
+        $this->assertCount(1, $reopenStatusEvents);
+        $this->assertEquals(SupportTicket::STATUS_CLOSED, $reopenStatusEvents[0]->oldStatus);
+        $this->assertEquals(SupportTicket::STATUS_OPEN, $reopenStatusEvents[0]->newStatus);
+        $this->assertEquals(2, $reopenStatusEvents[0]->actor?->id);
+
+        $reopenChangedEvents = array_values(array_filter(self::$dispatchedEvents, fn ($e) => $e instanceof TicketChanged));
+        $this->assertCount(1, $reopenChangedEvents);
+        $this->assertEquals(2, $reopenChangedEvents[0]->actor?->id);
+    }
+
+    #[Test]
+    public function reassigning_between_staff_by_another_actor_records_distinct_sides(): void
+    {
+        $ticketId = $this->database()->table('linkrobins_support_tickets')->insertGetId([
+            'category_id' => 1,
+            'user_id' => 2,
+            'assigned_staff_id' => 3,
+            'subject' => 'Handover',
+            'status' => SupportTicket::STATUS_IN_PROGRESS,
+            'created_at' => Carbon::now(),
+            'updated_at' => Carbon::now(),
+        ]);
+
+        self::$dispatchedEvents = [];
+
+        $response = $this->send(
+            $this->request('PATCH', "/api/linkrobins-support-tickets/$ticketId", [
+                'authenticatedAs' => 1,
+                'json' => [
+                    'data' => [
+                        'type' => 'linkrobins-support-tickets',
+                        'id' => (string) $ticketId,
+                        'relationships' => [
+                            'assignedStaff' => ['data' => ['type' => 'users', 'id' => '4']],
+                        ],
+                    ],
+                ],
+            ])
+        );
+        $this->assertEquals(200, $response->getStatusCode(), (string) $response->getBody());
+
+        $assignedEvents = array_values(array_filter(self::$dispatchedEvents, fn ($e) => $e instanceof TicketAssigned));
+        $this->assertCount(1, $assignedEvents);
+        $this->assertEquals(1, $assignedEvents[0]->actor?->id);
+        $this->assertEquals(3, $assignedEvents[0]->oldAssignee?->id);
+        $this->assertEquals(3, $assignedEvents[0]->oldAssigneeId);
+        $this->assertEquals(4, $assignedEvents[0]->assignee?->id);
+        $this->assertEquals(4, $assignedEvents[0]->assigneeId);
+
+        $changedEvents = array_values(array_filter(self::$dispatchedEvents, fn ($e) => $e instanceof TicketChanged));
+        $this->assertCount(1, $changedEvents);
+        $this->assertEquals(1, $changedEvents[0]->actor?->id);
+
+        $timelineRow = $this->database()->table('linkrobins_support_events')
+            ->where('ticket_id', $ticketId)
+            ->where('type', 'assignment')
+            ->first();
+        $this->assertNotNull($timelineRow);
+        $this->assertEquals(1, (int) $timelineRow->user_id);
+        $this->assertEquals(3, (int) $timelineRow->from_user_id);
+        $this->assertEquals(4, (int) $timelineRow->to_user_id);
+    }
+
+    #[Test]
+    public function internal_note_auto_claims_without_status_change(): void
+    {
+        $ticketId = $this->database()->table('linkrobins_support_tickets')->insertGetId([
+            'category_id' => 1,
+            'user_id' => 2,
+            'subject' => 'Internal triage',
+            'status' => SupportTicket::STATUS_OPEN,
+            'created_at' => Carbon::now(),
+            'updated_at' => Carbon::now(),
+        ]);
+
+        $this->database()->table('linkrobins_support_replies')->insert([
+            'ticket_id' => $ticketId,
+            'user_id' => 2,
+            'content' => 'Opening message',
+            'created_at' => Carbon::now(),
+            'updated_at' => Carbon::now(),
+        ]);
+
+        self::$dispatchedEvents = [];
+
+        $response = $this->send(
+            $this->request('POST', '/api/linkrobins-support-replies', [
+                'authenticatedAs' => 3,
+                'json' => [
+                    'data' => [
+                        'type' => 'linkrobins-support-replies',
+                        'attributes' => [
+                            'content' => 'Private staff note',
+                            'isInternalNote' => true,
+                        ],
+                        'relationships' => [
+                            'ticket' => ['data' => ['type' => 'linkrobins-support-tickets', 'id' => (string) $ticketId]],
+                        ],
+                    ],
+                ],
+            ])
+        );
+        $this->assertEquals(201, $response->getStatusCode(), (string) $response->getBody());
+
+        $this->assertEquals(
+            SupportTicket::STATUS_OPEN,
+            $this->database()->table('linkrobins_support_tickets')->where('id', $ticketId)->value('status')
+        );
+
+        $this->assertCount(0, array_filter(self::$dispatchedEvents, fn ($e) => $e instanceof TicketStatusChanged));
+        $assignedEvents = array_values(array_filter(self::$dispatchedEvents, fn ($e) => $e instanceof TicketAssigned));
+        $this->assertCount(1, $assignedEvents);
+        $this->assertEquals(3, $assignedEvents[0]->assignee?->id);
+
+        $postedEvents = array_values(array_filter(self::$dispatchedEvents, fn ($e) => $e instanceof ReplyPosted));
+        $this->assertCount(1, $postedEvents);
+        $this->assertTrue((bool) $postedEvents[0]->reply->is_internal_note);
+        $this->assertEquals(3, $postedEvents[0]->actor?->id);
+
+        $this->assertCount(1, array_filter(self::$dispatchedEvents, fn ($e) => $e instanceof TicketChanged));
+    }
+
+    #[Test]
+    public function user_replying_to_resolved_ticket_reopens_automatically(): void
+    {
+        $ticketId = $this->database()->table('linkrobins_support_tickets')->insertGetId([
+            'category_id' => 1,
+            'user_id' => 2,
+            'assigned_staff_id' => 3,
+            'subject' => 'Resolved ticket',
+            'status' => SupportTicket::STATUS_RESOLVED,
+            'created_at' => Carbon::now(),
+            'updated_at' => Carbon::now(),
+        ]);
+
+        $this->database()->table('linkrobins_support_replies')->insert([
+            'ticket_id' => $ticketId,
+            'user_id' => 2,
+            'content' => 'Opening message',
+            'created_at' => Carbon::now(),
+            'updated_at' => Carbon::now(),
+        ]);
+
+        self::$dispatchedEvents = [];
+
+        $response = $this->send(
+            $this->request('POST', '/api/linkrobins-support-replies', [
+                'authenticatedAs' => 2,
+                'json' => [
+                    'data' => [
+                        'type' => 'linkrobins-support-replies',
+                        'attributes' => ['content' => 'Still seeing the issue'],
+                        'relationships' => [
+                            'ticket' => ['data' => ['type' => 'linkrobins-support-tickets', 'id' => (string) $ticketId]],
+                        ],
+                    ],
+                ],
+            ])
+        );
+        $this->assertEquals(201, $response->getStatusCode(), (string) $response->getBody());
+
+        $statusEvents = array_values(array_filter(self::$dispatchedEvents, fn ($e) => $e instanceof TicketStatusChanged));
+        $this->assertCount(1, $statusEvents);
+        $this->assertEquals(SupportTicket::STATUS_RESOLVED, $statusEvents[0]->oldStatus);
+        $this->assertEquals(SupportTicket::STATUS_IN_PROGRESS, $statusEvents[0]->newStatus);
+        $this->assertEquals(2, $statusEvents[0]->actor?->id);
+        $this->assertTrue($statusEvents[0]->isAutomatic);
+
+        $this->assertCount(1, array_filter(self::$dispatchedEvents, fn ($e) => $e instanceof ReplyPosted));
+        $this->assertCount(1, array_filter(self::$dispatchedEvents, fn ($e) => $e instanceof ReplyCreated));
+        $this->assertCount(1, array_filter(self::$dispatchedEvents, fn ($e) => $e instanceof TicketChanged));
+    }
+
+    #[Test]
+    public function failing_listener_does_not_fail_ticket_creation_or_block_other_listeners(): void
+    {
+        self::$dispatchedEvents = [];
+        self::$throwOnTicketCreated = true;
+
+        $response = $this->send(
+            $this->request('POST', '/api/linkrobins-support-tickets', [
+                'authenticatedAs' => 2,
+                'json' => [
+                    'data' => [
+                        'attributes' => [
+                            'subject' => 'Isolated creation',
+                            'firstPost' => 'Opening body',
+                        ],
+                        'relationships' => [
+                            'category' => ['data' => ['type' => 'linkrobins-support-categories', 'id' => '1']],
+                        ],
+                    ],
+                ],
+            ])
+        );
+        $this->assertEquals(201, $response->getStatusCode(), (string) $response->getBody());
+
+        $createdEvents = array_values(array_filter(self::$dispatchedEvents, fn ($e) => $e instanceof TicketCreated));
+        $this->assertCount(1, $createdEvents);
     }
 }
