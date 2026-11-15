@@ -15,6 +15,7 @@ use Flarum\Testing\integration\RetrievesAuthorizedUsers;
 use Flarum\Testing\integration\TestCase;
 use LinkRobins\Support\Event\ReplyCreated;
 use LinkRobins\Support\Event\TicketAssigned;
+use LinkRobins\Support\Event\TicketChanged;
 use LinkRobins\Support\Event\TicketCreated;
 use LinkRobins\Support\Event\TicketDecided;
 use LinkRobins\Support\Event\TicketStatusChanged;
@@ -58,6 +59,7 @@ class TicketDomainEventsTest extends TestCase
         $this->extend(
             (new Extend\Event())
                 ->listen(TicketCreated::class, fn ($e) => self::$dispatchedEvents[] = $e)
+                ->listen(TicketChanged::class, fn ($e) => self::$dispatchedEvents[] = $e)
                 ->listen(TicketStatusChanged::class, fn ($e) => self::$dispatchedEvents[] = $e)
                 ->listen(TicketDecided::class, fn ($e) => self::$dispatchedEvents[] = $e)
                 ->listen(TicketAssigned::class, fn ($e) => self::$dispatchedEvents[] = $e)
@@ -168,6 +170,11 @@ class TicketDomainEventsTest extends TestCase
         $this->assertEquals(SupportTicket::DECISION_PENDING, $decisionEvents[0]->oldDecision);
         $this->assertEquals(SupportTicket::DECISION_ACCEPTED, $decisionEvents[0]->newDecision);
         $this->assertEquals(3, $decisionEvents[0]->actor->id);
+
+        $changedEvents = array_values(array_filter(self::$dispatchedEvents, fn ($e) => $e instanceof TicketChanged));
+        $this->assertCount(1, $changedEvents);
+        $this->assertEquals($ticketId, $changedEvents[0]->ticket->id);
+        $this->assertEquals(3, $changedEvents[0]->actor?->id);
 
         // A no-op update with identical values must NOT re-dispatch events
         self::$dispatchedEvents = [];
@@ -424,5 +431,44 @@ class TicketDomainEventsTest extends TestCase
         // The opening message must not dispatch ReplyCreated (announced by TicketCreated)
         $replyEvents = array_filter(self::$dispatchedEvents, fn ($e) => $e instanceof ReplyCreated);
         $this->assertCount(0, $replyEvents, 'Opening message must not dispatch ReplyCreated');
+    }
+
+    #[Test]
+    public function patching_priority_dispatches_ticket_changed_event(): void
+    {
+        $ticketId = $this->database()->table('linkrobins_support_tickets')->insertGetId([
+            'category_id' => 1,
+            'user_id' => 2,
+            'subject' => 'Priority test',
+            'status' => SupportTicket::STATUS_OPEN,
+            'priority' => SupportTicket::PRIORITY_NORMAL,
+            'created_at' => Carbon::now(),
+            'updated_at' => Carbon::now(),
+        ]);
+
+        self::$dispatchedEvents = [];
+
+        $response = $this->send(
+            $this->request('PATCH', "/api/linkrobins-support-tickets/$ticketId", [
+                'authenticatedAs' => 3,
+                'json' => [
+                    'data' => [
+                        'type' => 'linkrobins-support-tickets',
+                        'id' => (string) $ticketId,
+                        'attributes' => [
+                            'priority' => SupportTicket::PRIORITY_URGENT,
+                        ],
+                    ],
+                ],
+            ])
+        );
+
+        $this->assertEquals(200, $response->getStatusCode());
+
+        $changedEvents = array_values(array_filter(self::$dispatchedEvents, fn ($e) => $e instanceof TicketChanged));
+        $this->assertCount(1, $changedEvents);
+        $this->assertEquals($ticketId, $changedEvents[0]->ticket->id);
+        $this->assertEquals(SupportTicket::PRIORITY_URGENT, $changedEvents[0]->ticket->priority);
+        $this->assertEquals(3, $changedEvents[0]->actor?->id);
     }
 }

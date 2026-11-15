@@ -13,6 +13,7 @@ use Illuminate\Contracts\Bus\Dispatcher;
 use Flarum\User\User;
 use Illuminate\Database\Eloquent\Builder;
 use LinkRobins\Support\Access\SupportAbilities;
+use LinkRobins\Support\Event\TicketChanged;
 use LinkRobins\Support\Job\NotifyAssigned;
 use LinkRobins\Support\Job\NotifyStatusChanged;
 use LinkRobins\Support\RateLimiter;
@@ -710,6 +711,17 @@ class SupportTicketResource extends AbstractDatabaseResource
         // handover.
         if ($assignee !== null && $assignee !== $before['assignee']) {
             $this->bus->dispatch(new NotifyAssigned((int) $model->id, $actorId));
+        }
+
+        return $model;
+    }
+
+    public function updated(object $model, Context $context): ?object
+    {
+        /** @var SupportTicket $model */
+        if ($model->wasChanged()) {
+            $actor = $context->getActor();
+            $model->raise(new TicketChanged($model, $actor->isGuest() ? null : $actor));
         }
 
         return $model;

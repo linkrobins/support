@@ -6,6 +6,7 @@ use Carbon\Carbon;
 use Flarum\Settings\SettingsRepositoryInterface;
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Events\Dispatcher;
+use LinkRobins\Support\Event\TicketChanged;
 use LinkRobins\Support\SupportTicket;
 
 /**
@@ -72,6 +73,7 @@ class CloseResolvedTicketsCommand extends Command
                     foreach ($ticket->releaseEvents() as $event) {
                         $events->dispatch($event);
                     }
+                    $events->dispatch(new TicketChanged($ticket, null));
                     $closed++;
                 }
             });
