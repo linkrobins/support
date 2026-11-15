@@ -396,11 +396,11 @@ class TicketDomainEventsTest extends TestCase
     }
 
     #[Test]
-    public function a_staff_members_own_ticket_dispatches_created_status_and_assignment_events(): void
+    public function a_staff_members_own_ticket_dispatches_created_and_assignment_without_status_change(): void
     {
-        // When a staff member files a ticket, their opening message moves the ticket
-        // to in_progress and auto-claims it. TicketCreated announces the new ticket,
-        // while TicketStatusChanged and TicketAssigned record the claim and status advance.
+        // When a staff member files a ticket, it starts directly in_progress and
+        // is auto-claimed. TicketCreated and TicketAssigned fire, while
+        // TicketStatusChanged stays quiet because the starting status isn't a change.
         $response = $this->send(
             $this->request('POST', '/api/linkrobins-support-tickets', [
                 'authenticatedAs' => 3,
@@ -420,15 +420,18 @@ class TicketDomainEventsTest extends TestCase
 
         $this->assertEquals(201, $response->getStatusCode());
 
+        $ticketId = (int) json_decode((string) $response->getBody(), true)['data']['id'];
+        $this->assertEquals(
+            SupportTicket::STATUS_IN_PROGRESS,
+            $this->database()->table('linkrobins_support_tickets')->where('id', $ticketId)->value('status')
+        );
+
         $createdEvents = array_values(array_filter(self::$dispatchedEvents, fn ($e) => $e instanceof TicketCreated));
         $this->assertCount(1, $createdEvents);
         $this->assertEquals(3, $createdEvents[0]->actor?->id);
 
         $statusEvents = array_values(array_filter(self::$dispatchedEvents, fn ($e) => $e instanceof TicketStatusChanged));
-        $this->assertCount(1, $statusEvents);
-        $this->assertEquals(SupportTicket::STATUS_OPEN, $statusEvents[0]->oldStatus);
-        $this->assertEquals(SupportTicket::STATUS_IN_PROGRESS, $statusEvents[0]->newStatus);
-        $this->assertEquals(3, $statusEvents[0]->actor?->id);
+        $this->assertCount(0, $statusEvents, 'Initial status on creation must not dispatch TicketStatusChanged');
 
         $assignedEvents = array_values(array_filter(self::$dispatchedEvents, fn ($e) => $e instanceof TicketAssigned));
         $this->assertCount(1, $assignedEvents);

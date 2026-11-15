@@ -231,7 +231,7 @@ class TicketHistoryTest extends TestCase
     }
 
     #[Test]
-    public function a_staff_filed_ticket_records_opening_message_claim_and_status_advance(): void
+    public function a_staff_filed_ticket_starts_in_progress_and_records_claim_without_status_change(): void
     {
         $response = $this->send(
             $this->request('POST', '/api/linkrobins-support-tickets', [
@@ -254,7 +254,10 @@ class TicketHistoryTest extends TestCase
         );
 
         $this->assertEquals(201, $response->getStatusCode(), (string) $response->getBody());
-        $ticketId = (int) json_decode((string) $response->getBody(), true)['data']['id'];
+        $ticketData = json_decode((string) $response->getBody(), true)['data'];
+        $ticketId = (int) $ticketData['id'];
+
+        $this->assertEquals('in_progress', $this->database()->table('linkrobins_support_tickets')->where('id', $ticketId)->value('status'));
 
         $events = $this->database()->table('linkrobins_support_events')
             ->where('ticket_id', $ticketId)
@@ -262,11 +265,7 @@ class TicketHistoryTest extends TestCase
             ->get();
 
         $statusEvent = $events->firstWhere('type', 'status');
-        $this->assertNotNull($statusEvent, 'Expected a status change event to be recorded for the opening message');
-        $this->assertEquals('open', $statusEvent->from_status);
-        $this->assertEquals('in_progress', $statusEvent->to_status);
-        $this->assertEquals(3, (int) $statusEvent->user_id);
-        $this->assertTrue((bool) $statusEvent->is_automatic);
+        $this->assertNull($statusEvent, 'Starting a staff-filed ticket in progress should not record a status change event');
 
         $assignmentEvent = $events->firstWhere('type', 'assignment');
         $this->assertNotNull($assignmentEvent, 'Expected an assignment event to be recorded for the opening message');
