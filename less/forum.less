@@ -64,9 +64,14 @@
     text-overflow: ellipsis;
     white-space: nowrap;
 
-    .icon, i {
+    // Beat core's `.ComposerBody-header h3 .icon` (margin-right: 3px) so the
+    // icon gap matches core's `3px + literal space` (~6.5px) without JSX spacing.
+    .ComposerBody-header & .icon,
+    .ComposerBody-header & i,
+    .icon,
+    i {
         color: var(--primary-color, #07adcc);
-        margin-inline-end: 4px;
+        margin-inline-end: 6.5px;
     }
 }
 
