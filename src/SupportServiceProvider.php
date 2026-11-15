@@ -63,7 +63,7 @@ class SupportServiceProvider extends AbstractServiceProvider
                     if ($ticket->status === SupportTicket::STATUS_RESOLVED) {
                         $ticket->changeStatus(SupportTicket::STATUS_IN_PROGRESS, $reply->user, isAutomatic: true);
                     } elseif ($isStaff && $ticket->status === SupportTicket::STATUS_OPEN) {
-                        if ($isOpening) {
+                        if ($isOpening && (int) $reply->user_id === (int) $ticket->user_id) {
                             // Staff-filed tickets start in progress; the opening
                             // status is not a transition to announce or log.
                             $ticket->status = SupportTicket::STATUS_IN_PROGRESS;
