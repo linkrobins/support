@@ -18,8 +18,10 @@ use LinkRobins\Support\Job\NotifyAssigned;
 use LinkRobins\Support\Job\NotifyStatusChanged;
 use LinkRobins\Support\RateLimiter;
 use LinkRobins\Support\SupportCategory;
+use LinkRobins\Support\SupportServiceProvider;
 use LinkRobins\Support\SupportTicket;
 use LinkRobins\Support\UserState;
+use Psr\Log\LoggerInterface;
 use Tobyz\JsonApiServer\Context;
 use Tobyz\JsonApiServer\Exception\BadRequestException;
 use Tobyz\JsonApiServer\Exception\ForbiddenException;
@@ -40,6 +42,7 @@ class SupportTicketResource extends AbstractDatabaseResource
         protected RateLimiter $rateLimiter,
         protected TranslatorInterface $translator,
         protected Dispatcher $bus,
+        protected LoggerInterface $log,
     ) {
     }
 
@@ -725,6 +728,21 @@ class SupportTicketResource extends AbstractDatabaseResource
         }
 
         return $model;
+    }
+
+    /**
+     * Dispatch raised domain events after commit with per-listener isolation so a
+     * failing listener never causes the API request to return 500 after saving.
+     */
+    public function dispatchEventsFor(mixed $entity, ?User $actor = null): void
+    {
+        if (! method_exists($entity, 'releaseEvents')) {
+            return;
+        }
+
+        foreach ($entity->releaseEvents() as $event) {
+            SupportServiceProvider::dispatchAfterCommit($this->events, $event, $this->log);
+        }
     }
 
     /**

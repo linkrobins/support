@@ -7,7 +7,9 @@ use Flarum\Settings\SettingsRepositoryInterface;
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Events\Dispatcher;
 use LinkRobins\Support\Event\TicketChanged;
+use LinkRobins\Support\SupportServiceProvider;
 use LinkRobins\Support\SupportTicket;
+use Psr\Log\LoggerInterface;
 
 /**
  * Close tickets that have sat in Resolved with no activity for the
@@ -43,7 +45,7 @@ class CloseResolvedTicketsCommand extends Command
         return max(0, (int) $value);
     }
 
-    public function handle(SettingsRepositoryInterface $settings, Dispatcher $events): int
+    public function handle(SettingsRepositoryInterface $settings, Dispatcher $events, LoggerInterface $log): int
     {
         $days = self::days($settings->get(self::SETTING));
 
@@ -61,7 +63,7 @@ class CloseResolvedTicketsCommand extends Command
             ->whereNotNull('status_changed_at')
             ->where('status_changed_at', '<=', $cutoff)
             ->where(fn ($q) => $q->whereNull('last_reply_at')->orWhere('last_reply_at', '<=', $cutoff))
-            ->chunkById(100, function ($tickets) use (&$closed, $events) {
+            ->chunkById(100, function ($tickets) use (&$closed, $events, $log) {
                 foreach ($tickets as $ticket) {
                     /** @var SupportTicket $ticket */
                     // Re-check on the row itself: a reply may have reopened
@@ -71,9 +73,9 @@ class CloseResolvedTicketsCommand extends Command
                     }
                     $ticket->changeStatus(SupportTicket::STATUS_CLOSED, actor: null, isAutomatic: true)->save();
                     foreach ($ticket->releaseEvents() as $event) {
-                        $events->dispatch($event);
+                        SupportServiceProvider::dispatchAfterCommit($events, $event, $log);
                     }
-                    $events->dispatch(new TicketChanged($ticket, null));
+                    SupportServiceProvider::dispatchAfterCommit($events, new TicketChanged($ticket, null), $log);
                     $closed++;
                 }
             });

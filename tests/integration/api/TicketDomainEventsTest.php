@@ -34,6 +34,8 @@ class TicketDomainEventsTest extends TestCase
     /** @var list<object> */
     public static array $dispatchedEvents = [];
 
+    public static bool $throwOnStatusChange = false;
+
     /**
      * Flarum's notification mailer and auth pipeline repeatedly look up users by ID.
      * Upstream whitelists this shape in StatusNotificationTest and CategoryDefaultAssigneeTest.
@@ -53,11 +55,17 @@ class TicketDomainEventsTest extends TestCase
         parent::setUp();
 
         self::$dispatchedEvents = [];
+        self::$throwOnStatusChange = false;
 
         $this->extension('linkrobins-support');
 
         $this->extend(
             (new Extend\Event())
+                ->listen(TicketStatusChanged::class, function () {
+                    if (self::$throwOnStatusChange) {
+                        throw new \RuntimeException('Simulated listener failure');
+                    }
+                })
                 ->listen(TicketCreated::class, fn ($e) => self::$dispatchedEvents[] = $e)
                 ->listen(TicketChanged::class, fn ($e) => self::$dispatchedEvents[] = $e)
                 ->listen(TicketStatusChanged::class, fn ($e) => self::$dispatchedEvents[] = $e)
@@ -470,5 +478,49 @@ class TicketDomainEventsTest extends TestCase
         $this->assertEquals($ticketId, $changedEvents[0]->ticket->id);
         $this->assertEquals(SupportTicket::PRIORITY_URGENT, $changedEvents[0]->ticket->priority);
         $this->assertEquals(3, $changedEvents[0]->actor?->id);
+    }
+
+    #[Test]
+    public function failing_listener_does_not_fail_api_patch_or_block_other_listeners(): void
+    {
+        $ticketId = $this->database()->table('linkrobins_support_tickets')->insertGetId([
+            'category_id' => 1,
+            'user_id' => 2,
+            'subject' => 'Listener error isolation',
+            'status' => SupportTicket::STATUS_OPEN,
+            'created_at' => Carbon::now(),
+            'updated_at' => Carbon::now(),
+        ]);
+
+        self::$dispatchedEvents = [];
+        self::$throwOnStatusChange = true;
+
+        $response = $this->send(
+            $this->request('PATCH', "/api/linkrobins-support-tickets/$ticketId", [
+                'authenticatedAs' => 3,
+                'json' => [
+                    'data' => [
+                        'type' => 'linkrobins-support-tickets',
+                        'id' => (string) $ticketId,
+                        'attributes' => [
+                            'status' => SupportTicket::STATUS_RESOLVED,
+                        ],
+                    ],
+                ],
+            ])
+        );
+
+        $this->assertEquals(200, $response->getStatusCode(), (string) $response->getBody());
+        $this->assertEquals(
+            SupportTicket::STATUS_RESOLVED,
+            $this->database()->table('linkrobins_support_tickets')->where('id', $ticketId)->value('status')
+        );
+
+        // Subsequent listeners on TicketStatusChanged and TicketChanged must still run
+        $statusEvents = array_values(array_filter(self::$dispatchedEvents, fn ($e) => $e instanceof TicketStatusChanged));
+        $this->assertCount(1, $statusEvents);
+
+        $changedEvents = array_values(array_filter(self::$dispatchedEvents, fn ($e) => $e instanceof TicketChanged));
+        $this->assertCount(1, $changedEvents);
     }
 }

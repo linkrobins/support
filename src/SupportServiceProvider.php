@@ -149,6 +149,15 @@ class SupportServiceProvider extends AbstractServiceProvider
     }
 
     /**
+     * Dispatch an event after the surrounding transaction commits, isolating each
+     * listener so a failure in one cannot abort the request or remaining listeners.
+     */
+    public static function dispatchAfterCommit(Events $events, object $event, LoggerInterface $log): void
+    {
+        static::afterCommit(fn () => static::dispatchIsolated($events, $event, $log));
+    }
+
+    /**
      * Dispatch an event to its listeners in isolation, logging any failure so
      * that one failing listener cannot block other listeners or crash the
      * after-commit callback.

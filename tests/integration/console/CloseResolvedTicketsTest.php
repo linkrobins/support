@@ -115,6 +115,26 @@ class CloseResolvedTicketsTest extends ConsoleTestCase
     }
 
     #[Test]
+    public function a_failing_listener_does_not_abort_auto_close(): void
+    {
+        $changed = [];
+        $this->extend(
+            (new Extend\Event())
+                ->listen(TicketStatusChanged::class, function () {
+                    throw new \RuntimeException('Simulated listener failure');
+                })
+                ->listen(TicketChanged::class, function (TicketChanged $e) use (&$changed) {
+                    $changed[] = $e;
+                })
+        );
+
+        $this->runCommand(['command' => 'lr-support:close-resolved']);
+
+        $this->assertEquals('closed', $this->statusOf(1));
+        $this->assertCount(1, $changed);
+    }
+
+    #[Test]
     public function zero_days_turns_it_off(): void
     {
         $this->setting('linkrobins-support.auto_close_resolved_days', '0');
