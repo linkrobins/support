@@ -9,7 +9,10 @@ use LinkRobins\Support\Api\Resource\SupportEventResource;
 use LinkRobins\Support\Console\CloseResolvedTicketsCommand;
 use LinkRobins\Support\Console\HourlySchedule;
 use LinkRobins\Support\Event\ReplyPosted;
+use LinkRobins\Support\Event\TicketAssigned;
 use LinkRobins\Support\Event\TicketChanged;
+use LinkRobins\Support\Event\TicketDecided;
+use LinkRobins\Support\Event\TicketStatusChanged;
 use LinkRobins\Support\Api\Resource\SupportCategoryResource;
 use LinkRobins\Support\Api\Resource\SupportReplyResource;
 use LinkRobins\Support\Api\Resource\SupportTicketResource;
@@ -22,6 +25,8 @@ use LinkRobins\Support\Search\EventSearcher;
 use LinkRobins\Support\Search\ReplySearcher;
 use LinkRobins\Support\Search\TicketSearcher;
 use LinkRobins\Support\Extend as SupportExtend;
+use LinkRobins\Support\Listener\NotifyTicketTypeDecision;
+use LinkRobins\Support\Listener\NotifyTicketTypeStatusChange;
 use LinkRobins\Support\Listener\RecordAssignmentTimeline;
 use LinkRobins\Support\Listener\RecordStatusChangeTimeline;
 use LinkRobins\Support\SupportCategory;
@@ -267,28 +272,10 @@ return [
                 $event->value = $event->value === '' || $event->value === '0' ? '0' : '1';
             }
         })
-        ->listen(\LinkRobins\Support\Event\TicketStatusChanged::class, RecordStatusChangeTimeline::class)
-        ->listen(\LinkRobins\Support\Event\TicketStatusChanged::class, function (\LinkRobins\Support\Event\TicketStatusChanged $event) {
-            $category = $event->ticket->currentCategory();
-            if ($category) {
-                try {
-                    $category->ticketType()->onStatusChanged($event->ticket, $event->newStatus, $event->oldStatus, $event->actor);
-                } catch (\Throwable $e) {
-                    resolve(\Psr\Log\LoggerInterface::class)->error('[linkrobins/support] ticket type onStatusChanged failed', ['exception' => $e]);
-                }
-            }
-        })
-        ->listen(\LinkRobins\Support\Event\TicketAssigned::class, RecordAssignmentTimeline::class)
-        ->listen(\LinkRobins\Support\Event\TicketDecided::class, function (\LinkRobins\Support\Event\TicketDecided $event) {
-            $category = $event->ticket->currentCategory();
-            if ($category) {
-                try {
-                    $category->ticketType()->onDecided($event->ticket, $event->newDecision, $event->oldDecision, $event->actor);
-                } catch (\Throwable $e) {
-                    resolve(\Psr\Log\LoggerInterface::class)->error('[linkrobins/support] ticket type onDecided failed', ['exception' => $e]);
-                }
-            }
-        }),
+        ->listen(TicketStatusChanged::class, RecordStatusChangeTimeline::class)
+        ->listen(TicketStatusChanged::class, NotifyTicketTypeStatusChange::class)
+        ->listen(TicketAssigned::class, RecordAssignmentTimeline::class)
+        ->listen(TicketDecided::class, NotifyTicketTypeDecision::class),
 
     (new Extend\Settings())
         ->default('linkrobins-support.nav_in_sidebar',             '1')
