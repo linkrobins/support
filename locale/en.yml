@@ -451,4 +451,5 @@ linkrobins-support:
       appeal_has_open: 'You already have an open appeal. Please wait for it to be resolved before filing another.'
       appeal_quota: 'You have already filed {count} appeal(s) in the past {days} days (limit: {limit}). Try again later.'
       general_quota: 'You have filed {count} tickets in the past {hours} hours (limit: {limit}). Please wait before filing another.'
+      too_many_requests: 'Please wait a few seconds before creating another ticket.'
       generic: 'Cannot create a ticket right now.'

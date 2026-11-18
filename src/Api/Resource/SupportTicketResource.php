@@ -20,6 +20,7 @@ use LinkRobins\Support\RateLimiter;
 use LinkRobins\Support\SupportCategory;
 use LinkRobins\Support\SupportServiceProvider;
 use LinkRobins\Support\SupportTicket;
+use LinkRobins\Support\Throttler\TicketCreationThrottler;
 use LinkRobins\Support\UserState;
 use Psr\Log\LoggerInterface;
 use Tobyz\JsonApiServer\Context;
@@ -40,6 +41,7 @@ class SupportTicketResource extends AbstractDatabaseResource
 
     public function __construct(
         protected RateLimiter $rateLimiter,
+        protected TicketCreationThrottler $throttler,
         protected TranslatorInterface $translator,
         protected Dispatcher $bus,
         protected LoggerInterface $log,
@@ -557,10 +559,15 @@ class SupportTicketResource extends AbstractDatabaseResource
         $actor = $context->getActor();
 
         if ($actor->isGuest() || empty($model->category_id)) {
-            return parent::create($model, $context);
+            $ticket = parent::create($model, $context);
+            if ($context instanceof FlarumContext) {
+                $this->throttler->recordHit($context->request, $actor);
+            }
+
+            return $ticket;
         }
 
-        return SupportTicket::query()->getConnection()->transaction(function () use ($model, $context, $actor) {
+        $ticket = SupportTicket::query()->getConnection()->transaction(function () use ($model, $context, $actor) {
             // Lock this user's row for the duration of the insert so their
             // concurrent creates serialize (a no-op on SQLite, which already
             // serializes writes). The re-check below then sees a consistent,
@@ -595,6 +602,15 @@ class SupportTicketResource extends AbstractDatabaseResource
 
             return $ticket;
         });
+
+        // Clear the cached quota counts and start the anti-flood cooldown only
+        // after the transaction has committed and the ticket is persisted.
+        $this->rateLimiter->clearUserQuotaCache($actor);
+        if ($context instanceof FlarumContext) {
+            $this->throttler->recordHit($context->request, $actor);
+        }
+
+        return $ticket;
     }
 
     /**

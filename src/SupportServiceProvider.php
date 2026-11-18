@@ -27,8 +27,13 @@ class SupportServiceProvider extends AbstractServiceProvider
         });
     }
 
-    public function boot(Formatter $formatter, Dispatcher $bus, Events $events, LoggerInterface $log): void
-    {
+    public function boot(
+        Formatter $formatter,
+        Dispatcher $bus,
+        Events $events,
+        LoggerInterface $log,
+        RateLimiter $rateLimiter
+    ): void {
         // Plug Flarum's formatter into the reply model so calling
         // setContentAttribute() runs Markdown/BBCode through the same
         // pipeline discussions use. The parsed source ends up in
@@ -150,6 +155,47 @@ class SupportServiceProvider extends AbstractServiceProvider
         SupportTicket::saving(function (SupportTicket $ticket) {
             if (! $ticket->exists || $ticket->isDirty('status')) {
                 $ticket->status_changed_at = Carbon::now();
+            }
+        });
+
+        SupportTicket::updated(function (SupportTicket $ticket) use ($rateLimiter) {
+            if ($ticket->user_id && $ticket->wasChanged(['status', 'category_id', 'deleted_at'])) {
+                static::afterCommit(fn () => $rateLimiter->clearUserQuotaCache((int) $ticket->user_id));
+            }
+        });
+
+        SupportTicket::deleted(function (SupportTicket $ticket) use ($rateLimiter) {
+            if ($ticket->user_id) {
+                static::afterCommit(fn () => $rateLimiter->clearUserQuotaCache((int) $ticket->user_id));
+            }
+        });
+
+        SupportTicket::restored(function (SupportTicket $ticket) use ($rateLimiter) {
+            if ($ticket->user_id) {
+                static::afterCommit(fn () => $rateLimiter->clearUserQuotaCache((int) $ticket->user_id));
+            }
+        });
+
+        SupportCategory::updated(function (SupportCategory $category) use ($rateLimiter) {
+            if (! $category->wasChanged('ticket_type')) {
+                return;
+            }
+
+            $ids = SupportTicket::query()
+                ->withTrashed()
+                ->where('category_id', $category->id)
+                ->whereNotNull('user_id')
+                ->distinct()
+                ->pluck('user_id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+
+            if ($ids !== []) {
+                static::afterCommit(function () use ($rateLimiter, $ids) {
+                    foreach ($ids as $userId) {
+                        $rateLimiter->clearUserQuotaCache($userId);
+                    }
+                });
             }
         });
     }
