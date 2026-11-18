@@ -1,6 +1,7 @@
 import app from 'flarum/forum/app';
 import Component from 'flarum/common/Component';
 import Button from 'flarum/common/components/Button';
+import Tooltip from 'flarum/common/components/Tooltip';
 import extractText from 'flarum/common/utils/extractText';
 import { supportComposerSupported, supportComposerOpenFor, supportComposerPreview } from '../utils/composer';
 
@@ -32,12 +33,14 @@ export default class ReplyComposer extends Component {
     // Fallback for stripped installs: a plain textarea + attach button.
     const canSubmit = !a.posting && a.replyText.trim() !== '';
     const canUpload = !!(app.forum && typeof app.forum.attribute === 'function' && app.forum.attribute('fof-upload.canUpload'));
-    const placeholder = a.replyIsInternal
+    const isInternal = !!(canPostInternal && a.replyIsInternal);
+    const internalLabel = extractText(app.translator.trans('linkrobins-support.forum.reply.internal_note'));
+    const placeholder = isInternal
       ? extractText(app.translator.trans('linkrobins-support.forum.reply.internal_placeholder'))
       : extractText(app.translator.trans('linkrobins-support.forum.reply.placeholder'));
 
     return (
-      <div className="LinkRobinsSupport-replyForm">
+      <div className={'LinkRobinsSupport-replyForm' + (isInternal ? ' is-internal' : '')}>
         <textarea
           className="FormControl LinkRobinsSupport-body"
           rows={5}
@@ -100,24 +103,31 @@ export default class ReplyComposer extends Component {
               />
             </span>
           )}
-          {canPostInternal && (
-            <label className="LinkRobinsSupport-internalToggle">
-              <input
-                type="checkbox"
-                checked={a.replyIsInternal}
-                disabled={a.posting}
-                onchange={(e: any) => {
-                  a.onToggleInternal(!!e.target.checked);
-                }}
-              />
-              {app.translator.trans('linkrobins-support.forum.reply.internal_note')}
-            </label>
-          )}
-          <Button className="Button Button--primary" disabled={!canSubmit} loading={a.posting} onclick={() => a.onSubmit()}>
+          <Button
+            className={'Button Button--primary' + (isInternal ? ' LinkRobinsSupport-btn--internal' : '')}
+            icon={isInternal ? 'fas fa-lock' : undefined}
+            disabled={!canSubmit}
+            loading={a.posting}
+            onclick={() => a.onSubmit()}
+          >
             {a.posting
               ? app.translator.trans('linkrobins-support.forum.reply.posting')
-              : app.translator.trans('linkrobins-support.forum.reply.post_reply')}
+              : isInternal
+                ? app.translator.trans('linkrobins-support.forum.reply.internal_note')
+                : app.translator.trans('linkrobins-support.forum.reply.post_reply')}
           </Button>
+          {canPostInternal && (
+            <Tooltip text={internalLabel}>
+              <Button
+                className={'Button Button--icon Button--link LinkRobinsSupport-internalBtn' + (isInternal ? ' active' : '')}
+                icon="fas fa-lock"
+                aria-label={internalLabel}
+                aria-pressed={isInternal ? 'true' : 'false'}
+                disabled={a.posting}
+                onclick={() => a.onToggleInternal(!a.replyIsInternal)}
+              />
+            </Tooltip>
+          )}
         </div>
       </div>
     );

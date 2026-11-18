@@ -830,11 +830,12 @@ export default class SupportShowPage extends Page<any> {
     openSupportComposer({
       supportContext: 'reply:' + ticket.id(),
       className: 'LinkRobinsSupport-replyComposer',
+      canPostInternal,
       placeholder: extractText(app.translator.trans('linkrobins-support.forum.reply.placeholder')),
       submitLabel: extractText(app.translator.trans('linkrobins-support.forum.reply.post_reply')),
       confirmExit: extractText(app.translator.trans('linkrobins-support.forum.reply.discard_confirm')),
       originalContent: '',
-      supportHeaderItems: (body: any) => {
+      supportHeaderItems: () => {
         const rows: any[] = [
           {
             name: 'title',
@@ -849,22 +850,11 @@ export default class SupportShowPage extends Page<any> {
         ];
         if (canPostInternal) {
           // One row for the staff controls, on every screen size: on a phone
-          // core gives each header item its own bordered row, so two items
-          // would stack.
+          // core gives each header item its own bordered row.
           rows.push({
             name: 'staffTools',
             content: (
               <div className="LinkRobinsSupport-composerTools">
-                <label className="LinkRobinsSupport-internalToggle">
-                  <input
-                    type="checkbox"
-                    checked={!!body._supportInternal}
-                    onchange={(e: any) => {
-                      body._supportInternal = !!e.target.checked;
-                    }}
-                  />
-                  {app.translator.trans('linkrobins-support.forum.reply.internal_note')}
-                </label>
                 <SavedRepliesMenu />
               </div>
             ),
@@ -873,7 +863,7 @@ export default class SupportShowPage extends Page<any> {
         return rows;
       },
       onSupportSubmit: (content: string, body: any) => {
-        this._postReply(content, !!body._supportInternal, body);
+        this._postReply(content, !!body.isInternal, body);
       },
     });
   }
@@ -909,6 +899,9 @@ export default class SupportShowPage extends Page<any> {
         this.posting = false;
         this.uploadError = null;
         this.uploadingCount = 0;
+        if (body) {
+          body.isInternal = false;
+        }
         if (body && body.composer) {
           body.composer.hide();
         } else {

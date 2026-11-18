@@ -99,11 +99,11 @@
     }
 }
 
-// Our composer header rows (ticket title + internal-note toggle) should each
+// Our composer header rows (ticket title + staff tools) should each
 // sit on their own line. Core lays header <li>s out `inline-block` with a
 // negative right margin (designed for the discussion title input + tag chips),
-// which makes our wider ticket title overlap the internal-note checkbox on
-// desktop. Scope the override to our composers so core's stays intact.
+// which makes our wider ticket title overlap the next item on desktop.
+// Scope the override to our composers so core's stays intact.
 .LinkRobinsSupport-replyComposer,
 .LinkRobinsSupport-ticketComposer {
     .ComposerBody-header > li {
@@ -113,25 +113,16 @@
 
 }
 
-// Internal note and Saved replies, side by side in one header row.
 .LinkRobinsSupport-composerTools {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
     gap: 4px 16px;
 
-    .LinkRobinsSupport-internalToggle {
-        margin-right: 0;
-    }
-
     .LinkRobinsSupport-savedRepliesToggle {
         padding-top: 4px;
         padding-bottom: 4px;
     }
-}
-
-.ComposerBody-header .LinkRobinsSupport-internalToggle {
-    margin: 0;
 }
 
 // "Write a reply" prompt button at the foot of a ticket.
@@ -675,24 +666,56 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
+
+    &.is-internal .LinkRobinsSupport-body {
+        border-color: rgba(243, 156, 18, 0.45);
+    }
 }
 
 .LinkRobinsSupport-replyForm-actions {
     display: flex;
     align-items: center;
-    gap: 16px;
+    justify-content: flex-end;
+    gap: 10px;
+
+    .LinkRobinsSupport-attachBtnWrap {
+        margin-right: auto;
+    }
 }
 
-.LinkRobinsSupport-internalToggle {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 0.85rem;
-    color: var(--muted-color, #888);
-    cursor: pointer;
-    user-select: none;
-    margin-right: auto;
-    margin-bottom: 0;
+.Button.Button--primary.LinkRobinsSupport-btn--internal {
+    background: #d68910;
+    border-color: #b9770e;
+    color: #fff;
+
+    &:hover,
+    &:focus,
+    &:active {
+        background: #b9770e;
+        border-color: #935116;
+        color: #fff;
+    }
+}
+
+.Button.LinkRobinsSupport-internalBtn {
+    font-size: 15px;
+
+    &.active {
+        color: #d68910;
+        background: rgba(214, 137, 16, 0.12);
+
+        &:hover,
+        &:focus {
+            color: #b9770e;
+            background: rgba(214, 137, 16, 0.18);
+        }
+    }
+}
+
+@media @phone {
+    .LinkRobinsSupport-replyComposer .App-primaryControl > .Button.LinkRobinsSupport-btn--internal {
+        color: #d68910 !important;
+    }
 }
 
 // --- File attachments -----------------------------------------------
