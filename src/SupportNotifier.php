@@ -2,7 +2,6 @@
 
 namespace LinkRobins\Support;
 
-use Flarum\Group\Group;
 use Flarum\Notification\NotificationSyncer;
 use Flarum\User\User;
 use LinkRobins\Support\Access\SupportAbilities;
@@ -31,7 +30,7 @@ class SupportNotifier
     /**
      * New-reply notification (user-facing replies only):
      *   - staff reply on a user's ticket  → notify the owner
-     *   - user reply on their own ticket   → notify all staff
+     *   - user reply on their own ticket   → notify assigned staff, routed group, or all staff
      *   - staff reply on their own ticket  → notify other staff (admin testing)
      */
     public function notifyNewReply(SupportReply $reply): void
@@ -44,13 +43,13 @@ class SupportNotifier
         $authorIsStaff = $this->isStaff($reply->user);
 
         if (! $authorIsStaff) {
-            $recipients = $this->staffRecipients($reply->user_id);
+            $recipients = $this->ticketStaffRecipients($ticket, $reply->user_id);
         } elseif ($ticket->user) {
             $recipients = ((int) $ticket->user_id === (int) $reply->user_id)
-                ? $this->staffRecipients($reply->user_id)
+                ? $this->ticketStaffRecipients($ticket, $reply->user_id)
                 : [$ticket->user];
         } else {
-            $recipients = $this->staffRecipients($reply->user_id);
+            $recipients = $this->ticketStaffRecipients($ticket, $reply->user_id);
         }
 
         if (! empty($recipients)) {
@@ -153,6 +152,22 @@ class SupportNotifier
     protected function newTicketRecipients(SupportTicket $ticket, ?int $exceptId = null): array
     {
         $exceptId ??= $ticket->user_id === null ? null : (int) $ticket->user_id;
+
+        return $this->ticketStaffRecipients($ticket, $exceptId);
+    }
+
+    /**
+     * Staff recipients for a ticket:
+     *   1. If ticket is assigned to active staff, only that person is notified.
+     *   2. If category is silent and ticket is unassigned, no staff are notified.
+     *   3. If category routes to a group, staff in that group are notified (falling back
+     *      to all staff if the group is missing or staff-less).
+     *   4. Otherwise, falls back to all staff members.
+     *
+     * @return list<User>
+     */
+    protected function ticketStaffRecipients(SupportTicket $ticket, ?int $exceptId = null): array
+    {
         $assignee = $ticket->assignedStaff;
 
         // Re-check the permission rather than trusting the stored id. The
@@ -160,12 +175,54 @@ class SupportNotifier
         // from a queued job -- on a busy queue that can be minutes later, and
         // the account may have lost its staff group in between. Notifying only
         // a person who can no longer open the ticket would lose it silently,
-        // so fall back to telling everyone.
+        // so fall back to the rest of the routing.
         if ($assignee && $this->isStaff($assignee)) {
             return ((int) $assignee->id === $exceptId) ? [] : [$assignee];
         }
 
+        $category = $ticket->currentCategory();
+        if ($category && $category->is_silent) {
+            return [];
+        }
+
+        if ($category && ($group = $category->effectiveDefaultGroup())) {
+            $groupStaff = $this->groupRecipients((int) $group->id);
+            if (! empty($groupStaff)) {
+                return $exceptId === null
+                    ? $groupStaff
+                    : array_values(array_filter($groupStaff, fn (User $u) => (int) $u->id !== $exceptId));
+            }
+        }
+
         return $this->staffRecipients($exceptId);
+    }
+
+    /**
+     * Members of a specific group who are authorized support staff.
+     *
+     * @return User[]
+     */
+    protected function groupRecipients(int $groupId, ?int $exceptId = null): array
+    {
+        try {
+            $query = User::query()->whereHas('groups', function ($q) use ($groupId) {
+                $q->where('groups.id', $groupId);
+            });
+
+            // Enforce that recipients are actual staff (admins or hold handle_tickets),
+            // matching the staff requirement across all ticket notifications.
+            SupportAbilities::whereStaff($query);
+
+            if ($exceptId !== null) {
+                $query->where('id', '!=', $exceptId);
+            }
+
+            return $query->get()->all();
+        } catch (\Throwable $e) {
+            $this->log->warning('[linkrobins/support] groupRecipients failed', ['exception' => $e]);
+
+            return [];
+        }
     }
 
     /**
@@ -233,17 +290,9 @@ class SupportNotifier
     protected function staffRecipients(?int $exceptId = null): array
     {
         try {
-            $query = User::query()->where(function ($q) {
-                $q->whereHas('groups', function ($q) {
-                    $q->where('groups.id', Group::ADMINISTRATOR_ID);
-                })->orWhereHas('groups', function ($q) {
-                    $q->whereIn('groups.id', function ($sub) {
-                        $sub->select('group_id')
-                            ->from('group_permission')
-                            ->where('permission', SupportAbilities::HANDLE_TICKETS);
-                    });
-                });
-            });
+            $query = User::query();
+
+            SupportAbilities::whereStaff($query);
 
             if ($exceptId !== null) {
                 $query->where('id', '!=', $exceptId);

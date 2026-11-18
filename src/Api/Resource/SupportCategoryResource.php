@@ -7,6 +7,7 @@ use Flarum\Api\Endpoint;
 use Flarum\Api\Resource\AbstractDatabaseResource;
 use Flarum\Api\Schema;
 use Flarum\Api\Sort\SortColumn;
+use Flarum\Group\Group;
 use Flarum\Locale\TranslatorInterface;
 use Flarum\User\User;
 use Illuminate\Database\Eloquent\Builder;
@@ -202,6 +203,11 @@ class SupportCategoryResource extends AbstractDatabaseResource
                     return $cat->canCreate($context->getActor());
                 }),
 
+            Schema\Boolean::make('isSilent')
+                ->property('is_silent')
+                ->visible(fn (SupportCategory $cat, FlarumContext $context) => SupportAbilities::isStaff($context->getActor()))
+                ->writable(fn (SupportCategory $cat, FlarumContext $context) => $context->getActor()->can('manageCategories')),
+
             Schema\Integer::make('ticketCount')
                 ->get(fn (SupportCategory $cat) => (int) ($cat->tickets_count ?? $cat->tickets()->count())),
 
@@ -253,6 +259,39 @@ class SupportCategoryResource extends AbstractDatabaseResource
                     }
 
                     $cat->default_assignee_id = $targetId;
+                }),
+
+            Schema\Relationship\ToOne::make('defaultAssignedGroup')
+                ->type('groups')
+                ->includable()
+                ->visible(fn (SupportCategory $cat, FlarumContext $context) => SupportAbilities::isStaff($context->getActor()))
+                ->writable(fn (SupportCategory $cat, FlarumContext $context) => $context->getActor()->can('manageCategories'))
+                ->set(function (SupportCategory $cat, $value, FlarumContext $context) {
+                    if ($value === null) {
+                        $cat->default_assigned_group_id = null;
+
+                        return;
+                    }
+
+                    $targetId = null;
+                    if (is_object($value) && isset($value->id)) {
+                        $targetId = (int) $value->id;
+                    } elseif (is_numeric($value)) {
+                        $targetId = (int) $value;
+                    }
+
+                    if (! $targetId) {
+                        $cat->default_assigned_group_id = null;
+
+                        return;
+                    }
+
+                    $group = Group::query()->find($targetId);
+                    if (! $group) {
+                        throw new BadRequestException($this->translator->trans('linkrobins-support.api.default_assigned_group_invalid'));
+                    }
+
+                    $cat->default_assigned_group_id = $targetId;
                 }),
         ];
     }

@@ -1,5 +1,6 @@
 import Model from 'flarum/common/Model';
 import type User from 'flarum/common/models/User';
+import type Group from 'flarum/common/models/Group';
 
 /**
  * A support category (e.g. "Billing", "Appeals"). `isAppeal` categories are
@@ -13,6 +14,7 @@ export default class SupportCategory extends Model {
   icon = Model.attribute<string | null>('icon');
   position = Model.attribute<number>('position');
   isAppeal = Model.attribute<boolean>('isAppeal');
+  isSilent = Model.attribute<boolean>('isSilent');
   ticketType = Model.attribute<string | null>('ticketType');
   allowedGroupIds = Model.attribute<number[] | null>('allowedGroupIds');
   canCreate = Model.attribute<boolean>('canCreate');
@@ -27,6 +29,9 @@ export default class SupportCategory extends Model {
   // notified about them. Null means no auto-assign: all staff are notified.
   // Serialized to staff only, so it reads as null for everyone else.
   defaultAssignee = Model.hasOne<User>('defaultAssignee');
+
+  // The group new tickets here route to for staff notifications.
+  defaultAssignedGroup = Model.hasOne<Group>('defaultAssignedGroup');
 
   createdAt = Model.attribute('createdAt', Model.transformDate);
   updatedAt = Model.attribute('updatedAt', Model.transformDate);

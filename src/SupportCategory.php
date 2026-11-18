@@ -22,10 +22,13 @@ use LinkRobins\Support\TicketType\TicketTypeManager;
  * @property int $position
  * @property string|null $ticket_type
  * @property int|null $default_assignee_id
+ * @property int|null $default_assigned_group_id
+ * @property bool $is_silent
  * @property array<int>|null $allowed_group_ids
  * @property \Carbon\Carbon|null $created_at
  * @property \Carbon\Carbon|null $updated_at
  * @property-read User|null $defaultAssignee
+ * @property-read Group|null $defaultAssignedGroup
  * @property-read \Illuminate\Database\Eloquent\Collection<int, SupportTicket> $tickets
  */
 class SupportCategory extends AbstractModel
@@ -43,11 +46,15 @@ class SupportCategory extends AbstractModel
         'position',
         'ticket_type',
         'default_assignee_id',
+        'default_assigned_group_id',
+        'is_silent',
         'allowed_group_ids',
     ];
 
     protected $casts = [
         'position'  => 'integer',
+        'default_assigned_group_id' => 'integer',
+        'is_silent' => 'boolean',
         'allowed_group_ids' => 'array',
     ];
 
@@ -111,6 +118,31 @@ class SupportCategory extends AbstractModel
         $user = $this->defaultAssignee;
 
         return ($user instanceof User && SupportAbilities::isStaff($user)) ? $user : null;
+    }
+
+    /**
+     * The group that new tickets in this category route to for staff notifications.
+     * Null means no group routing.
+     *
+     * @return BelongsTo<Group, $this>
+     */
+    public function defaultAssignedGroup(): BelongsTo
+    {
+        return $this->belongsTo(Group::class, 'default_assigned_group_id');
+    }
+
+    /**
+     * The default assigned group, but only if the group still exists.
+     */
+    public function effectiveDefaultGroup(): ?Group
+    {
+        if (! $this->default_assigned_group_id) {
+            return null;
+        }
+
+        $group = $this->defaultAssignedGroup;
+
+        return $group instanceof Group ? $group : null;
     }
 
     /**
