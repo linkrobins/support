@@ -197,6 +197,10 @@ class SupportCategoryResource extends AbstractDatabaseResource
                     }
                 }),
 
+            Schema\Boolean::make('isSilent')
+                ->property('is_silent')
+                ->writable(),
+
             Schema\Boolean::make('canCreate')
                 ->get(function (SupportCategory $cat, FlarumContext $context) {
                     return $cat->canCreate($context->getActor());

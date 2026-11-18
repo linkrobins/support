@@ -44,13 +44,13 @@ class SupportNotifier
         $authorIsStaff = $this->isStaff($reply->user);
 
         if (! $authorIsStaff) {
-            $recipients = $this->staffRecipients($reply->user_id);
+            $recipients = $this->ticketStaffRecipients($ticket, $reply->user_id);
         } elseif ($ticket->user) {
             $recipients = ((int) $ticket->user_id === (int) $reply->user_id)
-                ? $this->staffRecipients($reply->user_id)
+                ? $this->ticketStaffRecipients($ticket, $reply->user_id)
                 : [$ticket->user];
         } else {
-            $recipients = $this->staffRecipients($reply->user_id);
+            $recipients = $this->ticketStaffRecipients($ticket, $reply->user_id);
         }
 
         if (! empty($recipients)) {
@@ -153,6 +153,20 @@ class SupportNotifier
     protected function newTicketRecipients(SupportTicket $ticket, ?int $exceptId = null): array
     {
         $exceptId ??= $ticket->user_id === null ? null : (int) $ticket->user_id;
+
+        return $this->ticketStaffRecipients($ticket, $exceptId);
+    }
+
+    /**
+     * Staff recipients for a ticket:
+     *   1. If ticket is assigned to active staff, only that person is notified.
+     *   2. If category is silent and ticket is unassigned, no staff are notified.
+     *   3. Otherwise, falls back to all staff members.
+     *
+     * @return list<User>
+     */
+    protected function ticketStaffRecipients(SupportTicket $ticket, ?int $exceptId = null): array
+    {
         $assignee = $ticket->assignedStaff;
 
         // Re-check the permission rather than trusting the stored id. The
@@ -160,9 +174,14 @@ class SupportNotifier
         // from a queued job -- on a busy queue that can be minutes later, and
         // the account may have lost its staff group in between. Notifying only
         // a person who can no longer open the ticket would lose it silently,
-        // so fall back to telling everyone.
+        // so fall back to the rest of the routing.
         if ($assignee && $this->isStaff($assignee)) {
             return ((int) $assignee->id === $exceptId) ? [] : [$assignee];
+        }
+
+        $category = $ticket->category;
+        if ($category && $category->is_silent) {
+            return [];
         }
 
         return $this->staffRecipients($exceptId);

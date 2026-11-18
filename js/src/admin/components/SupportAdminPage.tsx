@@ -180,6 +180,11 @@ export default class SupportAdminPage extends ExtensionPage {
   _assigneeLabel(category: any) {
     const user = category.defaultAssignee && category.defaultAssignee();
     if (!user) {
+      if (category.isSilent && category.isSilent()) {
+        return (
+          <span className="LinkRobinsSupportAdmin-noAssignee">{app.translator.trans('linkrobins-support.admin.categories.assignee_silent')}</span>
+        );
+      }
       return (
         <span className="LinkRobinsSupportAdmin-noAssignee">{app.translator.trans('linkrobins-support.admin.categories.assignee_all_staff')}</span>
       );

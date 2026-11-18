@@ -4,6 +4,7 @@ import Form from 'flarum/common/components/Form';
 import Button from 'flarum/common/components/Button';
 import ColorPreviewInput from 'flarum/common/components/ColorPreviewInput';
 import Select from 'flarum/common/components/Select';
+import Switch from 'flarum/common/components/Switch';
 import ItemList from 'flarum/common/utils/ItemList';
 import extractText from 'flarum/common/utils/extractText';
 import { saveCategory, deleteCategory, loadStaffUsers } from '../utils';
@@ -30,6 +31,7 @@ export default class CategoryEditorModal extends FormModal<any> {
   position = 0;
   ticketType = 'standard';
   allowedGroupIds: string[] = [];
+  isSilent = false;
   // '' means nobody -- no auto-assign, all staff notified.
   defaultAssigneeId = '';
   staff: any[] = [];
@@ -52,6 +54,7 @@ export default class CategoryEditorModal extends FormModal<any> {
     this.ticketType = (category && category.ticketType && category.ticketType()) || 'standard';
     const allowed = category && category.attribute('allowedGroupIds');
     this.allowedGroupIds = Array.isArray(allowed) ? allowed.map(String) : [];
+    this.isSilent = Boolean(category && category.isSilent && category.isSilent());
     const assignee = category && category.defaultAssignee && category.defaultAssignee();
     this.defaultAssigneeId = assignee ? String(assignee.id()) : '';
     this.saving = false;
@@ -248,6 +251,23 @@ export default class CategoryEditorModal extends FormModal<any> {
     );
 
     items.add(
+      'isSilent',
+      <div className="Form-group">
+        <Switch
+          state={this.isSilent}
+          disabled={this.saving}
+          onchange={(value: boolean) => {
+            this.isSilent = value;
+          }}
+        >
+          {app.translator.trans('linkrobins-support.admin.category_editor.field_is_silent')}
+        </Switch>
+        <div className="helpText">{app.translator.trans('linkrobins-support.admin.category_editor.field_is_silent_help')}</div>
+      </div>,
+      25
+    );
+
+    items.add(
       'allowedGroups',
       <div className="Form-group">
         <label>{app.translator.trans('linkrobins-support.admin.category_editor.field_allowed_groups')}</label>
@@ -418,6 +438,7 @@ export default class CategoryEditorModal extends FormModal<any> {
       icon: this.icon,
       position: this.position,
       ticketType: this.ticketType,
+      isSilent: this.isSilent,
       allowedGroupIds: this.allowedGroupIds.length ? this.allowedGroupIds.map(Number) : null,
     };
     if (this.slug && this.slug.trim()) {
