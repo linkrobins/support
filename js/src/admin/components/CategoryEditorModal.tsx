@@ -7,6 +7,7 @@ import Select from 'flarum/common/components/Select';
 import Switch from 'flarum/common/components/Switch';
 import ItemList from 'flarum/common/utils/ItemList';
 import extractText from 'flarum/common/utils/extractText';
+import generateElementId from 'flarum/common/utils/generateElementId';
 import { saveCategory, deleteCategory, loadStaffUsers } from '../utils';
 import { ticketTypes } from '../../common/ticketTypes';
 
@@ -21,6 +22,8 @@ function optionKey(id: string | number | null): string {
  * submit/delete row).
  */
 export default class CategoryEditorModal extends FormModal<any> {
+  private readonly allowedGroupsHelpId = generateElementId();
+
   category: any = null;
   editId: any = null;
   name = '';
@@ -252,11 +255,14 @@ export default class CategoryEditorModal extends FormModal<any> {
       'allowedGroups',
       <div className="Form-group">
         <label>{app.translator.trans('linkrobins-support.admin.category_editor.field_allowed_groups')}</label>
-        <div className="helpText">{app.translator.trans('linkrobins-support.admin.category_editor.field_allowed_groups_help')}</div>
+        <div className="helpText" id={this.allowedGroupsHelpId}>
+          {app.translator.trans('linkrobins-support.admin.category_editor.field_allowed_groups_help')}
+        </div>
         <div
           className="LinkRobinsSupport-groupSwitches"
           role="group"
           aria-label={extractText(app.translator.trans('linkrobins-support.admin.category_editor.field_allowed_groups'))}
+          aria-describedby={this.allowedGroupsHelpId}
         >
           {((app.store && app.store.all('groups')) || [])
             .filter((g: any) => g.id() !== '2') // Exclude Guest group
