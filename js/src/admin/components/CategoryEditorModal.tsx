@@ -22,6 +22,7 @@ function optionKey(id: string | number | null): string {
  * submit/delete row).
  */
 export default class CategoryEditorModal extends FormModal<any> {
+  private readonly allowedGroupsLabelId = generateElementId();
   private readonly allowedGroupsHelpId = generateElementId();
 
   category: any = null;
@@ -254,14 +255,14 @@ export default class CategoryEditorModal extends FormModal<any> {
     items.add(
       'allowedGroups',
       <div className="Form-group">
-        <label>{app.translator.trans('linkrobins-support.admin.category_editor.field_allowed_groups')}</label>
+        <label id={this.allowedGroupsLabelId}>{app.translator.trans('linkrobins-support.admin.category_editor.field_allowed_groups')}</label>
         <div className="helpText" id={this.allowedGroupsHelpId}>
           {app.translator.trans('linkrobins-support.admin.category_editor.field_allowed_groups_help')}
         </div>
         <div
           className="LinkRobinsSupport-groupSwitches"
           role="group"
-          aria-label={extractText(app.translator.trans('linkrobins-support.admin.category_editor.field_allowed_groups'))}
+          aria-labelledby={this.allowedGroupsLabelId}
           aria-describedby={this.allowedGroupsHelpId}
         >
           {((app.store && app.store.all('groups')) || [])
