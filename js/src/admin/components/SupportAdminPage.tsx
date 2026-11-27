@@ -216,52 +216,39 @@ export default class SupportAdminPage extends ExtensionPage {
   // --- Settings section ---
 
   _renderNavigationSection() {
-    const switches = [
+    const settings = [
       {
-        key: 'linkrobins-support.nav_in_sidebar',
+        setting: 'linkrobins-support.nav_in_sidebar',
         labelKey: 'linkrobins-support.admin.navigation.in_sidebar',
         helpKey: 'linkrobins-support.admin.navigation.in_sidebar_help',
-        fallback: true,
+        default: '1',
       },
       {
-        key: 'linkrobins-support.nav_in_account_menu',
+        setting: 'linkrobins-support.nav_in_account_menu',
         labelKey: 'linkrobins-support.admin.navigation.in_account_menu',
         helpKey: 'linkrobins-support.admin.navigation.in_account_menu_help',
-        fallback: true,
+        default: '1',
       },
       {
-        key: 'linkrobins-support.forum_nav_on_support_pages',
+        setting: 'linkrobins-support.forum_nav_on_support_pages',
         labelKey: 'linkrobins-support.admin.navigation.forum_nav',
         helpKey: 'linkrobins-support.admin.navigation.forum_nav_help',
-        fallback: false,
+        default: '0',
       },
     ];
 
     return (
       <Form>
         <p className="helpText">{app.translator.trans('linkrobins-support.admin.navigation.intro')}</p>
-        {switches.map((sw) => {
-          // Read AND write the page's own setting stream. Reading app.data
-          // instead leaves the input controlled by the saved value, so a click
-          // is undone by the very next redraw and the switch looks dead.
-          const value = this.setting(sw.key, sw.fallback ? '1' : '0');
-
-          return (
-            <div className="Form-group" key={sw.key}>
-              <label className="checkbox">
-                <input
-                  type="checkbox"
-                  checked={!(value() === '' || value() === '0')}
-                  onchange={(e: any) => {
-                    value(e.target.checked ? '1' : '0');
-                  }}
-                />
-                {app.translator.trans(sw.labelKey)}
-              </label>
-              <div className="helpText">{app.translator.trans(sw.helpKey)}</div>
-            </div>
-          );
-        })}
+        {settings.map((s) =>
+          this.buildSettingComponent({
+            setting: s.setting,
+            label: app.translator.trans(s.labelKey),
+            help: app.translator.trans(s.helpKey),
+            type: 'bool',
+            default: s.default,
+          })
+        )}
         <div className="Form-group Form-controls">{this.submitButton()}</div>
       </Form>
     );
@@ -316,7 +303,7 @@ export default class SupportAdminPage extends ExtensionPage {
               type="number"
               className="FormControl"
               min={f.min}
-              // Same rule as the switches above: the stream is the live value.
+              // Read and write the stream: it holds the live value.
               value={this.setting(f.key, f.defaultValue)()}
               oninput={(e: any) => {
                 this.setting(f.key, f.defaultValue)(e.target.value);

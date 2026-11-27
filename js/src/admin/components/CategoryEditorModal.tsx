@@ -4,8 +4,10 @@ import Form from 'flarum/common/components/Form';
 import Button from 'flarum/common/components/Button';
 import ColorPreviewInput from 'flarum/common/components/ColorPreviewInput';
 import Select from 'flarum/common/components/Select';
+import Switch from 'flarum/common/components/Switch';
 import ItemList from 'flarum/common/utils/ItemList';
 import extractText from 'flarum/common/utils/extractText';
+import generateElementId from 'flarum/common/utils/generateElementId';
 import { saveCategory, deleteCategory, loadStaffUsers } from '../utils';
 import { ticketTypes } from '../../common/ticketTypes';
 
@@ -20,6 +22,8 @@ function optionKey(id: string | number | null): string {
  * submit/delete row).
  */
 export default class CategoryEditorModal extends FormModal<any> {
+  private readonly allowedGroupsHelpId = generateElementId();
+
   category: any = null;
   editId: any = null;
   name = '';
@@ -251,31 +255,37 @@ export default class CategoryEditorModal extends FormModal<any> {
       'allowedGroups',
       <div className="Form-group">
         <label>{app.translator.trans('linkrobins-support.admin.category_editor.field_allowed_groups')}</label>
-        <div className="helpText">{app.translator.trans('linkrobins-support.admin.category_editor.field_allowed_groups_help')}</div>
-        <div className="LinkRobinsSupport-groupCheckboxes">
+        <div className="helpText" id={this.allowedGroupsHelpId}>
+          {app.translator.trans('linkrobins-support.admin.category_editor.field_allowed_groups_help')}
+        </div>
+        <div
+          className="LinkRobinsSupport-groupSwitches"
+          role="group"
+          aria-label={extractText(app.translator.trans('linkrobins-support.admin.category_editor.field_allowed_groups'))}
+          aria-describedby={this.allowedGroupsHelpId}
+        >
           {((app.store && app.store.all('groups')) || [])
             .filter((g: any) => g.id() !== '2') // Exclude Guest group
             .map((group: any) => {
               const id = String(group.id());
               const checked = this.allowedGroupIds.includes(id);
               return (
-                <label className="checkbox" key={id}>
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    disabled={this.saving}
-                    onchange={(e: any) => {
-                      if (e.target.checked) {
-                        if (!this.allowedGroupIds.includes(id)) {
-                          this.allowedGroupIds.push(id);
-                        }
-                      } else {
-                        this.allowedGroupIds = this.allowedGroupIds.filter((gid) => gid !== id);
+                <Switch
+                  key={id}
+                  state={checked}
+                  disabled={this.saving}
+                  onchange={(value: boolean) => {
+                    if (value) {
+                      if (!this.allowedGroupIds.includes(id)) {
+                        this.allowedGroupIds.push(id);
                       }
-                    }}
-                  />
+                    } else {
+                      this.allowedGroupIds = this.allowedGroupIds.filter((gid) => gid !== id);
+                    }
+                  }}
+                >
                   {group.namePlural() || group.nameSingular() || id}
-                </label>
+                </Switch>
               );
             })}
         </div>
