@@ -22,10 +22,13 @@ use LinkRobins\Support\TicketType\TicketTypeManager;
  * @property int $position
  * @property string|null $ticket_type
  * @property int|null $default_assignee_id
+ * @property int|null $default_assigned_group_id
+ * @property bool $is_silent
  * @property array<int>|null $allowed_group_ids
  * @property \Carbon\Carbon|null $created_at
  * @property \Carbon\Carbon|null $updated_at
  * @property-read User|null $defaultAssignee
+ * @property-read Group|null $defaultAssignedGroup
  * @property-read \Illuminate\Database\Eloquent\Collection<int, SupportTicket> $tickets
  */
 class SupportCategory extends AbstractModel
@@ -43,11 +46,15 @@ class SupportCategory extends AbstractModel
         'position',
         'ticket_type',
         'default_assignee_id',
+        'default_assigned_group_id',
+        'is_silent',
         'allowed_group_ids',
     ];
 
     protected $casts = [
         'position'  => 'integer',
+        'default_assigned_group_id' => 'integer',
+        'is_silent' => 'boolean',
         'allowed_group_ids' => 'array',
     ];
 
@@ -81,8 +88,8 @@ class SupportCategory extends AbstractModel
 
     /**
      * The staff member new tickets in this category are handed to. Null means
-     * no auto-assign: tickets arrive unassigned and every staff member is
-     * notified about them.
+     * no auto-assign: tickets arrive unassigned and follow the category's
+     * routing (silent, target group, or all staff).
      *
      * @return BelongsTo<User, $this>
      */
@@ -98,9 +105,10 @@ class SupportCategory extends AbstractModel
      * set up -- moved out of a group, permission revoked, account deleted --
      * and auto-assigning to them then would park every new ticket on someone
      * who cannot open it, with only that person notified. Treat that exactly
-     * like no auto-assign at all: the ticket stays unassigned and the whole
-     * staff list hears about it. Failing open is the only safe direction
-     * here, because the alternative is a ticket nobody is told about.
+     * like no auto-assign at all: the ticket stays unassigned and falls back to
+     * the category's routing (silent, target group, or all staff). Failing
+     * open when not silent is the only safe direction here, because the
+     * alternative is a ticket nobody is told about.
      */
     public function effectiveDefaultAssignee(): ?User
     {
@@ -111,6 +119,31 @@ class SupportCategory extends AbstractModel
         $user = $this->defaultAssignee;
 
         return ($user instanceof User && SupportAbilities::isStaff($user)) ? $user : null;
+    }
+
+    /**
+     * The group that new tickets in this category route to for staff notifications.
+     * Null means no group routing.
+     *
+     * @return BelongsTo<Group, $this>
+     */
+    public function defaultAssignedGroup(): BelongsTo
+    {
+        return $this->belongsTo(Group::class, 'default_assigned_group_id');
+    }
+
+    /**
+     * The default assigned group, but only if the group still exists.
+     */
+    public function effectiveDefaultGroup(): ?Group
+    {
+        if (! $this->default_assigned_group_id) {
+            return null;
+        }
+
+        $group = $this->defaultAssignedGroup;
+
+        return $group instanceof Group ? $group : null;
     }
 
     /**

@@ -11,11 +11,6 @@ import generateElementId from 'flarum/common/utils/generateElementId';
 import { saveCategory, deleteCategory, loadStaffUsers } from '../utils';
 import { ticketTypes } from '../../common/ticketTypes';
 
-/** See _assigneeOptions(): '' stays '', a user id becomes a non-numeric key. */
-function optionKey(id: string | number | null): string {
-  return id ? 'u' + id : '';
-}
-
 /**
  * Create/edit a support category. Built on core's FormModal so it matches the
  * Tags "New Tag" modal (a real <form>, Form-wrapped fields, a Form-controls
@@ -35,8 +30,10 @@ export default class CategoryEditorModal extends FormModal<any> {
   position = 0;
   ticketType = 'standard';
   allowedGroupIds: string[] = [];
-  // '' means nobody -- no auto-assign, all staff notified.
+  routingMode: 'all' | 'group' | 'user' | 'silent' = 'all';
+  isSilent = false;
   defaultAssigneeId = '';
+  defaultAssignedGroupId = '';
   staff: any[] = [];
   loadingStaff = true;
   staffError = false;
@@ -57,8 +54,27 @@ export default class CategoryEditorModal extends FormModal<any> {
     this.ticketType = (category && category.ticketType && category.ticketType()) || 'standard';
     const allowed = category && category.attribute('allowedGroupIds');
     this.allowedGroupIds = Array.isArray(allowed) ? allowed.map(String) : [];
+    const isSilent = Boolean(category && (category.isSilent ? category.isSilent() : category.attribute('isSilent')));
+    this.isSilent = isSilent;
     const assignee = category && category.defaultAssignee && category.defaultAssignee();
-    this.defaultAssigneeId = assignee ? String(assignee.id()) : '';
+    const rawAssigneeId = category?.data?.relationships?.defaultAssignee?.data?.id;
+    this.defaultAssigneeId = assignee ? String(assignee.id()) : rawAssigneeId ? String(rawAssigneeId) : '';
+    const group = category && category.defaultAssignedGroup && category.defaultAssignedGroup();
+    const rawGroupId = category?.data?.relationships?.defaultAssignedGroup?.data?.id;
+    this.defaultAssignedGroupId = group ? String(group.id()) : rawGroupId ? String(rawGroupId) : '';
+
+    if (isSilent) {
+      this.routingMode = 'silent';
+      this.defaultAssigneeId = '';
+      this.defaultAssignedGroupId = '';
+    } else if (this.defaultAssignedGroupId) {
+      this.routingMode = 'group';
+    } else if (this.defaultAssigneeId) {
+      this.routingMode = 'user';
+    } else {
+      this.routingMode = 'all';
+    }
+
     this.saving = false;
     this.error = null;
 
@@ -69,6 +85,9 @@ export default class CategoryEditorModal extends FormModal<any> {
       .then((users: any[]) => {
         this.staff = users || [];
         this.loadingStaff = false;
+        if (this.routingMode === 'user' && !this.defaultAssigneeId && this.staff.length > 0) {
+          this.defaultAssigneeId = String(this.staff[0].id());
+        }
         m.redraw();
       })
       .catch((err: any) => {
@@ -232,25 +251,76 @@ export default class CategoryEditorModal extends FormModal<any> {
     );
 
     items.add(
-      'defaultAssignee',
+      'routingMode',
       <div className="Form-group">
-        <label>{app.translator.trans('linkrobins-support.admin.category_editor.field_default_assignee')}</label>
+        <label>{app.translator.trans('linkrobins-support.admin.category_editor.field_routing_mode')}</label>
         <Select
-          value={optionKey(this.defaultAssigneeId)}
-          disabled={this.saving || this.loadingStaff}
-          options={this._assigneeOptions()}
+          value={this.routingMode}
+          disabled={this.saving}
+          options={this._routingModeOptions()}
           onchange={(value: string) => {
-            this.defaultAssigneeId = value ? String(value).replace(/^u/, '') : '';
+            this._changeRoutingMode(value as any);
           }}
         />
-        {this.staffError ? (
-          <div className="helpText">{app.translator.trans('linkrobins-support.admin.category_editor.field_default_assignee_error')}</div>
-        ) : (
-          <div className="helpText">{app.translator.trans('linkrobins-support.admin.category_editor.field_default_assignee_help')}</div>
-        )}
+        <div className="helpText">{this._routingHelpText()}</div>
       </div>,
       30
     );
+
+    if (this.routingMode === 'group') {
+      items.add(
+        'routingTarget',
+        <div
+          className="Form-group"
+          onupdate={(vnode: any) => {
+            const select = vnode.dom && vnode.dom.querySelector('select');
+            if (select && this.defaultAssignedGroupId && select.value !== this.defaultAssignedGroupId) {
+              select.value = this.defaultAssignedGroupId;
+            }
+          }}
+        >
+          <label>{app.translator.trans('linkrobins-support.admin.category_editor.field_target_group')}</label>
+          <Select
+            value={this.defaultAssignedGroupId}
+            disabled={this.saving}
+            options={this._groupOptions()}
+            onchange={(value: string) => {
+              this.defaultAssignedGroupId = value;
+            }}
+          />
+        </div>,
+        29
+      );
+    } else if (this.routingMode === 'user') {
+      items.add(
+        'routingTarget',
+        <div
+          className="Form-group"
+          onupdate={(vnode: any) => {
+            const select = vnode.dom && vnode.dom.querySelector('select');
+            if (!select) return;
+            const target = this.loadingStaff ? '' : this.defaultAssigneeId;
+            if (target && select.value !== target) {
+              select.value = target;
+            }
+          }}
+        >
+          <label>{app.translator.trans('linkrobins-support.admin.category_editor.field_target_user')}</label>
+          <Select
+            value={this.loadingStaff ? '' : this.defaultAssigneeId}
+            disabled={this.saving || this.loadingStaff}
+            options={this._staffOptions()}
+            onchange={(value: string) => {
+              this.defaultAssigneeId = value;
+            }}
+          />
+          {this.staffError && (
+            <div className="helpText">{app.translator.trans('linkrobins-support.admin.category_editor.field_default_assignee_error')}</div>
+          )}
+        </div>,
+        29
+      );
+    }
 
     items.add(
       'allowedGroups',
@@ -354,34 +424,88 @@ export default class CategoryEditorModal extends FormModal<any> {
     );
   }
 
-  /**
-   * Nobody, then every staff member. A user who is configured on this category
-   * but is no longer staff would otherwise vanish from the list and silently
-   * reset to "nobody" on the next save, so they are kept as a labelled option
-   * -- the label is how an admin finds out the routing has gone stale.
-   *
-   * Keys are `u<id>`, not the bare id: JavaScript enumerates integer-like
-   * object keys first, in numeric order, whatever order they were inserted
-   * in -- which sorted "Nobody" (key '') to the bottom of the list, under
-   * the staff. Prefixing keeps every key a plain string, so the order here
-   * is the order rendered.
-   */
-  _assigneeOptions(): Record<string, string> {
-    const options: Record<string, string> = {
-      '': this.loadingStaff
-        ? extractText(app.translator.trans('linkrobins-support.admin.category_editor.field_default_assignee_loading'))
-        : extractText(app.translator.trans('linkrobins-support.admin.category_editor.field_default_assignee_none')),
-    };
+  _changeRoutingMode(mode: 'all' | 'group' | 'user' | 'silent') {
+    this.routingMode = mode;
+    this.isSilent = mode === 'silent';
+    if (mode === 'all' || mode === 'silent') {
+      this.defaultAssigneeId = '';
+      this.defaultAssignedGroupId = '';
+    } else if (mode === 'group') {
+      this.defaultAssigneeId = '';
+      if (!this.defaultAssignedGroupId) {
+        const groups = this._availableGroups();
+        if (groups.length > 0) {
+          this.defaultAssignedGroupId = String(groups[0].id());
+        }
+      }
+    } else if (mode === 'user') {
+      this.defaultAssignedGroupId = '';
+      if (!this.defaultAssigneeId && this.staff.length > 0) {
+        this.defaultAssigneeId = String(this.staff[0].id());
+      }
+    }
+  }
 
-    this.staff.forEach((user: any) => {
-      options[optionKey(user.id())] = user.displayName() || user.username();
+  _routingModeOptions(): Record<string, string> {
+    return {
+      all: extractText(app.translator.trans('linkrobins-support.admin.category_editor.routing_mode_all')),
+      group: extractText(app.translator.trans('linkrobins-support.admin.category_editor.routing_mode_group')),
+      user: extractText(app.translator.trans('linkrobins-support.admin.category_editor.routing_mode_user')),
+      silent: extractText(app.translator.trans('linkrobins-support.admin.category_editor.routing_mode_silent')),
+    };
+  }
+
+  _routingHelpText(): string {
+    switch (this.routingMode) {
+      case 'group':
+        return extractText(app.translator.trans('linkrobins-support.admin.category_editor.routing_mode_help_group'));
+      case 'user':
+        return extractText(app.translator.trans('linkrobins-support.admin.category_editor.routing_mode_help_user'));
+      case 'silent':
+        return extractText(app.translator.trans('linkrobins-support.admin.category_editor.routing_mode_help_silent'));
+      default:
+        return extractText(app.translator.trans('linkrobins-support.admin.category_editor.routing_mode_help_all'));
+    }
+  }
+
+  _availableGroups(): any[] {
+    return ((app.store && app.store.all('groups')) || []).filter((g: any) => g.id() !== '2' && g.id() !== '3');
+  }
+
+  _groupOptions(): Record<string, string> {
+    const options: Record<string, string> = {};
+    const groups = this._availableGroups();
+    groups.forEach((g: any) => {
+      options[String(g.id())] = g.namePlural() || g.nameSingular() || '#' + g.id();
     });
 
-    const currentKey = optionKey(this.defaultAssigneeId);
-    if (this.defaultAssigneeId && !options[currentKey] && !this.loadingStaff) {
+    if (this.defaultAssignedGroupId && !options[this.defaultAssignedGroupId]) {
+      options[this.defaultAssignedGroupId] = extractText(
+        app.translator.trans('linkrobins-support.admin.category_editor.field_target_group_unavailable', {
+          name: '#' + this.defaultAssignedGroupId,
+        })
+      );
+    }
+
+    return options;
+  }
+
+  _staffOptions(): Record<string, string> {
+    if (this.loadingStaff) {
+      return {
+        '': extractText(app.translator.trans('linkrobins-support.admin.category_editor.field_default_assignee_loading')),
+      };
+    }
+
+    const options: Record<string, string> = {};
+    this.staff.forEach((user: any) => {
+      options[String(user.id())] = user.displayName() || user.username();
+    });
+
+    if (this.defaultAssigneeId && !options[this.defaultAssigneeId]) {
       const current = this._currentAssignee();
       const name = (current && (current.displayName() || current.username())) || '#' + this.defaultAssigneeId;
-      options[currentKey] = extractText(
+      options[this.defaultAssigneeId] = extractText(
         app.translator.trans('linkrobins-support.admin.category_editor.field_default_assignee_unavailable', { name })
       );
     }
@@ -422,6 +546,10 @@ export default class CategoryEditorModal extends FormModal<any> {
     this.error = null;
     m.redraw();
 
+    const isSilent = this.isSilent;
+    const assigneeId = isSilent ? '' : this.defaultAssigneeId;
+    const groupId = isSilent ? '' : this.defaultAssignedGroupId;
+
     const attrs: any = {
       name: this.name.trim(),
       description: this.description,
@@ -429,6 +557,7 @@ export default class CategoryEditorModal extends FormModal<any> {
       icon: this.icon,
       position: this.position,
       ticketType: this.ticketType,
+      isSilent: isSilent,
       allowedGroupIds: this.allowedGroupIds.length ? this.allowedGroupIds.map(Number) : null,
     };
     if (this.slug && this.slug.trim()) {
@@ -448,7 +577,8 @@ export default class CategoryEditorModal extends FormModal<any> {
     // run through Model.getIdentifier(), which maps this shape to `data: null`
     // and a model to its {type, id}.
     attrs.relationships = {
-      defaultAssignee: this.defaultAssigneeId ? this._assigneeModel(this.defaultAssigneeId) : { data: null },
+      defaultAssignee: assigneeId ? this._assigneeModel(assigneeId) : { data: null },
+      defaultAssignedGroup: groupId ? app.store.getById('groups', groupId) || { data: { type: 'groups', id: groupId } } : { data: null },
     };
 
     saveCategory(this.category, attrs)
@@ -473,7 +603,7 @@ export default class CategoryEditorModal extends FormModal<any> {
     for (let i = 0; i < this.staff.length; i++) {
       if (String(this.staff[i].id()) === String(id)) return this.staff[i];
     }
-    return this._currentAssignee();
+    return this._currentAssignee() || { data: { type: 'users', id: String(id) } };
   }
 
   // Delete from within the editor (parity with the Tags "New Tag" modal).

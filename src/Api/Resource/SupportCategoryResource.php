@@ -202,6 +202,11 @@ class SupportCategoryResource extends AbstractDatabaseResource
                     return $cat->canCreate($context->getActor());
                 }),
 
+            Schema\Boolean::make('isSilent')
+                ->property('is_silent')
+                ->visible(fn (SupportCategory $cat, FlarumContext $context) => SupportAbilities::isStaff($context->getActor()))
+                ->writable(fn (SupportCategory $cat, FlarumContext $context) => $context->getActor()->can('manageCategories')),
+
             Schema\Integer::make('ticketCount')
                 ->get(fn (SupportCategory $cat) => (int) ($cat->tickets_count ?? $cat->tickets()->count())),
 
@@ -213,7 +218,8 @@ class SupportCategoryResource extends AbstractDatabaseResource
             // Who new tickets in this category are handed to, and therefore
             // the only person notified about them. Null (the default, and what
             // every category has after upgrading) means no auto-assign:
-            // tickets arrive unassigned and all staff are notified.
+            // tickets arrive unassigned and follow the category's routing
+            // (silent, target group, or all staff).
             //
             // Staff-only: which human is behind a queue is internal routing,
             // and the category list is public to anyone opening a ticket.
@@ -254,6 +260,68 @@ class SupportCategoryResource extends AbstractDatabaseResource
 
                     $cat->default_assignee_id = $targetId;
                 }),
+
+            Schema\Relationship\ToOne::make('defaultAssignedGroup')
+                ->type('groups')
+                ->includable()
+                ->visible(fn (SupportCategory $cat, FlarumContext $context) => SupportAbilities::isStaff($context->getActor()))
+                ->writable(fn (SupportCategory $cat, FlarumContext $context) => $context->getActor()->can('manageCategories'))
+                ->set(function (SupportCategory $cat, $value, FlarumContext $context) {
+                    if ($value === null) {
+                        $cat->default_assigned_group_id = null;
+
+                        return;
+                    }
+
+                    $targetId = null;
+                    if (is_object($value) && isset($value->id)) {
+                        $targetId = (int) $value->id;
+                    } elseif (is_numeric($value)) {
+                        $targetId = (int) $value;
+                    }
+
+                    if (! $targetId) {
+                        $cat->default_assigned_group_id = null;
+
+                        return;
+                    }
+
+                    $cat->default_assigned_group_id = $targetId;
+                }),
         ];
+    }
+
+    public function saving(object $model, Context $context): ?object
+    {
+        /** @var SupportCategory $model */
+        $body = $context->body();
+        $sentAssignee = data_get($body, 'data.relationships.defaultAssignee.data') !== null;
+        $sentGroup = data_get($body, 'data.relationships.defaultAssignedGroup.data') !== null;
+
+        if ($model->is_silent) {
+            if ($sentAssignee || $sentGroup) {
+                throw new BadRequestException($this->translator->trans('linkrobins-support.api.routing_mode_conflict'));
+            }
+
+            // Switching a routed category to silent clears prior default targets.
+            $model->default_assignee_id = null;
+            $model->default_assigned_group_id = null;
+
+            return $model;
+        }
+
+        if ($model->default_assignee_id !== null && $model->default_assigned_group_id !== null) {
+            if ($sentAssignee && $sentGroup) {
+                throw new BadRequestException($this->translator->trans('linkrobins-support.api.routing_mode_conflict'));
+            }
+
+            if ($sentAssignee) {
+                $model->default_assigned_group_id = null;
+            } elseif ($sentGroup) {
+                $model->default_assignee_id = null;
+            }
+        }
+
+        return $model;
     }
 }

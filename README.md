@@ -106,10 +106,13 @@ forum-wide moderation actions (suspensions, bans) honest.
   by default, to keep inboxes quiet; anyone can switch the email on). The ticket owner is notified
   when staff replies or changes the ticket's status; staff are notified
   when a new ticket is opened, when the owner replies, reopens a ticket
-  or confirms it solved, and when a ticket is assigned to them. A
-  category can route its new tickets to one staff member. Internal notes
-  never produce notifications. Users can toggle each of these per driver
-  in their notification preferences.
+  or confirms it solved, and when a ticket is assigned to them. Each
+  category can notify all staff (default), route alerts to a target
+  staff group, auto-assign new tickets to one staff member, or act as a
+  silent queue (no alerts for unassigned tickets, customer replies, or
+  owner reopens; manually assigned tickets still notify their assignee).
+  Internal notes never produce notifications. Users can toggle each of
+  these per driver in their notification preferences.
 - **Fast to load.** The support pages and the stats view are loaded
   only when someone opens them, so the desk adds nothing to the weight
   of ordinary forum pages.
@@ -174,8 +177,9 @@ a separate permission for it.
 
 Settings live at admin → Extensions → LR Support, in these sections:
 
-- **Categories.** CRUD for ticket categories, including an optional
-  staff member who receives each category's new tickets.
+- **Categories.** CRUD for ticket categories, including each category's
+  default routing policy (all staff, target staff group, auto-assigned
+  staff member, or silent).
 - **Saved replies.** The answers staff can insert into a reply: a title,
   the text, and an optional position.
 - **Navigation.** Whether the Support link appears in the forum sidebar
@@ -218,7 +222,7 @@ Six tables:
 
 - `linkrobins_support_categories` -- name, slug, description, color,
   icon, position, ticket_type, default_assignee_id,
-  allowed_group_ids.
+  default_assigned_group_id, is_silent, allowed_group_ids.
 - `linkrobins_support_tickets` -- category_id, user_id,
   assigned_staff_id, subject, status, decision, priority,
   last_reply_at, status_changed_at, reminded_at, deleted_at.

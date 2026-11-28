@@ -16,10 +16,11 @@ use LinkRobins\Support\SupportTicket;
  * recipient depends on who posted:
  *
  *   - Staff replies to a user-owned ticket  → notify the ticket owner
- *   - User replies to their own ticket      → notify all staff
+ *   - User replies to their own ticket      → notify staff via SupportNotifier::ticketStaffRecipients()
+ *     (assigned staff, else silent / routed group / all staff)
  *
  * The blueprint itself is direction-agnostic; the dispatching code
- * (SupportReply::created hook) chooses recipients.
+ * (SupportNotifier::notifyNewReply()) chooses recipients.
  *
  * Internal notes are NEVER turned into notifications. The owner
  * isn't supposed to know they exist, and staff already see them in

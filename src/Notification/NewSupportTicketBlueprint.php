@@ -11,9 +11,10 @@ use Flarum\User\User;
 use LinkRobins\Support\SupportTicket;
 
 /**
- * Notification fired when a new ticket is opened. Goes out to all
- * staff (admins + users with `lr-support.handle_tickets`).
- * Staff can opt out per-driver in their notification preferences.
+ * Notification fired when a new ticket is opened. Recipients are chosen by
+ * SupportNotifier according to assignment and category routing (assigned staff,
+ * silent queue, target group, or all staff). Staff can opt out per-driver in
+ * their notification preferences.
  *
  * Self-notification: if a staff member opens a ticket themselves
  * (rare but possible for testing or for them to track their own
