@@ -1,8 +1,60 @@
 import app from 'flarum/forum/app';
+import { extend } from 'flarum/common/extend';
 import Avatar from 'flarum/common/components/Avatar';
+import Button from 'flarum/common/components/Button';
+import TextEditor from 'flarum/common/components/TextEditor';
+import Tooltip from 'flarum/common/components/Tooltip';
+import extractText from 'flarum/common/utils/extractText';
 import username from 'flarum/common/helpers/username';
 import ComposerPostPreview from 'flarum/forum/components/ComposerPostPreview';
 import { showError } from './helpers';
+
+/**
+ * Register the internal-note lock toggle beside Send in TextEditor controls,
+ * scoped strictly to SupportComposer instances with canPostInternal enabled.
+ */
+export function installComposerControls(): void {
+  extend(TextEditor.prototype, 'controlItems', function (items) {
+    const attrs = this.attrs as any;
+    const supportComposer = attrs?.composer?._supportComposer;
+    if (!supportComposer) return;
+
+    const isInternal = !!supportComposer.isInternal;
+    const label = extractText(app.translator.trans('linkrobins-support.forum.reply.internal_note'));
+
+    items.add(
+      'internalNote',
+      <Tooltip text={label}>
+        <Button
+          className={'Button Button--icon LinkRobinsSupport-internalBtn' + (isInternal ? ' active' : '')}
+          icon="fas fa-lock"
+          aria-label={label}
+          aria-pressed={isInternal ? 'true' : 'false'}
+          disabled={attrs.disabled}
+          onclick={() => {
+            supportComposer.isInternal = !supportComposer.isInternal;
+          }}
+        />
+      </Tooltip>,
+      10
+    );
+
+    if (isInternal && items.has('submit')) {
+      items.setContent(
+        'submit',
+        <Button
+          className="Button Button--primary TextEditor-send LinkRobinsSupport-btn--internal"
+          itemClassName="App-primaryControl"
+          icon="fas fa-lock"
+          disabled={attrs.disabled}
+          onclick={this.onsubmit.bind(this)}
+        >
+          {app.translator.trans('linkrobins-support.forum.reply.internal_note')}
+        </Button>
+      );
+    }
+  });
+}
 
 /**
  * Whether the real docked composer can be used. True when app.composer exists

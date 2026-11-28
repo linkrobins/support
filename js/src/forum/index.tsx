@@ -6,6 +6,7 @@ import LinkButton from 'flarum/common/components/LinkButton';
 import Button from 'flarum/common/components/Button';
 
 import { installSupportNotificationGrouping } from './components/notifications';
+import { installComposerControls } from './utils/composer';
 import { installRealtime } from './utils/live';
 import { showNavInSidebar, showNavInAccountMenu, readForumAttribute, showError } from './utils/helpers';
 import { clearTargetOnModalClose } from './utils/guestAction';
@@ -17,6 +18,7 @@ export { default as extend } from './extend';
 app.initializers.add('linkrobins-support', () => {
   app.support = { ticketTypes };
   addSupportSearch();
+  installComposerControls();
 
   // A guest sent to the log-in modal by a support action carries a target
   // through the post-login reload. Closing the modal without logging in
