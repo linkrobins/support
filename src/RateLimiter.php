@@ -6,6 +6,7 @@ use Carbon\Carbon;
 use Flarum\Locale\TranslatorInterface;
 use Flarum\Settings\SettingsRepositoryInterface;
 use Flarum\User\User;
+use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use LinkRobins\Support\TicketType\AppealTicketType;
 use LinkRobins\Support\TicketType\TicketTypeManager;
 
@@ -26,9 +27,13 @@ use LinkRobins\Support\TicketType\TicketTypeManager;
  */
 class RateLimiter
 {
+    public const CACHE_TTL = 60; // 1 minute
+
     public function __construct(
         protected SettingsRepositoryInterface $settings,
         protected TranslatorInterface $translator,
+        protected CacheRepository $cache,
+        protected TicketTypeManager $ticketTypeManager,
     ) {
     }
 
@@ -42,8 +47,11 @@ class RateLimiter
      * Returns ['ok' => bool, 'reason' => string, 'meta' => array]. `meta`
      * contains the relevant numbers (limit, window, time-to-next-allowed)
      * for the rejection message.
+     *
+     * Pass $fresh = true inside row-locked transactions to bypass the quota cache
+     * and read the current committed count directly from the database.
      */
-    public function check(User $actor, SupportCategory $category): array
+    public function check(User $actor, SupportCategory $category, bool $fresh = false): array
     {
         $custom = $category->ticketType()->checkRateLimit($actor, $category, $this);
         if ($custom !== null) {
@@ -51,12 +59,12 @@ class RateLimiter
         }
 
         if ($category->ticketType()->isAppeal()) {
-            return $this->checkAppeal($actor, $category);
+            return $this->checkAppeal($actor, $category, $fresh);
         }
-        return $this->checkGeneral($actor, $category);
+        return $this->checkGeneral($actor, $category, $fresh);
     }
 
-    protected function checkAppeal(User $actor, SupportCategory $category): array
+    protected function checkAppeal(User $actor, SupportCategory $category, bool $fresh = false): array
     {
         // Permanent appeal-ban: hard stop, no window.
         if (UserState::isAppealBanned($actor)) {
@@ -68,7 +76,7 @@ class RateLimiter
             1
         );
         if ($maxConcurrent > 0) {
-            $openAppealCount = $this->countOpenAppealsForUser($actor);
+            $openAppealCount = $this->countOpenAppealsForUser($actor, $fresh);
 
             if ($openAppealCount >= $maxConcurrent) {
                 return $this->fail(self::REASON_APPEAL_HAS_OPEN, [
@@ -82,7 +90,7 @@ class RateLimiter
         $days   = (int) $this->settings->get('linkrobins-support.appeal_window_days', 30);
         if ($limit > 0 && $days > 0) {
             $since = Carbon::now()->subDays($days);
-            $count = $this->countAppealsForUserSince($actor, $since);
+            $count = $this->countAppealsForUserSince($actor, $since, $days, $fresh);
 
             if ($count >= $limit) {
                 return $this->fail(self::REASON_APPEAL_QUOTA, [
@@ -96,7 +104,7 @@ class RateLimiter
         return $this->ok();
     }
 
-    protected function checkGeneral(User $actor, SupportCategory $category): array
+    protected function checkGeneral(User $actor, SupportCategory $category, bool $fresh = false): array
     {
         $limit = (int) $this->settings->get('linkrobins-support.general_limit_per_window', 10);
         $hours = (int) $this->settings->get('linkrobins-support.general_window_hours', 24);
@@ -105,7 +113,7 @@ class RateLimiter
         }
 
         $since = Carbon::now()->subHours($hours);
-        $count = $this->countGeneralTicketsForUserSince($actor, $since);
+        $count = $this->countGeneralTicketsForUserSince($actor, $since, $hours, $fresh);
 
         if ($count >= $limit) {
             return $this->fail(self::REASON_GENERAL_QUOTA, [
@@ -167,6 +175,21 @@ class RateLimiter
         return $this->translator->trans('linkrobins-support.api.rate_limit.generic');
     }
 
+    /**
+     * Clear all cached quota counts for a user.
+     * Called when a ticket is created or changes status.
+     */
+    public function clearUserQuotaCache(User|int $user): void
+    {
+        $userId = $user instanceof User ? (int) $user->id : (int) $user;
+        $days = (int) $this->settings->get('linkrobins-support.appeal_window_days', 30);
+        $hours = (int) $this->settings->get('linkrobins-support.general_window_hours', 24);
+
+        $this->cache->forget("linkrobins_support.quota.open_appeals.{$userId}");
+        $this->cache->forget("linkrobins_support.quota.appeals.{$userId}.{$days}d");
+        $this->cache->forget("linkrobins_support.quota.general.{$userId}.{$hours}h");
+    }
+
     // --- DB query methods, extracted so tests can override -------------
     //
     // These intentionally do exactly one thing each (a single count query)
@@ -185,13 +208,31 @@ class RateLimiter
      */
     protected function appealTicketTypeIds(): array
     {
-        /** @var TicketTypeManager $manager */
-        $manager = resolve(TicketTypeManager::class);
-
-        return $manager->appealIds() ?: [AppealTicketType::ID];
+        return $this->ticketTypeManager->appealIds() ?: [AppealTicketType::ID];
     }
 
-    protected function countOpenAppealsForUser(User $actor): int
+    /**
+     * @param \Closure(): int $query
+     */
+    protected function rememberCount(string $key, bool $fresh, \Closure $query): int
+    {
+        if ($fresh) {
+            return (int) $query();
+        }
+
+        return $this->cache->remember($key, self::CACHE_TTL, fn (): int => (int) $query());
+    }
+
+    protected function countOpenAppealsForUser(User $actor, bool $fresh = false): int
+    {
+        return $this->rememberCount(
+            "linkrobins_support.quota.open_appeals.{$actor->id}",
+            $fresh,
+            fn () => $this->queryOpenAppealsForUser($actor)
+        );
+    }
+
+    protected function queryOpenAppealsForUser(User $actor): int
     {
         $appealTypes = $this->appealTicketTypeIds();
 
@@ -208,7 +249,16 @@ class RateLimiter
             ->count();
     }
 
-    protected function countAppealsForUserSince(User $actor, Carbon $since): int
+    protected function countAppealsForUserSince(User $actor, Carbon $since, int $days = 30, bool $fresh = false): int
+    {
+        return $this->rememberCount(
+            "linkrobins_support.quota.appeals.{$actor->id}.{$days}d",
+            $fresh,
+            fn () => $this->queryAppealsForUserSince($actor, $since)
+        );
+    }
+
+    protected function queryAppealsForUserSince(User $actor, Carbon $since): int
     {
         $appealTypes = $this->appealTicketTypeIds();
 
@@ -222,7 +272,16 @@ class RateLimiter
             ->count();
     }
 
-    protected function countGeneralTicketsForUserSince(User $actor, Carbon $since): int
+    protected function countGeneralTicketsForUserSince(User $actor, Carbon $since, int $hours = 24, bool $fresh = false): int
+    {
+        return $this->rememberCount(
+            "linkrobins_support.quota.general.{$actor->id}.{$hours}h",
+            $fresh,
+            fn () => $this->queryGeneralTicketsForUserSince($actor, $since)
+        );
+    }
+
+    protected function queryGeneralTicketsForUserSince(User $actor, Carbon $since): int
     {
         $appealTypes = $this->appealTicketTypeIds();
 

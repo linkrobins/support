@@ -27,8 +27,13 @@ class SupportServiceProvider extends AbstractServiceProvider
         });
     }
 
-    public function boot(Formatter $formatter, Dispatcher $bus, Events $events, LoggerInterface $log): void
-    {
+    public function boot(
+        Formatter $formatter,
+        Dispatcher $bus,
+        Events $events,
+        LoggerInterface $log,
+        RateLimiter $rateLimiter
+    ): void {
         // Plug Flarum's formatter into the reply model so calling
         // setContentAttribute() runs Markdown/BBCode through the same
         // pipeline discussions use. The parsed source ends up in
@@ -150,6 +155,68 @@ class SupportServiceProvider extends AbstractServiceProvider
         SupportTicket::saving(function (SupportTicket $ticket) {
             if (! $ticket->exists || $ticket->isDirty('status')) {
                 $ticket->status_changed_at = Carbon::now();
+            }
+        });
+
+        SupportTicket::updated(function (SupportTicket $ticket) use ($rateLimiter, $log) {
+            if ($ticket->user_id && $ticket->wasChanged(['status', 'category_id', 'deleted_at'])) {
+                static::clearQuotaCacheAfterCommit($rateLimiter, (int) $ticket->user_id, $log);
+            }
+        });
+
+        SupportTicket::deleted(function (SupportTicket $ticket) use ($rateLimiter, $log) {
+            if ($ticket->user_id) {
+                static::clearQuotaCacheAfterCommit($rateLimiter, (int) $ticket->user_id, $log);
+            }
+        });
+
+        SupportTicket::restored(function (SupportTicket $ticket) use ($rateLimiter, $log) {
+            if ($ticket->user_id) {
+                static::clearQuotaCacheAfterCommit($rateLimiter, (int) $ticket->user_id, $log);
+            }
+        });
+
+        SupportCategory::updated(function (SupportCategory $category) use ($rateLimiter, $log) {
+            if (! $category->wasChanged('ticket_type')) {
+                return;
+            }
+
+            $ids = SupportTicket::query()
+                ->withTrashed()
+                ->where('category_id', $category->id)
+                ->whereNotNull('user_id')
+                ->distinct()
+                ->pluck('user_id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+
+            if ($ids !== []) {
+                static::afterCommit(function () use ($rateLimiter, $ids, $log) {
+                    foreach ($ids as $userId) {
+                        try {
+                            $rateLimiter->clearUserQuotaCache($userId);
+                        } catch (\Throwable $e) {
+                            $log->warning('[linkrobins/support] failed to clear user quota cache', [
+                                'user_id' => $userId,
+                                'exception' => $e,
+                            ]);
+                        }
+                    }
+                });
+            }
+        });
+    }
+
+    protected static function clearQuotaCacheAfterCommit(RateLimiter $rateLimiter, int $userId, LoggerInterface $log): void
+    {
+        static::afterCommit(function () use ($rateLimiter, $userId, $log) {
+            try {
+                $rateLimiter->clearUserQuotaCache($userId);
+            } catch (\Throwable $e) {
+                $log->warning('[linkrobins/support] failed to clear user quota cache', [
+                    'user_id' => $userId,
+                    'exception' => $e,
+                ]);
             }
         });
     }
