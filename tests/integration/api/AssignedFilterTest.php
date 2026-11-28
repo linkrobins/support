@@ -121,4 +121,12 @@ class AssignedFilterTest extends TestCase
     {
         $this->assertEquals([3], $this->idsFor(3, ['-assigned' => 'assigned']));
     }
+
+    #[Test]
+    public function assigned_filter_is_case_insensitive(): void
+    {
+        $this->assertEquals([1, 4], $this->idsFor(3, ['assigned' => 'ME']));
+        $this->assertEquals([3], $this->idsFor(3, ['assigned' => 'Unassigned']));
+        $this->assertEquals([1, 2, 4], $this->idsFor(3, ['assigned' => 'ASSIGNED']));
+    }
 }

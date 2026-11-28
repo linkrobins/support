@@ -29,7 +29,7 @@ class AssignedFilter implements FilterInterface
 
     public function filter(SearchState $state, string|array $value, bool $negate): void
     {
-        $value = $this->asString($value);
+        $value = strtolower($this->asString($value));
         $query = $state->getQuery();
         $column = 'linkrobins_support_tickets.assigned_staff_id';
 

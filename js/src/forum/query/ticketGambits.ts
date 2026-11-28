@@ -1,8 +1,24 @@
+import app from 'flarum/forum/app';
 import type IGambit from 'flarum/common/query/IGambit';
-import { BooleanGambit, KeyValueGambit, GambitType, type GroupedGambitSuggestion } from 'flarum/common/query/IGambit';
+import { BooleanGambit, KeyValueGambit, GambitType, type GroupedGambitSuggestion, type GambitValueOption } from 'flarum/common/query/IGambit';
 import { canHandleSupportTickets } from '../utils/permissions';
+import { loadCategories } from '../utils/api';
+import { ticketTypes } from '../../common/ticketTypes';
 
 export const SUPPORT_TICKETS_RESOURCE = 'linkrobins-support-tickets';
+
+function formatMultiValueFromFilter(key: string, value: any, negate: boolean): string {
+  if (Array.isArray(value)) {
+    return value
+      .map((v) => formatMultiValueFromFilter(key, v, negate))
+      .filter(Boolean)
+      .join(' ');
+  }
+  if (typeof value === 'string' && value) {
+    return `${negate ? '-' : ''}${key}:${value}`;
+  }
+  return '';
+}
 
 /**
  * Filter support tickets by status: is:open, is:in-progress, is:awaiting-response, is:resolved, is:closed.
@@ -25,17 +41,20 @@ export class StatusGambit implements IGambit<GambitType.Grouped> {
   }
 
   groupKey(): string {
-    return (app.translator && app.translator.trans('core.lib.gambits.group_keys.' + this.booleanKey(), {}, true)) || 'is';
+    return app.translator.trans('core.lib.gambits.group_keys.' + this.booleanKey(), {}, true) || 'is';
   }
 
   pattern(): string {
-    const is = this.groupKey();
-    return `${is}:(open|in[-_]progress|awaiting[-_](?:response|user)|resolved|closed)`;
+    return `${this.groupKey()}:(open|in[-_]progress|awaiting[-_](?:response|user)|resolved|closed)`;
+  }
+
+  canonicalPattern(): string {
+    return 'is:(open|in[-_]progress|awaiting[-_](?:response|user)|resolved|closed)';
   }
 
   toFilter(matches: string[], negate: boolean): Record<string, any> {
     const key = (negate ? '-' : '') + this.filterKey();
-    let val = matches[1].toLowerCase().replace('-', '_');
+    let val = matches[1].toLowerCase().replace(/-/g, '_');
     if (val === 'awaiting_response') {
       val = 'awaiting_user';
     }
@@ -69,37 +88,33 @@ export class StatusGambit implements IGambit<GambitType.Grouped> {
   }
 }
 
-function safeTrans(key: string, fallback: string): string {
-  const fullKey = 'linkrobins-support.lib.gambits.tickets.' + key;
-  return ((app.translator as any)?.translations?.[fullKey] && app.translator.trans(fullKey, {}, true)) || fallback;
-}
-
 /**
  * Key-value assignee filter: assigned:me, assigned:none, assigned:unassigned (staff only).
  */
 export class AssignedGambit extends KeyValueGambit {
   key(): string {
-    return safeTrans('assigned.key', 'assigned');
+    return app.translator.trans('linkrobins-support.lib.gambits.tickets.assigned.key', {}, true);
+  }
+
+  canonicalKey(): string {
+    return 'assigned';
   }
 
   hint(): string {
-    return safeTrans('assigned.hint', 'me or none');
+    return app.translator.trans('linkrobins-support.lib.gambits.tickets.assigned.hint', {}, true);
   }
 
   filterKey(): string {
     return 'assigned';
   }
 
-  pattern(): string {
-    return `${this.key()}:(me|none|unassigned)`;
+  valuePattern(): string {
+    return '(me|none|unassigned)';
   }
 
-  toFilter(matches: string[], negate: boolean): Record<string, any> {
-    const key = (negate ? '-' : '') + this.filterKey();
-    const val = matches[1] === 'unassigned' ? 'none' : matches[1];
-    return {
-      [key]: val,
-    };
+  gambitValueToFilterValue(value: string): string {
+    const raw = value.toLowerCase();
+    return raw === 'unassigned' ? 'none' : raw;
   }
 
   fromFilter(value: any, negate: boolean): string {
@@ -112,6 +127,19 @@ export class AssignedGambit extends KeyValueGambit {
     return '';
   }
 
+  values(): (string | GambitValueOption)[] {
+    return [
+      {
+        value: 'me',
+        label: app.translator.trans('linkrobins-support.lib.gambits.tickets.assigned.options.me', {}, true),
+      },
+      {
+        value: 'none',
+        label: app.translator.trans('linkrobins-support.lib.gambits.tickets.assigned.options.none', {}, true),
+      },
+    ];
+  }
+
   enabled(): boolean {
     return canHandleSupportTickets();
   }
@@ -122,7 +150,15 @@ export class AssignedGambit extends KeyValueGambit {
  */
 export class MineGambit extends BooleanGambit {
   key(): string {
-    return safeTrans('mine.key', 'mine');
+    return app.translator.trans('linkrobins-support.lib.gambits.tickets.mine.key', {}, true);
+  }
+
+  canonicalKey(): string {
+    return 'mine';
+  }
+
+  hint(): string {
+    return app.translator.trans('linkrobins-support.lib.gambits.tickets.mine.hint', {}, true);
   }
 
   filterKey(): string {
@@ -136,11 +172,6 @@ export class MineGambit extends BooleanGambit {
     };
   }
 
-  fromFilter(_value: any, negate: boolean): string {
-    const is = this.groupKey();
-    return `${negate ? '-' : ''}${is}:${this.key()}`;
-  }
-
   enabled(): boolean {
     return canHandleSupportTickets();
   }
@@ -151,15 +182,31 @@ export class MineGambit extends BooleanGambit {
  */
 export class TicketTypeGambit extends KeyValueGambit {
   key(): string {
-    return safeTrans('type.key', 'type');
+    return app.translator.trans('linkrobins-support.lib.gambits.tickets.type.key', {}, true);
+  }
+
+  canonicalKey(): string {
+    return 'type';
   }
 
   hint(): string {
-    return safeTrans('type.hint', 'standard, appeal, or custom type');
+    return app.translator.trans('linkrobins-support.lib.gambits.tickets.type.hint', {}, true);
   }
 
   filterKey(): string {
     return 'ticketType';
+  }
+
+  values(): (string | GambitValueOption)[] {
+    return ticketTypes.all().map((driver) => {
+      const typeKey = `linkrobins-support.lib.gambits.tickets.type.types.${driver.id}`;
+      const translated = app.translator.trans(typeKey, {}, true);
+      const label = driver.name ? driver.name() : driver.id;
+      return {
+        value: driver.id,
+        label: translated !== typeKey ? translated : label,
+      };
+    });
   }
 }
 
@@ -168,11 +215,15 @@ export class TicketTypeGambit extends KeyValueGambit {
  */
 export class AuthorGambit extends KeyValueGambit {
   key(): string {
-    return safeTrans('author.key', 'author');
+    return app.translator.trans('linkrobins-support.lib.gambits.tickets.author.key', {}, true);
+  }
+
+  canonicalKey(): string {
+    return 'author';
   }
 
   hint(): string {
-    return safeTrans('author.hint', 'username');
+    return app.translator.trans('linkrobins-support.lib.gambits.tickets.author.hint', {}, true);
   }
 
   filterKey(): string {
@@ -188,12 +239,18 @@ export class AuthorGambit extends KeyValueGambit {
  * Staff-only filter for tickets by priority: priority:urgent, priority:normal, priority:low.
  */
 export class PriorityGambit extends KeyValueGambit {
+  predicates = true;
+
   key(): string {
-    return safeTrans('priority.key', 'priority');
+    return app.translator.trans('linkrobins-support.lib.gambits.tickets.priority.key', {}, true);
+  }
+
+  canonicalKey(): string {
+    return 'priority';
   }
 
   hint(): string {
-    return safeTrans('priority.hint', 'urgent, normal, or low');
+    return app.translator.trans('linkrobins-support.lib.gambits.tickets.priority.hint', {}, true);
   }
 
   filterKey(): string {
@@ -201,18 +258,32 @@ export class PriorityGambit extends KeyValueGambit {
   }
 
   valuePattern(): string {
-    return '(urgent|normal|low|Urgent|Normal|Low)';
+    return '([a-zA-Z0-9_,-]+)';
   }
 
-  gambitValueToFilterValue(value: string): string {
-    return value.toLowerCase();
+  gambitValueToFilterValue(value: string): string[] {
+    return [value.toLowerCase()];
   }
 
   fromFilter(value: any, negate: boolean): string {
-    if (typeof value === 'string') {
-      return `${negate ? '-' : ''}${this.key()}:${value}`;
-    }
-    return '';
+    return formatMultiValueFromFilter(this.key(), value, negate);
+  }
+
+  values(): (string | GambitValueOption)[] {
+    return [
+      {
+        value: 'urgent',
+        label: app.translator.trans('linkrobins-support.lib.gambits.tickets.priority.levels.urgent', {}, true),
+      },
+      {
+        value: 'normal',
+        label: app.translator.trans('linkrobins-support.lib.gambits.tickets.priority.levels.normal', {}, true),
+      },
+      {
+        value: 'low',
+        label: app.translator.trans('linkrobins-support.lib.gambits.tickets.priority.levels.low', {}, true),
+      },
+    ];
   }
 
   enabled(): boolean {
@@ -224,34 +295,76 @@ export class PriorityGambit extends KeyValueGambit {
  * Filter tickets by category slug: category:<slug> or cat:<slug>.
  */
 export class CategoryGambit extends KeyValueGambit {
+  predicates = true;
+
+  private static loadingCategories = false;
+  private static loadedCategories = false;
+  private static lastLoadFailedAt = 0;
+  private static RETRY_COOLDOWN_MS = 10000;
+
   key(): string {
-    return safeTrans('category.key', 'category');
+    return app.translator.trans('linkrobins-support.lib.gambits.tickets.category.key', {}, true);
+  }
+
+  canonicalKey(): string {
+    return 'category';
   }
 
   hint(): string {
-    return safeTrans('category.hint', 'slug');
+    return app.translator.trans('linkrobins-support.lib.gambits.tickets.category.hint', {}, true);
   }
 
   filterKey(): string {
     return 'category';
   }
 
-  pattern(): string {
-    const key = this.key();
-    return `(?:${key}|cat):([a-zA-Z0-9_-]+)`;
+  valuePattern(): string {
+    return '([a-zA-Z0-9_,-]+)';
   }
 
-  toFilter(matches: string[], negate: boolean): Record<string, any> {
-    const key = (negate ? '-' : '') + this.filterKey();
-    return {
-      [key]: matches[1],
-    };
+  pattern(): string {
+    const key = this.key();
+    const matchKey = key === 'category' ? '(?:category|cat)' : `(?:${key}|cat)`;
+    return `${matchKey}:` + this.valuePattern();
+  }
+
+  canonicalPattern(): string {
+    return '(?:category|cat):' + this.valuePattern();
+  }
+
+  gambitValueToFilterValue(value: string): string[] {
+    return [value];
   }
 
   fromFilter(value: any, negate: boolean): string {
-    if (typeof value === 'string') {
-      return `${negate ? '-' : ''}${this.key()}:${value}`;
+    return formatMultiValueFromFilter(this.key(), value, negate);
+  }
+
+  values(): (string | GambitValueOption)[] {
+    const hasRecentlyFailed = CategoryGambit.lastLoadFailedAt && Date.now() - CategoryGambit.lastLoadFailedAt < CategoryGambit.RETRY_COOLDOWN_MS;
+
+    if (!CategoryGambit.loadedCategories && !CategoryGambit.loadingCategories && !hasRecentlyFailed) {
+      CategoryGambit.loadingCategories = true;
+      loadCategories()
+        .then(() => {
+          CategoryGambit.loadedCategories = true;
+          m.redraw();
+        })
+        .catch(() => {
+          CategoryGambit.lastLoadFailedAt = Date.now();
+        })
+        .finally(() => {
+          CategoryGambit.loadingCategories = false;
+        });
     }
-    return '';
+
+    return ((app.store.all('linkrobins-support-categories') || []) as any[])
+      .map(
+        (cat: any): GambitValueOption => ({
+          value: cat.slug(),
+          label: cat.name(),
+        })
+      )
+      .filter((opt) => !!opt.value);
   }
 }

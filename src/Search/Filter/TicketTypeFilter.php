@@ -19,6 +19,7 @@ use LinkRobins\Support\SupportCategory;
 class TicketTypeFilter implements FilterInterface
 {
     use ValidateFilterTrait;
+    use SplitsFilterValuesTrait;
 
     public function getFilterKey(): string
     {
@@ -27,7 +28,7 @@ class TicketTypeFilter implements FilterInterface
 
     public function filter(SearchState $state, string|array $value, bool $negate): void
     {
-        $types = array_filter($this->asStringArray($value), fn (string $t) => trim($t) !== '');
+        $types = $this->splitFilterValues($value);
         if (empty($types)) {
             return;
         }

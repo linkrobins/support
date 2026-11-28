@@ -32,7 +32,16 @@ export default function addSupportSearch() {
 
       if (routeName === 'linkrobins-support.filtered') {
         const status = m.route.param('status');
-        if (status && status !== 'all') {
+        if (status === 'assigned_to_me' || status === 'unassigned') {
+          if (canHandleSupportTickets()) {
+            filters[SUPPORT_TICKETS_RESOURCE].assigned = status === 'assigned_to_me' ? 'me' : 'none';
+            filters[SUPPORT_TICKETS_RESOURCE]['-status'] = 'closed';
+          }
+        } else if (status === 'mine') {
+          if (canHandleSupportTickets()) {
+            filters[SUPPORT_TICKETS_RESOURCE].mine = '1';
+          }
+        } else if (status && status !== 'all') {
           filters[SUPPORT_TICKETS_RESOURCE].status = status;
         }
       } else if (routeName === 'linkrobins-support.show') {

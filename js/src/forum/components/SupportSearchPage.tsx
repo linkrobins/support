@@ -30,6 +30,7 @@ export default class SupportSearchPage extends Page {
   oninit(vnode: any) {
     super.oninit(vnode);
     this.loading = true;
+    this.loadingMore = false;
     this.error = null;
     this.tickets = [];
     this.query = (m.route.param('q') || '').trim();
@@ -98,6 +99,7 @@ export default class SupportSearchPage extends Page {
       return;
     }
     this.loading = true;
+    this.loadingMore = false;
     this.error = null;
     m.redraw();
 
@@ -125,8 +127,11 @@ export default class SupportSearchPage extends Page {
     this.loadingMore = true;
     m.redraw();
 
+    const seq = this._loadSeq;
+
     loadTickets(this._params(this.tickets.length, PAGE_SIZE))
       .then((more: any) => {
+        if (seq !== this._loadSeq) return;
         const seen = new Set(this.tickets.map((t: any) => String(t.id())));
         this.tickets = this.tickets.concat((more || []).filter((t: any) => !seen.has(String(t.id()))));
         this.hasMore = !!(more && more.payload && more.payload.links && more.payload.links.next);
@@ -134,6 +139,7 @@ export default class SupportSearchPage extends Page {
         m.redraw();
       })
       .catch((err: any) => {
+        if (seq !== this._loadSeq) return;
         this.loadingMore = false;
         console.error('[linkrobins/support] load more search tickets failed:', err);
         showError(app.translator.trans('linkrobins-support.forum.errors.load_more_tickets'));

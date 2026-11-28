@@ -17,6 +17,7 @@ use LinkRobins\Support\SupportTicket;
 class PriorityFilter implements FilterInterface
 {
     use ValidateFilterTrait;
+    use SplitsFilterValuesTrait;
 
     public function getFilterKey(): string
     {
@@ -30,7 +31,7 @@ class PriorityFilter implements FilterInterface
             return;
         }
 
-        $values = array_map('strtolower', $this->asStringArray($value));
+        $values = array_map('strtolower', $this->splitFilterValues($value));
         $valid = array_values(array_intersect($values, SupportTicket::ALL_PRIORITIES));
         if (empty($valid)) {
             return;

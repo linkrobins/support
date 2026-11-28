@@ -16,6 +16,7 @@ use LinkRobins\Support\SupportCategory;
 class CategoryFilter implements FilterInterface
 {
     use ValidateFilterTrait;
+    use SplitsFilterValuesTrait;
 
     public function getFilterKey(): string
     {
@@ -24,7 +25,7 @@ class CategoryFilter implements FilterInterface
 
     public function filter(SearchState $state, string|array $value, bool $negate): void
     {
-        $values = $this->asStringArray($value);
+        $values = $this->splitFilterValues($value);
         if (empty($values)) {
             return;
         }
@@ -33,10 +34,6 @@ class CategoryFilter implements FilterInterface
         $slugs = [];
 
         foreach ($values as $v) {
-            $v = trim($v);
-            if ($v === '') {
-                continue;
-            }
             if (is_numeric($v)) {
                 $ids[] = (int) $v;
             } else {

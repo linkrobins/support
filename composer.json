@@ -23,7 +23,7 @@
     ],
     "require": {
         "php": "^8.3",
-        "flarum/core": "^2.0"
+        "flarum/core": "^2.1.0-beta"
     },
     "require-dev": {
         "flarum/testing": "^2.0",
